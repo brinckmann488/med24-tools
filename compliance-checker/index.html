@@ -653,7 +653,8 @@
 
     function BatchResultRow({ job, index, expanded, onToggle, onRetry }) {
       const statusOrder = { NON_COMPLIANT: 0, NEEDS_REVIEW: 1, COMPLIANT: 2 };
-      const name = job.productData?.product_name || job.productData?.name || job.input;
+      const productName = job.productData?.product_name || job.productData?.name || '';
+      const name = productName ? `${job.input.trim()} \u2014 ${productName}` : job.input;
       const isRunning = job.status === 'fetching' || job.status === 'checking';
 
       // Severity counts
