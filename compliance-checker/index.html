@@ -881,9 +881,12 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
                 </span>
               )}
               {job.status === 'error' && (
-                <span className="inline-flex items-center gap-1 text-xs text-red-600 font-semibold">
-                  {"\u26A0\uFE0F"} Fejl
-                </span>
+                <div>
+                  <span className="inline-flex items-center gap-1 text-xs text-red-600 font-semibold">
+                    {"\u26A0\uFE0F"} Fejl
+                  </span>
+                  {job.error && <p className="text-xs text-red-500 mt-0.5 max-w-xs">{job.error}</p>}
+                </div>
               )}
               {job.status === 'pending' && (
                 <span className="text-xs text-med24-muted">{"Venter..."}</span>
