@@ -315,43 +315,54 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
             className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
           >
             <span className="font-semibold text-med24-black text-sm">
-              {'\u2139\uFE0F'} S\u00e5dan virker Compliance Checker
+              {"ℹ️ Sådan virker Compliance Checker"}
             </span>
-            <span className="text-med24-muted">{open ? '\u25B2' : '\u25BC'}</span>
+            <span className="text-med24-muted">{open ? '▲' : '▼'}</span>
           </button>
           {open && (
             <div className="px-5 pb-5 border-t border-gray-100 pt-4 text-sm text-med24-muted space-y-4">
               <p className="text-med24-black font-medium">
-                Toolet tjekker automatisk om produkttekster p\u00e5 med24.dk overholder dansk og EU lovgivning for kosttilskud.
+                {"Toolet tjekker automatisk om produkttekster på med24.dk overholder dansk og EU lovgivning for kosttilskud."}
               </p>
 
               <div>
-                <h4 className="font-semibold text-med24-black mb-1">Hvad bliver tjekket?</h4>
+                <h4 className="font-semibold text-med24-black mb-1">{"Hvad bliver tjekket?"}</h4>
                 <ul className="list-disc pl-5 space-y-1">
-                  <li><strong>Sundhedsanprisninger</strong> \u2014 Er claims godkendt i EU\u2019s register (EU 432/2012)? Bruges de korrekt?</li>
-                  <li><strong>Sygdomsanprisninger</strong> \u2014 Ulovlige p\u00e5stande om forebyggelse/behandling af sygdom fanges.</li>
-                  <li><strong>Botanical on-hold claims</strong> \u2014 Plantebaserede claims der afventer EFSA-vurdering markeres.</li>
-                  <li><strong>Obligatorisk m\u00e6rkning</strong> \u2014 Er pligttekster, advarsler og n\u00e6ringsdeklaration til stede?</li>
-                  <li><strong>Formulering</strong> \u2014 Overdriver teksten? Bruges ord som "kurerer", "helbreder" osv.?</li>
+                  <li><strong>{"Sundhedsanprisninger"}</strong>{" — Er claims godkendt i EU's register (EU 432/2012)? Bruges de korrekt?"}</li>
+                  <li><strong>{"Sygdomsanprisninger"}</strong>{" — Ulovlige påstande om forebyggelse/behandling af sygdom fanges."}</li>
+                  <li><strong>{"Botanical on-hold claims"}</strong>{" — Plantebaserede claims der afventer EFSA-vurdering markeres."}</li>
+                  <li><strong>{"Obligatorisk mærkning"}</strong>{" — Er pligttekster, advarsler og næringsdeklaration til stede?"}</li>
+                  <li><strong>{"Formulering"}</strong>{" — Overdriver teksten? Bruges ord som \"kurerer\", \"helbreder\" osv.?"}</li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="font-semibold text-med24-black mb-1">Hvordan virker det teknisk?</h4>
+                <h4 className="font-semibold text-med24-black mb-1">{"Hvordan virker det teknisk?"}</h4>
                 <ol className="list-decimal pl-5 space-y-1">
-                  <li>Du indtaster produktdata manuelt eller henter det via SKU/URL.</li>
-                  <li>Data sendes til vores n8n-workflow p\u00e5 den interne server.</li>
-                  <li>En AI-agent (Gemini) analyserer teksten op mod EU-reglerne og returnerer en struktureret vurdering.</li>
-                  <li>Resultatet vises som <strong>Compliant</strong>, <strong>Needs Review</strong> eller <strong>Non-compliant</strong>.</li>
+                  <li>{"Du indtaster produktdata manuelt eller henter det via SKU/URL."}</li>
+                  <li>{"Data sendes til vores n8n-workflow på den interne server."}</li>
+                  <li>{"En AI-agent (Gemini) analyserer teksten op mod EU-reglerne og returnerer en struktureret vurdering."}</li>
+                  <li>{"Resultatet vises som "}<strong>{"Compliant"}</strong>{", "}<strong>{"Needs Review"}</strong>{" eller "}<strong>{"Non-compliant"}</strong>{"."}</li>
                 </ol>
               </div>
 
               <div>
-                <h4 className="font-semibold text-med24-black mb-1">Vigtigt at vide</h4>
+                <h4 className="font-semibold text-med24-black mb-1">{"Vigtigt at vide"}</h4>
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Toolet er en <strong>hj\u00e6lp</strong>, ikke en juridisk garanti. Brug det som f\u00f8rste screening.</li>
-                  <li>Med24.dk\u2019s standardelementer (varebetegnelse, firmainfo, holdbarhed) er allerede kendt af systemet og giver ikke falske advarsler.</li>
-                  <li>Ved tvivl \u2014 kontakt altid den ansvarlige for regulatorisk compliance.</li>
+                  <li>{"Toolet er en "}<strong>{"hjælp"}</strong>{", ikke en juridisk garanti. Brug det som første screening."}</li>
+                  <li>{"Med24.dk's standardelementer (varebetegnelse, firmainfo, holdbarhed) er allerede kendt af systemet og giver ikke falske advarsler."}</li>
+                  <li>{"Ved tvivl — kontakt altid den ansvarlige for regulatorisk compliance."}</li>
+                </ul>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100">
+                <h4 className="font-semibold text-med24-black mb-1">{"Regler og referencer"}</h4>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li><a href="https://food.ec.europa.eu/food-safety/labelling-and-nutrition/nutrition-and-health-claims/eu-register-health-claims_en" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"EU Health Claims Register"}</a>{" — komplet liste over godkendte sundhedsanprisninger"}</li>
+                  <li><strong>{"Godkendte sundhedsanprisninger"}</strong>{" — Vitamin A/B/C/D/E, calcium, jern, magnesium, zink, selen, omega-3, koffein m.fl."}</li>
+                  <li><strong>{"Obligatorisk mærkning"}</strong>{" — varebetegnelse, ingrediensliste, næringsdeklaration, advarsler, nettoindhold, virksomhedsoplysninger"}</li>
+                  <li><strong>{"Botanicals on-hold"}</strong>{" — plantebaserede claims der afventer EFSA-vurdering (hverken godkendt eller afvist)"}</li>
+                  <li><strong>{"Forbudte formuleringer"}</strong>{" — sygdomsanprisninger og vildledende udsagn er altid forbudt"}</li>
                 </ul>
               </div>
             </div>
@@ -362,8 +373,8 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
 
     function TabBar({ mode, onModeChange }) {
       const tabs = [
-        { id: 'manual', label: 'Manuel indtastning' },
         { id: 'api', label: 'Hent fra API' },
+        { id: 'manual', label: 'Manuel indtastning' },
       ];
       return (
         <div className="flex border-b border-gray-200 mb-5">
@@ -679,7 +690,7 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
 
     function App() {
       const settings = { webhookUrl: DEFAULT_COMPLIANCE_URL, productWebhookUrl: DEFAULT_PRODUCT_URL };
-      const [mode, setMode] = useState('manual');
+      const [mode, setMode] = useState('api');
       const [formData, setFormData] = useState({
         product_name: '',
         product_description: '',
