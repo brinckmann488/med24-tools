@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kosttilskud Compliance Checker — Med24</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.9/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'med24-blue': '#133C68',
+            'med24-black': '#222222',
+            'med24-bg': '#F9F9F9',
+            'med24-badge': '#F7F7F7',
+            'med24-muted': '#6A6A6A',
+          },
+          fontFamily: {
+            sans: ['Source Sans Pro', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body>
+  <div id="root"><p style="padding:2rem;font-family:sans-serif;color:#999">Indl&#230;ser...</p></div>
+  <script>
+    window.onerror = function(msg, url, line, col, err) {
+      document.getElementById('root').innerHTML =
+        '<pre style="padding:2rem;color:red;font-family:monospace">Fejl: ' + msg + '\nLinje: ' + line + '</pre>';
+    };
+  </script>
+  <script type="text/babel" data-presets="env,react">
+
+    const { useState, useEffect, useCallback } = React;
+
+    // ─── Compliance rules (embedded from skill reference files) ───
+
+    const COMPLIANCE_SYSTEM_PROMPT = `Du er en compliance-checker for kosttilskud-markedsf\u00f8ring i Danmark.
+Analys\u00e9r den angivne produkttekst og returner et JSON-objekt med compliance-vurdering.
+
+## Input-felter du modtager
+
+- product_name: Produktnavn
+- product_description: Markedsf\u00f8ringstekst/produktbeskrivelse
+- ingredients: Ingrediensliste
+- nutrition_declaration: N\u00e6ringsdeklaration med m\u00e6ngder per daglig dosis og %-RI
+- mandatory_text: Obligatorisk m\u00e6rkningstekst fra produktsiden (advarsler, dosering mv.)
+- claims_found: Anprisninger fundet p\u00e5 emballage/web (valgfri)
+- site_context: Kontekst om webshoppens standardelementer \u2014 brug dette til at vurdere obligatorisk m\u00e6rkning. Elementer n\u00e6vnt i site_context er ALTID til stede og skal IKKE rapporteres som manglende.
+
+## Workflow
+
+1. Identificer ALLE anprisninger i teksten
+2. Kategoriser hver anprisning (ern\u00e6ring/sundhed/sygdom/botanical/uspecifik)
+3. Tjek botanicals \u2014 er ingrediensen on-hold, godkendt eller afvist?
+4. Valider sundhedsanprisninger mod godkendt liste
+5. Filtrer per ingrediens \u2014 match claims til produktets faktiske ingredienser
+6. Tjek obligatorisk m\u00e6rkning \u2014 tag h\u00f8jde for site_context og mandatory_text felterne. Rapporter KUN mangler der ikke er d\u00e6kket af disse felter.
+7. Brug nutrition_declaration til at verificere at doser opfylder minimumskrav for de anprisninger der bruges
+8. Generer rapport med findings og anbefalinger
+
+## Godkendte EU-sundhedsanprisninger
+
+Kun anprisninger fra EU-Kommissionens register m\u00e5 anvendes.
+
+### Vitaminer
+
+**Vitamin A** (min. 120 \u00b5g/daglig dosis):
+- "bidrager til normal funktion af immunsystemet"
+- "bidrager til vedligeholdelse af normalt syn"
+- "bidrager til vedligeholdelse af normal hud"
+
+**Vitamin B6** (min. 0,21 mg/daglig dosis):
+- "bidrager til normal funktion af immunsystemet"
+- "bidrager til neds\u00e6ttelse af tr\u00e6thed og udmattelse"
+- "bidrager til normal energioms\u00e6tning"
+- "bidrager til normal funktion af nervesystemet"
+
+**Vitamin B12** (min. 0,375 \u00b5g/daglig dosis):
+- "bidrager til normal energioms\u00e6tning"
+- "bidrager til normal funktion af nervesystemet"
+- "bidrager til neds\u00e6ttelse af tr\u00e6thed og udmattelse"
+- "bidrager til normal dannelse af r\u00f8de blodlegemer"
+
+**Vitamin C** (min. 12 mg/daglig dosis):
+- "bidrager til normal funktion af immunsystemet"
+- "bidrager til neds\u00e6ttelse af tr\u00e6thed og udmattelse"
+- "bidrager til normal kollagendannelse og dermed normal funktion af blodkar/hud/knogler/brusk/tandk\u00f8d/t\u00e6nder"
+- "bidrager til beskyttelse af celler mod oxidativt stress"
+
+**Vitamin D** (min. 0,75 \u00b5g/daglig dosis):
+- "bidrager til normal funktion af immunsystemet"
+- "bidrager til vedligeholdelse af normale knogler"
+- "bidrager til vedligeholdelse af normal muskelfunktion"
+- "bidrager til vedligeholdelse af normale t\u00e6nder"
+- "bidrager til normal optagelse/udnyttelse af calcium og fosfor"
+
+**Vitamin E** (min. 1,8 mg/daglig dosis):
+- "bidrager til beskyttelse af celler mod oxidativt stress"
+
+### Mineraler
+
+**Calcium** (min. 120 mg/daglig dosis):
+- "bidrager til vedligeholdelse af normale knogler"
+- "bidrager til vedligeholdelse af normale t\u00e6nder"
+- "bidrager til normal muskelfunktion"
+- "bidrager til normal neurotransmission"
+
+**Jern** (min. 2,1 mg/daglig dosis):
+- "bidrager til normal dannelse af r\u00f8de blodlegemer og h\u00e6moglobin"
+- "bidrager til normal transport af ilt i kroppen"
+- "bidrager til neds\u00e6ttelse af tr\u00e6thed og udmattelse"
+- "bidrager til normal kognitiv funktion"
+
+**Magnesium** (min. 56,25 mg/daglig dosis):
+- "bidrager til neds\u00e6ttelse af tr\u00e6thed og udmattelse"
+- "bidrager til normal muskelfunktion"
+- "bidrager til normal funktion af nervesystemet"
+- "bidrager til vedligeholdelse af normale knogler"
+
+**Zink** (min. 1,5 mg/daglig dosis):
+- "bidrager til normal funktion af immunsystemet"
+- "bidrager til vedligeholdelse af normalt h\u00e5r"
+- "bidrager til vedligeholdelse af normale negle"
+- "bidrager til vedligeholdelse af normal hud"
+- "bidrager til normal kognitiv funktion"
+
+**Selen** (min. 8,25 \u00b5g/daglig dosis):
+- "bidrager til normal funktion af immunsystemet"
+- "bidrager til vedligeholdelse af normalt h\u00e5r"
+- "bidrager til vedligeholdelse af normale negle"
+- "bidrager til normal funktion af skjoldbruskkirtlen"
+
+### Andre stoffer
+
+**Omega-3 DHA** (min. 250 mg DHA/daglig dosis):
+- "DHA bidrager til vedligeholdelse af normal hjernefunktion"
+- "DHA bidrager til vedligeholdelse af normalt syn"
+
+**Omega-3 EPA+DHA** (min. 250 mg EPA+DHA/daglig dosis):
+- "EPA og DHA bidrager til normal funktion af hjertet"
+
+**Koffein** (min. 75 mg/portion):
+- "Koffein bidrager til \u00f8get \u00e5rv\u00e5genhed"
+- "Koffein bidrager til \u00f8get koncentrationsevne"
+- M\u00e5 ikke bruges p\u00e5 produkter til b\u00f8rn eller gravide.
+
+### Vigtige regler
+1. Ordlyden SKAL f\u00f8lges \u2014 kun mindre sproglige variationer tilladt
+2. Dosis skal opfyldes \u2014 produktet skal indeholde min. 15% af referencev\u00e6rdien
+3. Pligttekster p\u00e5kr\u00e6ves ved sundhedsanprisninger
+
+## Ern\u00e6ringsanprisninger (tilladt hvis korrekt)
+
+Disse handler om n\u00e6ringsindhold, ikke sundhedseffekter:
+
+**Energi**: Lavt energiindhold (max 40 kcal/100g fast, 20 kcal/100ml flydende), Energifrit (max 4 kcal/100ml)
+**Fedt**: Fedtfattig (max 3g/100g), Fedtfri (max 0,5g/100g)
+**Sukker**: Lavt sukkerindhold (max 5g/100g), Sukkerfri (max 0,5g/100g)
+**Salt**: Lavt saltindhold (max 0,3g salt/100g), Saltfri (max 0,0125g/100g)
+**Fibre**: Kilde til fibre (min. 3g/100g), H\u00f8jt fiberindhold (min. 6g/100g)
+**Protein**: Kilde til protein (min. 12% energi), H\u00f8jt proteinindhold (min. 20% energi)
+**Vitaminer/mineraler**: Kilde til (min. 15% RI), H\u00f8jt indhold (min. 30% RI)
+
+**Forbudte ern\u00e6ringsanprisninger**: "n\u00e6rende", "sund", "naturlig energi", "superf\u00f8de", "mirakelmiddel"
+
+## Forbudte formuleringer (ALTID FORBUDT)
+
+### Sygdomsanprisninger \u2014 severity: CRITICAL
+Enhver p\u00e5stand om forebyggelse, behandling eller helbredelse af sygdom.
+Eksempler: "forebygger kr\u00e6ft", "behandler diabetes", "helbreder gigt", "mod forh\u00f8jet blodtryk", "lindrer depression", "kurerer migr\u00e6ne", "modvirker Alzheimers"
+
+**Symptomreferencer der antyder sygdom** (ogs\u00e5 CRITICAL):
+"lindrer ledsmerter", "s\u00e6nker blodsukkeret", "normaliserer blodtrykket", "letter vejrtr\u00e6kningen", "fjerner inflammation", "modvirker angstanfald", "hj\u00e6lper mod s\u00f8vnl\u00f8shed"
+
+**Medicinske termer** (CRITICAL): "terapeutisk", "klinisk bevist", "l\u00e6geanbefalet til behandling af...", "medicinsk effekt", "farmakologisk virkning"
+
+### Ikke-godkendte sundhedsanprisninger \u2014 severity: HIGH
+"styrker knoglerne" (brug: "bidrager til vedligeholdelse af normale knogler"), "forbedrer hukommelsen", "\u00f8ger forbr\u00e6ndingen", "giver bedre s\u00f8vn", "reducerer stress", "booster metabolismen"
+
+### Vildledende formuleringer \u2014 severity: MEDIUM
+Overdrivelser: "mirakel-", "vidunder-", "super-", "revolution\u00e6rende", "100% effektivt", "garanteret resultat"
+Falsk autoritet: "L\u00e6ger anbefaler" (uden dokumentation), "Videnskabeligt bevist" (uden reference)
+Vildledende sammenligninger: "Bedre end medicin", "Naturligt alternativ til [l\u00e6gemiddel]"
+
+## Botanicals on-hold \u2014 severity: LOW, type: BOTANICAL_ON_HOLD
+
+Planteanprisninger sat "on hold" i EU siden 2012. Hverken godkendt eller afvist.
+Stadig tilladt i markedsf\u00f8ring s\u00e5 l\u00e6nge de ikke er vildledende.
+
+Almindelige on-hold botanicals:
+- Ginkgo biloba (hukommelse, kognition)
+- Valeriane (s\u00f8vn, afslapning)
+- Echinacea (immunforsvar)
+- Kurkuma (ledfunktion, inflammation)
+- Ginseng (energi, vitalitet)
+- Hvidl\u00f8g (hjerte-kar, kolesterol)
+- Artiskok (ford\u00f8jelse, leverfunktion)
+- Gr\u00f8n te (antioxidant, metabolisme)
+- Traneb\u00e6r (urinveje)
+- Ingef\u00e6r (ford\u00f8jelse, kvalme)
+- Salvie (overgangsalder, kognition)
+- Passionsblomst (afslapning, s\u00f8vn)
+
+Bem\u00e6rk: Guarana-claims relateret til koffeinindhold er IKKE on hold.
+
+## Obligatorisk m\u00e6rkning (tjekliste)
+
+1. Varebetegnelsen "Kosttilskud" er angivet
+2. Ingrediensliste er komplet (planter: dansk + latinsk navn)
+3. N\u00e6ringsdeklaration med m\u00e6ngder per daglig dosis
+4. Vitaminer/mineraler har %-RI angivet
+5. Anbefalet daglig dosis er angivet
+6. Advarsel: "Overskrid ikke den anbefalede daglige dosis"
+7. Angivelse: "B\u00f8r ikke tr\u00e6de i stedet for en varieret kost"
+8. "Opbevares utilg\u00e6ngeligt for sm\u00e5 b\u00f8rn"
+9. Nettoindhold angivet
+10. Holdbarhedsdato angivet
+11. Virksomhedsoplysninger komplet
+12. M\u00e6rkning p\u00e5 dansk/svensk/norsk
+13. Koffein-advarsel (hvis relevant)
+14. Pligttekster ved sundhedsanprisninger (hvis relevant)
+
+## Output-format
+
+Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
+
+{
+  "status": "COMPLIANT" eller "NON_COMPLIANT" eller "NEEDS_REVIEW",
+  "summary": "Kort opsummering p\u00e5 dansk",
+  "findings": [
+    {
+      "type": "SYGDOMSANPRISNING" | "ULOVLIG_SUNDHEDSANPRISNING" | "BOTANICAL_ON_HOLD" | "USPECIFIK_ANPRISNING" | "VILDLEDNING" | "MANGLENDE_MAERKNING",
+      "severity": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
+      "text": "Den problematiske tekst",
+      "reason": "Begrundelse p\u00e5 dansk",
+      "suggestion": "Forslag til lovligt alternativ p\u00e5 dansk"
+    }
+  ],
+  "approved_claims_used": ["Liste over korrekt anvendte godkendte anprisninger"],
+  "recommendations": ["Generelle anbefalinger p\u00e5 dansk"]
+}
+
+## Status-logik
+
+- COMPLIANT: Ingen findings, eller kun LOW severity
+- NON_COMPLIANT: Mindst en finding med CRITICAL eller HIGH severity
+- NEEDS_REVIEW: Findings med MEDIUM severity, eller kun BOTANICAL_ON_HOLD findings`;
+
+    // ─── Severity config ───
+
+    const SEVERITY_CONFIG = {
+      CRITICAL: { color: 'bg-red-100 text-red-800 border-red-200', icon: '\u26D4', label: 'Kritisk' },
+      HIGH:     { color: 'bg-orange-100 text-orange-800 border-orange-200', icon: '\u26A0\uFE0F', label: 'H\u00f8j' },
+      MEDIUM:   { color: 'bg-amber-100 text-amber-800 border-amber-200', icon: '\u2139\uFE0F', label: 'Medium' },
+      LOW:      { color: 'bg-gray-100 text-gray-700 border-gray-200', icon: '\uD83D\uDCA1', label: 'Lav' },
+    };
+
+    const STATUS_CONFIG = {
+      COMPLIANT:     { color: 'bg-green-100 text-green-800 border-green-300', icon: '\u2705', label: 'Compliant' },
+      NON_COMPLIANT: { color: 'bg-red-100 text-red-800 border-red-300', icon: '\u274C', label: 'Non-compliant' },
+      NEEDS_REVIEW:  { color: 'bg-amber-100 text-amber-800 border-amber-300', icon: '\uD83D\uDD0D', label: 'Needs Review' },
+    };
+
+    const TYPE_LABELS = {
+      SYGDOMSANPRISNING: 'Sygdomsanprisning',
+      ULOVLIG_SUNDHEDSANPRISNING: 'Ulovlig sundhedsanprisning',
+      BOTANICAL_ON_HOLD: 'Botanical on-hold',
+      USPECIFIK_ANPRISNING: 'Uspecifik anprisning',
+      VILDLEDNING: 'Vildledning',
+      MANGLENDE_MAERKNING: 'Manglende m\u00e6rkning',
+    };
+
+    // ─── URL parser: extract product ID from med24.dk URLs ───
+
+    function parseProductInput(input) {
+      const trimmed = input.trim();
+      // Check if it's a med24.dk URL
+      if (trimmed.match(/med24\.(dk|se|no)/i)) {
+        // Try to extract product ID from URL patterns like /product/12345 or /p/12345 or item_id=12345
+        const idMatch = trimmed.match(/[/-](\d{3,6})(?:[/-]|$|\?)/);
+        if (idMatch) return { type: 'id', value: idMatch[1], url: trimmed };
+        // Return URL for the webhook to handle
+        return { type: 'url', value: trimmed, url: trimmed };
+      }
+      // Check if it's a plain number (product ID)
+      if (/^\d+$/.test(trimmed)) {
+        return { type: 'id', value: trimmed, url: null };
+      }
+      // Assume SKU
+      return { type: 'sku', value: trimmed, url: null };
+    }
+
+    // ─── Settings persistence ───
+
+    const STORAGE_KEY = 'med24-compliance-settings';
+
+    const DEFAULT_COMPLIANCE_URL = 'https://n8n2.med24intra.dk/webhook/compliance-check';
+    const DEFAULT_PRODUCT_URL = 'https://n8n2.med24intra.dk/webhook/product-fetch';
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const s = JSON.parse(raw);
+          return {
+            webhookUrl: s.webhookUrl || DEFAULT_COMPLIANCE_URL,
+            productWebhookUrl: s.productWebhookUrl || DEFAULT_PRODUCT_URL,
+          };
+        }
+      } catch(e) {}
+      return { webhookUrl: DEFAULT_COMPLIANCE_URL, productWebhookUrl: DEFAULT_PRODUCT_URL };
+    }
+
+    function saveSettings(s) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+    }
+
+    // ─── Mock data for demo ───
+
+    const MOCK_RESULT = {
+      status: 'NEEDS_REVIEW',
+      summary: 'Produktteksten indeholder 2 godkendte sundhedsanprisninger og 1 botanical on-hold claim.',
+      findings: [
+        {
+          type: 'BOTANICAL_ON_HOLD',
+          severity: 'LOW',
+          text: 'Kurkuma bidrager til normal ledfunktion',
+          reason: 'Kurkuma (Curcuma longa) sundhedsanprisninger er on-hold i EU siden 2012. EFSA har ikke afsluttet vurderingen.',
+          suggestion: 'Formulering m\u00e5 bruges, men v\u00e6r opm\u00e6rksom p\u00e5 at den ikke er officielt godkendt endnu.',
+        },
+      ],
+      approved_claims_used: [
+        'Vitamin D bidrager til normal funktion af immunsystemet',
+        'Vitamin D bidrager til vedligeholdelse af normale knogler',
+      ],
+      recommendations: [
+        'Overvej at tilf\u00f8je pligttekst: "En varieret og afbalanceret kost og en sund livsstil er vigtig"',
+        'Verificer at daglig dosis indeholder min. 0,75 \u00b5g vitamin D',
+      ],
+    };
+
+    // ─── Components ───
+
+    function SettingsPanel({ settings, onUpdate }) {
+      const [open, setOpen] = useState(!settings.webhookUrl);
+
+      return (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+          <button
+            onClick={() => setOpen(!open)}
+            className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+          >
+            <span className="font-semibold text-med24-black text-sm">
+              {'\u2699\uFE0F'} Indstillinger
+              {!settings.webhookUrl && <span className="ml-2 text-amber-600 font-normal">(Konfigurer webhook URL)</span>}
+            </span>
+            <span className="text-med24-muted">{open ? '\u25B2' : '\u25BC'}</span>
+          </button>
+          {open && (
+            <div className="px-5 pb-4 space-y-3 border-t border-gray-100 pt-3">
+              <div>
+                <label className="block text-sm font-semibold text-med24-black mb-1">
+                  n8n Compliance Webhook URL *
+                </label>
+                <input
+                  type="url"
+                  value={settings.webhookUrl}
+                  onChange={(e) => onUpdate({ ...settings, webhookUrl: e.target.value })}
+                  placeholder="https://n8n.med24.dk/webhook/compliance-check"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none"
+                />
+                <p className="text-xs text-med24-muted mt-1">POST-endpoint der modtager produktdata og returnerer compliance JSON</p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-med24-black mb-1">
+                  n8n Produkt-hent Webhook URL (valgfri)
+                </label>
+                <input
+                  type="url"
+                  value={settings.productWebhookUrl}
+                  onChange={(e) => onUpdate({ ...settings, productWebhookUrl: e.target.value })}
+                  placeholder="https://n8n.med24.dk/webhook/product-fetch"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none"
+                />
+                <p className="text-xs text-med24-muted mt-1">POST-endpoint der henter produktdata fra Shop API (til "Hent fra API" mode)</p>
+              </div>
+              <div className="pt-2 flex items-center gap-3">
+                <span className={`inline-block w-2 h-2 rounded-full ${settings.webhookUrl ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                <span className="text-xs text-med24-muted">
+                  {settings.webhookUrl ? 'Webhook konfigureret' : 'Webhook ikke konfigureret \u2014 brug demo-mode'}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function TabBar({ mode, onModeChange }) {
+      const tabs = [
+        { id: 'manual', label: 'Manuel indtastning' },
+        { id: 'api', label: 'Hent fra API' },
+      ];
+      return (
+        <div className="flex border-b border-gray-200 mb-5">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => onModeChange(t.id)}
+              className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                mode === t.id
+                  ? 'border-med24-black text-med24-black'
+                  : 'border-transparent text-med24-muted hover:text-med24-black'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    function ManualForm({ formData, onChange }) {
+      const update = (field, value) => onChange({ ...formData, [field]: value });
+
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">Produktnavn</label>
+            <input
+              type="text"
+              value={formData.product_name}
+              onChange={(e) => update('product_name', e.target.value)}
+              placeholder={"Fx Biosym D-vitamin 35\u00b5g"}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">
+              {"Produkttekst / markedsf\u00f8ringstekst"}
+            </label>
+            <textarea
+              value={formData.product_description}
+              onChange={(e) => update('product_description', e.target.value)}
+              placeholder={"Inds\u00e6t produktbeskrivelse, hjemmesidetekst, emballagetekst eller reklamemateriale her..."}
+              rows={8}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none resize-y"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">Ingrediensliste</label>
+            <textarea
+              value={formData.ingredients}
+              onChange={(e) => update('ingredients', e.target.value)}
+              placeholder={"Fx: D-vitamin (cholecalciferol) 35\u00b5g, Kurkuma-ekstrakt (Curcuma longa) 300mg..."}
+              rows={3}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none resize-y"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">
+              {"N\u00e6ringsdeklaration"}
+            </label>
+            <textarea
+              value={formData.nutrition_declaration}
+              onChange={(e) => update('nutrition_declaration', e.target.value)}
+              placeholder={"Fx: Vitamin D3 10,5 \u00b5g (210% RI), Calcium 300 mg (37,5% RI)..."}
+              rows={3}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none resize-y"
+            />
+            <p className="text-xs text-med24-muted mt-1">{"Vitaminer/mineraler med m\u00e6ngder per daglig dosis og %-RI \u2014 udfyldes automatisk ved API-hent"}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">
+              {"Obligatorisk m\u00e6rkningstekst"} <span className="font-normal text-med24-muted">(advarsler, dosering mv.)</span>
+            </label>
+            <textarea
+              value={formData.mandatory_text}
+              onChange={(e) => update('mandatory_text', e.target.value)}
+              placeholder={"Fx: Den anbefalede daglige dosis b\u00f8r ikke overskrides. Kosttilskud b\u00f8r ikke tr\u00e6de i stedet for varieret kost..."}
+              rows={2}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none resize-y"
+            />
+            <p className="text-xs text-med24-muted mt-1">{"Obligatoriske advarsler og pligttekster fra produktsiden \u2014 udfyldes automatisk ved API-hent"}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">
+              {"Anprisninger fundet p\u00e5 emballage/web"} <span className="font-normal text-med24-muted">(valgfri)</span>
+            </label>
+            <textarea
+              value={formData.claims_found}
+              onChange={(e) => update('claims_found', e.target.value)}
+              placeholder={"Fx: Bidrager til immunforsvaret, St\u00e6rk antioxidant, God for ledfunktion..."}
+              rows={2}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none resize-y"
+            />
+          </div>
+        </div>
+      );
+    }
+
+    function ApiForm({ formData, onChange, settings, onFetched }) {
+      const [productInput, setProductInput] = useState('');
+      const [fetching, setFetching] = useState(false);
+      const [fetchError, setFetchError] = useState('');
+      const [fetchSuccess, setFetchSuccess] = useState('');
+
+      const handleFetch = async () => {
+        if (!settings.productWebhookUrl) {
+          setFetchError('Konfigurer "Produkt-hent Webhook URL" i indstillinger f\u00f8rst.');
+          return;
+        }
+        if (!productInput.trim()) {
+          setFetchError('Indtast et produkt-ID, SKU eller URL.');
+          return;
+        }
+        setFetching(true);
+        setFetchError('');
+        setFetchSuccess('');
+        try {
+          const parsed = parseProductInput(productInput);
+          const res = await fetch(settings.productWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              input_type: parsed.type,
+              input_value: parsed.value,
+              product_url: parsed.url,
+            }),
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const text = await res.text();
+          if (!text) throw new Error('Tom respons fra webhook — tjek at workflow er aktiv i n8n.');
+          let data;
+          try { data = JSON.parse(text); } catch(e) { throw new Error('Ugyldig JSON fra webhook: ' + text.slice(0, 200)); }
+          onChange({
+            product_name: data.product_name || data.name || '',
+            product_description: data.product_description || data.description || '',
+            ingredients: data.ingredients || '',
+            nutrition_declaration: data.nutrition_declaration || '',
+            mandatory_text: data.mandatory_text || '',
+            claims_found: data.claims_found || '',
+          });
+          onFetched(true);
+          setFetchSuccess('Produktdata hentet! Gennemse felterne nedenfor og klik "K\u00f8r Compliance-tjek".');
+        } catch (err) {
+          setFetchError('Kunne ikke hente produkt: ' + err.message);
+        } finally {
+          setFetching(false);
+        }
+      };
+
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">
+              Produkt-ID, SKU eller URL
+            </label>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={productInput}
+                onChange={(e) => { setProductInput(e.target.value); setFetchError(''); setFetchSuccess(''); }}
+                placeholder={"Fx 12345, 10001 eller https://www.med24.dk/kosttilskud/..."}
+                className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none"
+                onKeyDown={(e) => e.key === 'Enter' && handleFetch()}
+              />
+              <button
+                onClick={handleFetch}
+                disabled={fetching}
+                className="bg-med24-black text-white px-5 py-2 rounded-md text-sm font-semibold hover:bg-opacity-90 transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {fetching ? 'Henter...' : 'Hent produkt'}
+              </button>
+            </div>
+            <p className="text-xs text-med24-muted mt-1">
+              {"Inds\u00e6t produktets URL fra med24.dk, eller skriv produkt-ID / SKU direkte"}
+            </p>
+          </div>
+          {fetchError && <p className="text-sm text-red-600">{fetchError}</p>}
+          {fetchSuccess && <p className="text-sm text-green-600">{fetchSuccess}</p>}
+          {!settings.productWebhookUrl && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
+              {"Produkt-hent webhook er ikke konfigureret. \u00c5bn indstillinger og tilf\u00f8j URL, eller brug manuel indtastning."}
+            </div>
+          )}
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-xs text-med24-muted mb-3">
+              {"Felterne nedenfor udfyldes automatisk n\u00e5r du henter et produkt. Du kan ogs\u00e5 redigere dem manuelt f\u00f8r tjek."}
+            </p>
+            <ManualForm formData={formData} onChange={onChange} />
+          </div>
+        </div>
+      );
+    }
+
+    function FindingCard({ finding, index }) {
+      const sev = SEVERITY_CONFIG[finding.severity] || SEVERITY_CONFIG.MEDIUM;
+      const typeLabel = TYPE_LABELS[finding.type] || finding.type;
+
+      return (
+        <div className={`rounded-lg border p-4 ${sev.color}`}>
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{sev.icon}</span>
+              <span className="font-semibold text-sm">{typeLabel}</span>
+            </div>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${sev.color}`}>
+              {sev.label}
+            </span>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div>
+              <span className="font-semibold">Tekst: </span>
+              <span className="italic">"{finding.text}"</span>
+            </div>
+            <div>
+              <span className="font-semibold">Begrundelse: </span>
+              {finding.reason}
+            </div>
+            {finding.suggestion && (
+              <div>
+                <span className="font-semibold">Forslag: </span>
+                <span className="text-green-800">{finding.suggestion}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function ResultsPanel({ result, onReset }) {
+      const status = STATUS_CONFIG[result.status] || STATUS_CONFIG.NEEDS_REVIEW;
+
+      const copyJson = () => {
+        navigator.clipboard.writeText(JSON.stringify(result, null, 2));
+      };
+
+      return (
+        <div className="space-y-5">
+          {/* Status badge */}
+          <div className={`rounded-lg border-2 p-5 ${status.color}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">{status.icon}</span>
+                <div>
+                  <h3 className="text-xl font-bold">{status.label}</h3>
+                  <p className="text-sm mt-1">{result.summary}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={copyJson}
+                  className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  {"Kopi\u00e9r JSON"}
+                </button>
+                <button
+                  onClick={onReset}
+                  className="bg-med24-black text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-opacity-90 transition-colors"
+                >
+                  Nyt tjek
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Findings */}
+          {result.findings && result.findings.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-med24-black mb-3">
+                Findings ({result.findings.length})
+              </h3>
+              <div className="space-y-3">
+                {result.findings.map((f, i) => (
+                  <FindingCard key={i} finding={f} index={i} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Approved claims */}
+          {result.approved_claims_used && result.approved_claims_used.length > 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-green-800 mb-2">
+                {'\u2705'} Godkendte anprisninger brugt ({result.approved_claims_used.length})
+              </h3>
+              <ul className="space-y-1">
+                {result.approved_claims_used.map((claim, i) => (
+                  <li key={i} className="text-sm text-green-700">{'\u2022'} {claim}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Recommendations */}
+          {result.recommendations && result.recommendations.length > 0 && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-med24-black mb-2">
+                Anbefalinger
+              </h3>
+              <ul className="space-y-1">
+                {result.recommendations.map((rec, i) => (
+                  <li key={i} className="text-sm text-med24-muted">{'\u2022'} {rec}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+
+    // ─── Main App ───
+
+    function App() {
+      const [settings, setSettings] = useState(loadSettings);
+      const [mode, setMode] = useState('manual');
+      const [formData, setFormData] = useState({
+        product_name: '',
+        product_description: '',
+        ingredients: '',
+        nutrition_declaration: '',
+        mandatory_text: '',
+        claims_found: '',
+      });
+      const [loading, setLoading] = useState(false);
+      const [result, setResult] = useState(null);
+      const [error, setError] = useState('');
+      const [fetched, setFetched] = useState(false);
+
+      useEffect(() => { saveSettings(settings); }, [settings]);
+
+      const hasInput = formData.product_name.trim() || formData.product_description.trim();
+
+      const handleCheck = async () => {
+        if (!hasInput) {
+          setError('Udfyld mindst produktnavn eller produkttekst.');
+          return;
+        }
+
+        setLoading(true);
+        setError('');
+        setResult(null);
+
+        // If no webhook URL, use demo mode
+        if (!settings.webhookUrl) {
+          await new Promise(r => setTimeout(r, 1500));
+          setResult(MOCK_RESULT);
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const payload = {
+            ...formData,
+            check_labeling: true,
+            site_context: `Produktet s\u00e6lges p\u00e5 med24.dk. F\u00f8lgende obligatoriske elementer er ALTID til stede p\u00e5 alle kosttilskuds-produktsider og skal IKKE markeres som manglende:
+- Varebetegnelsen "Kosttilskud" vises tydeligt p\u00e5 produktsiden
+- Virksomhedsoplysninger: Med24.dk ApS med CVR-nr. og kontaktinfo i sidens footer
+- Holdbarhedsdato p\u00e5 fysisk emballage (kan ikke verificeres online)
+- Nettoindhold angivet ved produktnavn (f.eks. "60 stk.", "120 kapsler")
+- Al m\u00e6rkning er p\u00e5 dansk
+- Obligatoriske advarsler vises som standardtekst p\u00e5 alle kosttilskudssider (se mandatory_text feltet)`,
+            system_prompt: COMPLIANCE_SYSTEM_PROMPT,
+          };
+          const res = await fetch(settings.webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) throw new Error('Webhook svarede med HTTP ' + res.status);
+          const text = await res.text();
+          if (!text) throw new Error('Tom respons fra webhook — tjek at workflow er aktiv i n8n.');
+          let data;
+          try { data = JSON.parse(text); } catch(e) { throw new Error('Ugyldig JSON fra webhook: ' + text.slice(0, 200)); }
+
+          // Validate expected structure
+          if (!data.status || !Array.isArray(data.findings)) {
+            throw new Error('Ugyldigt svar fra webhook \u2014 mangler status eller findings');
+          }
+          setResult(data);
+        } catch (err) {
+          setError('Fejl ved compliance-tjek: ' + err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleReset = () => {
+        setResult(null);
+        setError('');
+      };
+
+      const handleFullReset = () => {
+        setFormData({ product_name: '', product_description: '', ingredients: '', nutrition_declaration: '', mandatory_text: '', claims_found: '' });
+        setResult(null);
+        setError('');
+        setFetched(false);
+      };
+
+      return (
+        <div className="min-h-screen bg-med24-bg font-sans text-med24-black">
+          <header className="bg-med24-black text-white py-4">
+            <div className="max-w-4xl mx-auto px-8">
+              <h1 className="text-2xl font-semibold">Kosttilskud Compliance Checker</h1>
+              <p className="text-sm opacity-70 mt-0.5">{"Tjek produkttekster mod dansk/EU kosttilskudslovgivning"}</p>
+            </div>
+          </header>
+
+          <main className="max-w-4xl mx-auto px-8 py-8">
+            <SettingsPanel settings={settings} onUpdate={setSettings} />
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+              <TabBar mode={mode} onModeChange={setMode} />
+
+              {mode === 'manual' ? (
+                <ManualForm formData={formData} onChange={setFormData} />
+              ) : (
+                <ApiForm
+                  formData={formData}
+                  onChange={setFormData}
+                  settings={settings}
+                  onFetched={setFetched}
+                />
+              )}
+
+              {/* Action buttons */}
+              <div className="mt-6 flex items-center gap-3">
+                <button
+                  onClick={handleCheck}
+                  disabled={loading || !hasInput}
+                  className="bg-med24-black text-white px-6 py-2.5 rounded-md font-semibold hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {loading && (
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  )}
+                  {loading ? 'Tjekker compliance...' : 'K\u00f8r Compliance-tjek'}
+                </button>
+                {(hasInput || result) && (
+                  <button
+                    onClick={handleFullReset}
+                    className="text-med24-muted text-sm hover:text-med24-black transition-colors"
+                  >
+                    Ryd alt
+                  </button>
+                )}
+                {!settings.webhookUrl && (
+                  <span className="text-xs text-amber-600">Demo-mode (ingen webhook konfigureret)</span>
+                )}
+              </div>
+
+              {error && (
+                <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+            </div>
+
+            {/* Results */}
+            {result && (
+              <div className="mt-6">
+                <ResultsPanel result={result} onReset={handleReset} />
+              </div>
+            )}
+
+
+            <footer className="mt-8 text-center text-xs text-med24-muted">
+              <p>Kosttilskud Compliance Checker v1.0 — Med24.dk</p>
+              <p className="mt-1">
+                {"Regler baseret p\u00e5 EU Health Claims-registeret og dansk kosttilskudslovgivning."}
+              </p>
+            </footer>
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
