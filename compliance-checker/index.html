@@ -717,33 +717,41 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
 
         if (abortRef.current) return;
 
-        // Step 2: Run compliance check
+        // Step 2: Run compliance check (with 1 retry on empty response)
         onUpdate(idx, { status: 'checking', productData });
-        try {
-          const payload = {
-            product_name: productData.product_name || productData.name || '',
-            product_description: productData.product_description || productData.description || '',
-            ingredients: productData.ingredients || '',
-            nutrition_declaration: productData.nutrition_declaration || '',
-            mandatory_text: productData.mandatory_text || '',
-            claims_found: productData.claims_found || '',
-            check_labeling: true,
-            site_context: SITE_CONTEXT,
-            system_prompt: COMPLIANCE_SYSTEM_PROMPT,
-          };
-          const res = await fetch(DEFAULT_COMPLIANCE_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const text = await res.text();
-          if (!text) throw new Error('Tom respons fra compliance webhook');
-          const data = JSON.parse(text);
-          if (!data.status || !Array.isArray(data.findings)) throw new Error('Ugyldigt svar');
-          onUpdate(idx, { status: 'done', productData, result: data });
-        } catch (err) {
-          onUpdate(idx, { status: 'error', productData, error: 'Compliance-tjek fejlede: ' + err.message });
+        const payload = {
+          product_name: productData.product_name || productData.name || '',
+          product_description: productData.product_description || productData.description || '',
+          ingredients: productData.ingredients || '',
+          nutrition_declaration: productData.nutrition_declaration || '',
+          mandatory_text: productData.mandatory_text || '',
+          claims_found: productData.claims_found || '',
+          check_labeling: true,
+          site_context: SITE_CONTEXT,
+          system_prompt: COMPLIANCE_SYSTEM_PROMPT,
+        };
+
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            if (attempt > 0) await new Promise(r => setTimeout(r, 3000));
+            const res = await fetch(DEFAULT_COMPLIANCE_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const text = await res.text();
+            if (!text) throw new Error('Tom respons fra compliance webhook');
+            const data = JSON.parse(text);
+            if (!data.status || !Array.isArray(data.findings)) throw new Error('Ugyldigt svar');
+            onUpdate(idx, { status: 'done', productData, result: data });
+            return; // success — exit retry loop
+          } catch (err) {
+            if (attempt === 1) {
+              onUpdate(idx, { status: 'error', productData, error: 'Compliance-tjek fejlede: ' + err.message });
+            }
+            // else: retry
+          }
         }
       }
 
@@ -754,7 +762,7 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
           await processOne(idx);
           // Small delay between jobs to ease n8n load
           if (nextIndex < inputs.length && !abortRef.current) {
-            await new Promise(r => setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, 2000));
           }
         }
       }
@@ -1058,7 +1066,7 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
 
         await runBatchCheck(
           lines,
-          3,
+          1,
           (idx, update) => {
             setBatchJobs(prev => {
               const next = [...prev];
