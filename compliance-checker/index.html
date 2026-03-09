@@ -40,219 +40,7 @@
 
     const { useState, useEffect, useCallback, useRef } = React;
 
-    // ─── Compliance rules (embedded from skill reference files) ───
-
-    const COMPLIANCE_SYSTEM_PROMPT = `Du er en compliance-checker for kosttilskud-markedsf\u00f8ring i Danmark.
-Analys\u00e9r den angivne produkttekst og returner et JSON-objekt med compliance-vurdering.
-
-## Input-felter du modtager
-
-- product_name: Produktnavn
-- product_description: Markedsf\u00f8ringstekst/produktbeskrivelse
-- ingredients: Ingrediensliste
-- nutrition_declaration: N\u00e6ringsdeklaration med m\u00e6ngder per daglig dosis og %-RI
-- mandatory_text: Obligatorisk m\u00e6rkningstekst fra produktsiden (advarsler, dosering mv.)
-- claims_found: Anprisninger fundet p\u00e5 emballage/web (valgfri)
-- site_context: Kontekst om webshoppens standardelementer \u2014 brug dette til at vurdere obligatorisk m\u00e6rkning. Elementer n\u00e6vnt i site_context er ALTID til stede og skal IKKE rapporteres som manglende.
-
-## Workflow
-
-1. Identificer ALLE anprisninger i teksten
-2. Kategoriser hver anprisning (ern\u00e6ring/sundhed/sygdom/botanical/uspecifik)
-3. Tjek botanicals \u2014 er ingrediensen on-hold, godkendt eller afvist?
-4. Valider sundhedsanprisninger mod godkendt liste
-5. Filtrer per ingrediens \u2014 match claims til produktets faktiske ingredienser
-6. Tjek obligatorisk m\u00e6rkning \u2014 tag h\u00f8jde for site_context og mandatory_text felterne. Rapporter KUN mangler der ikke er d\u00e6kket af disse felter.
-7. Brug nutrition_declaration til at verificere at doser opfylder minimumskrav for de anprisninger der bruges
-8. Generer rapport med findings og anbefalinger
-
-## Godkendte EU-sundhedsanprisninger
-
-Kun anprisninger fra EU-Kommissionens register m\u00e5 anvendes.
-
-### Vitaminer
-
-**Vitamin A** (min. 120 \u00b5g/daglig dosis):
-- "bidrager til normal funktion af immunsystemet"
-- "bidrager til vedligeholdelse af normalt syn"
-- "bidrager til vedligeholdelse af normal hud"
-
-**Vitamin B6** (min. 0,21 mg/daglig dosis):
-- "bidrager til normal funktion af immunsystemet"
-- "bidrager til neds\u00e6ttelse af tr\u00e6thed og udmattelse"
-- "bidrager til normal energioms\u00e6tning"
-- "bidrager til normal funktion af nervesystemet"
-
-**Vitamin B12** (min. 0,375 \u00b5g/daglig dosis):
-- "bidrager til normal energioms\u00e6tning"
-- "bidrager til normal funktion af nervesystemet"
-- "bidrager til neds\u00e6ttelse af tr\u00e6thed og udmattelse"
-- "bidrager til normal dannelse af r\u00f8de blodlegemer"
-
-**Vitamin C** (min. 12 mg/daglig dosis):
-- "bidrager til normal funktion af immunsystemet"
-- "bidrager til neds\u00e6ttelse af tr\u00e6thed og udmattelse"
-- "bidrager til normal kollagendannelse og dermed normal funktion af blodkar/hud/knogler/brusk/tandk\u00f8d/t\u00e6nder"
-- "bidrager til beskyttelse af celler mod oxidativt stress"
-
-**Vitamin D** (min. 0,75 \u00b5g/daglig dosis):
-- "bidrager til normal funktion af immunsystemet"
-- "bidrager til vedligeholdelse af normale knogler"
-- "bidrager til vedligeholdelse af normal muskelfunktion"
-- "bidrager til vedligeholdelse af normale t\u00e6nder"
-- "bidrager til normal optagelse/udnyttelse af calcium og fosfor"
-
-**Vitamin E** (min. 1,8 mg/daglig dosis):
-- "bidrager til beskyttelse af celler mod oxidativt stress"
-
-### Mineraler
-
-**Calcium** (min. 120 mg/daglig dosis):
-- "bidrager til vedligeholdelse af normale knogler"
-- "bidrager til vedligeholdelse af normale t\u00e6nder"
-- "bidrager til normal muskelfunktion"
-- "bidrager til normal neurotransmission"
-
-**Jern** (min. 2,1 mg/daglig dosis):
-- "bidrager til normal dannelse af r\u00f8de blodlegemer og h\u00e6moglobin"
-- "bidrager til normal transport af ilt i kroppen"
-- "bidrager til neds\u00e6ttelse af tr\u00e6thed og udmattelse"
-- "bidrager til normal kognitiv funktion"
-
-**Magnesium** (min. 56,25 mg/daglig dosis):
-- "bidrager til neds\u00e6ttelse af tr\u00e6thed og udmattelse"
-- "bidrager til normal muskelfunktion"
-- "bidrager til normal funktion af nervesystemet"
-- "bidrager til vedligeholdelse af normale knogler"
-
-**Zink** (min. 1,5 mg/daglig dosis):
-- "bidrager til normal funktion af immunsystemet"
-- "bidrager til vedligeholdelse af normalt h\u00e5r"
-- "bidrager til vedligeholdelse af normale negle"
-- "bidrager til vedligeholdelse af normal hud"
-- "bidrager til normal kognitiv funktion"
-
-**Selen** (min. 8,25 \u00b5g/daglig dosis):
-- "bidrager til normal funktion af immunsystemet"
-- "bidrager til vedligeholdelse af normalt h\u00e5r"
-- "bidrager til vedligeholdelse af normale negle"
-- "bidrager til normal funktion af skjoldbruskkirtlen"
-
-### Andre stoffer
-
-**Omega-3 DHA** (min. 250 mg DHA/daglig dosis):
-- "DHA bidrager til vedligeholdelse af normal hjernefunktion"
-- "DHA bidrager til vedligeholdelse af normalt syn"
-
-**Omega-3 EPA+DHA** (min. 250 mg EPA+DHA/daglig dosis):
-- "EPA og DHA bidrager til normal funktion af hjertet"
-
-**Koffein** (min. 75 mg/portion):
-- "Koffein bidrager til \u00f8get \u00e5rv\u00e5genhed"
-- "Koffein bidrager til \u00f8get koncentrationsevne"
-- M\u00e5 ikke bruges p\u00e5 produkter til b\u00f8rn eller gravide.
-
-### Vigtige regler
-1. Ordlyden SKAL f\u00f8lges \u2014 kun mindre sproglige variationer tilladt
-2. Dosis skal opfyldes \u2014 produktet skal indeholde min. 15% af referencev\u00e6rdien
-3. Pligttekster p\u00e5kr\u00e6ves ved sundhedsanprisninger
-
-## Ern\u00e6ringsanprisninger (tilladt hvis korrekt)
-
-Disse handler om n\u00e6ringsindhold, ikke sundhedseffekter:
-
-**Energi**: Lavt energiindhold (max 40 kcal/100g fast, 20 kcal/100ml flydende), Energifrit (max 4 kcal/100ml)
-**Fedt**: Fedtfattig (max 3g/100g), Fedtfri (max 0,5g/100g)
-**Sukker**: Lavt sukkerindhold (max 5g/100g), Sukkerfri (max 0,5g/100g)
-**Salt**: Lavt saltindhold (max 0,3g salt/100g), Saltfri (max 0,0125g/100g)
-**Fibre**: Kilde til fibre (min. 3g/100g), H\u00f8jt fiberindhold (min. 6g/100g)
-**Protein**: Kilde til protein (min. 12% energi), H\u00f8jt proteinindhold (min. 20% energi)
-**Vitaminer/mineraler**: Kilde til (min. 15% RI), H\u00f8jt indhold (min. 30% RI)
-
-**Forbudte ern\u00e6ringsanprisninger**: "n\u00e6rende", "sund", "naturlig energi", "superf\u00f8de", "mirakelmiddel"
-
-## Forbudte formuleringer (ALTID FORBUDT)
-
-### Sygdomsanprisninger \u2014 severity: CRITICAL
-Enhver p\u00e5stand om forebyggelse, behandling eller helbredelse af sygdom.
-Eksempler: "forebygger kr\u00e6ft", "behandler diabetes", "helbreder gigt", "mod forh\u00f8jet blodtryk", "lindrer depression", "kurerer migr\u00e6ne", "modvirker Alzheimers"
-
-**Symptomreferencer der antyder sygdom** (ogs\u00e5 CRITICAL):
-"lindrer ledsmerter", "s\u00e6nker blodsukkeret", "normaliserer blodtrykket", "letter vejrtr\u00e6kningen", "fjerner inflammation", "modvirker angstanfald", "hj\u00e6lper mod s\u00f8vnl\u00f8shed"
-
-**Medicinske termer** (CRITICAL): "terapeutisk", "klinisk bevist", "l\u00e6geanbefalet til behandling af...", "medicinsk effekt", "farmakologisk virkning"
-
-### Ikke-godkendte sundhedsanprisninger \u2014 severity: HIGH
-"styrker knoglerne" (brug: "bidrager til vedligeholdelse af normale knogler"), "forbedrer hukommelsen", "\u00f8ger forbr\u00e6ndingen", "giver bedre s\u00f8vn", "reducerer stress", "booster metabolismen"
-
-### Vildledende formuleringer \u2014 severity: MEDIUM
-Overdrivelser: "mirakel-", "vidunder-", "super-", "revolution\u00e6rende", "100% effektivt", "garanteret resultat"
-Falsk autoritet: "L\u00e6ger anbefaler" (uden dokumentation), "Videnskabeligt bevist" (uden reference)
-Vildledende sammenligninger: "Bedre end medicin", "Naturligt alternativ til [l\u00e6gemiddel]"
-
-## Botanicals on-hold \u2014 severity: LOW, type: BOTANICAL_ON_HOLD
-
-Planteanprisninger sat "on hold" i EU siden 2012. Hverken godkendt eller afvist.
-Stadig tilladt i markedsf\u00f8ring s\u00e5 l\u00e6nge de ikke er vildledende.
-
-Almindelige on-hold botanicals:
-- Ginkgo biloba (hukommelse, kognition)
-- Valeriane (s\u00f8vn, afslapning)
-- Echinacea (immunforsvar)
-- Kurkuma (ledfunktion, inflammation)
-- Ginseng (energi, vitalitet)
-- Hvidl\u00f8g (hjerte-kar, kolesterol)
-- Artiskok (ford\u00f8jelse, leverfunktion)
-- Gr\u00f8n te (antioxidant, metabolisme)
-- Traneb\u00e6r (urinveje)
-- Ingef\u00e6r (ford\u00f8jelse, kvalme)
-- Salvie (overgangsalder, kognition)
-- Passionsblomst (afslapning, s\u00f8vn)
-
-Bem\u00e6rk: Guarana-claims relateret til koffeinindhold er IKKE on hold.
-
-## Obligatorisk m\u00e6rkning (tjekliste)
-
-1. Varebetegnelsen "Kosttilskud" er angivet
-2. Ingrediensliste er komplet (planter: dansk + latinsk navn)
-3. N\u00e6ringsdeklaration med m\u00e6ngder per daglig dosis
-4. Vitaminer/mineraler har %-RI angivet
-5. Anbefalet daglig dosis er angivet
-6. Advarsel: "Overskrid ikke den anbefalede daglige dosis"
-7. Angivelse: "B\u00f8r ikke tr\u00e6de i stedet for en varieret kost"
-8. "Opbevares utilg\u00e6ngeligt for sm\u00e5 b\u00f8rn"
-9. Nettoindhold angivet
-10. Holdbarhedsdato angivet
-11. Virksomhedsoplysninger komplet
-12. M\u00e6rkning p\u00e5 dansk/svensk/norsk
-13. Koffein-advarsel (hvis relevant)
-14. Pligttekster ved sundhedsanprisninger (hvis relevant)
-
-## Output-format
-
-Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
-
-{
-  "status": "COMPLIANT" eller "NON_COMPLIANT" eller "NEEDS_REVIEW",
-  "summary": "Kort opsummering p\u00e5 dansk",
-  "findings": [
-    {
-      "type": "SYGDOMSANPRISNING" | "ULOVLIG_SUNDHEDSANPRISNING" | "BOTANICAL_ON_HOLD" | "USPECIFIK_ANPRISNING" | "VILDLEDNING" | "MANGLENDE_MAERKNING",
-      "severity": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
-      "text": "Den problematiske tekst",
-      "reason": "Begrundelse p\u00e5 dansk",
-      "suggestion": "Konkret forslag til omformulering. Skriv den PRÆCISE alternative tekst som kan erstatte den problematiske formulering. For uspecifikke anprisninger: find den nærmeste EU-godkendte sundhedsanprisning baseret på produktets ingredienser og skriv den fulde godkendte formulering. Skriv ALDRIG bare 'fjern' eller 'omformuler' — giv altid en færdig erstatningstekst."
-    }
-  ],
-  "approved_claims_used": ["Liste over korrekt anvendte godkendte anprisninger"],
-  "recommendations": ["Generelle anbefalinger p\u00e5 dansk"]
-}
-
-## Status-logik
-
-- COMPLIANT: Ingen findings, eller kun LOW severity
-- NON_COMPLIANT: Mindst en finding med CRITICAL eller HIGH severity
-- NEEDS_REVIEW: Findings med MEDIUM severity, eller kun BOTANICAL_ON_HOLD findings`;
+    // ─── System prompt is now hardcoded in n8n Build Prompt node (workflow YZQ3vFdVtp9WhKMH) ───
 
     // ─── Severity config ───
 
@@ -696,7 +484,6 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
         claims_found: (productData.claims_found || '').slice(0, 1000),
         check_labeling: true,
         site_context: SITE_CONTEXT,
-        system_prompt: COMPLIANCE_SYSTEM_PROMPT,
       };
     }
 
@@ -742,9 +529,9 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
         onUpdate(idx, { status: 'checking', productData });
         const payload = buildCompliancePayload(productData);
 
-        for (let attempt = 0; attempt < 2; attempt++) {
+        for (let attempt = 0; attempt < 3; attempt++) {
           try {
-            if (attempt > 0) await new Promise(r => setTimeout(r, 3000));
+            if (attempt > 0) await new Promise(r => setTimeout(r, 3000 + attempt * 2000));
             const res = await fetch(DEFAULT_COMPLIANCE_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -758,7 +545,7 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
             onUpdate(idx, { status: 'done', productData, result: data });
             return; // success — exit retry loop
           } catch (err) {
-            if (attempt === 1) {
+            if (attempt === 2) {
               onUpdate(idx, { status: 'error', productData, error: 'Compliance-tjek fejlede: ' + err.message });
             }
             // else: retry
@@ -1187,22 +974,31 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
 
         try {
           const payload = buildCompliancePayload(formData);
-          const res = await fetch(settings.webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-          if (!res.ok) throw new Error('Webhook svarede med HTTP ' + res.status);
-          const text = await res.text();
-          if (!text) throw new Error('Tom respons fra webhook — tjek at workflow er aktiv i n8n.');
-          let data;
-          try { data = JSON.parse(text); } catch(e) { throw new Error('Ugyldig JSON fra webhook: ' + text.slice(0, 200)); }
-
-          // Validate expected structure
-          if (!data.status || !Array.isArray(data.findings)) {
-            throw new Error('Ugyldigt svar fra webhook \u2014 mangler status eller findings');
+          let lastErr;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              if (attempt > 0) await new Promise(r => setTimeout(r, 3000 + attempt * 2000));
+              const res = await fetch(settings.webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+              });
+              if (!res.ok) throw new Error('Webhook svarede med HTTP ' + res.status);
+              const text = await res.text();
+              if (!text) throw new Error('Tom respons fra webhook');
+              let data;
+              try { data = JSON.parse(text); } catch(e) { throw new Error('Ugyldig JSON fra webhook: ' + text.slice(0, 200)); }
+              if (!data.status || !Array.isArray(data.findings)) {
+                throw new Error('Ugyldigt svar fra webhook');
+              }
+              setResult(data);
+              lastErr = null;
+              break;
+            } catch (e) {
+              lastErr = e;
+            }
           }
-          setResult(data);
+          if (lastErr) throw lastErr;
         } catch (err) {
           setError('Fejl ved compliance-tjek: ' + err.message);
         } finally {
