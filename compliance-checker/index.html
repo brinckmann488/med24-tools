@@ -679,6 +679,27 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
     }
 
 
+    // ─── Text truncation (prevent Gemini timeout on very long texts) ───
+
+    function truncate(text, maxLen = 4000) {
+      if (!text || text.length <= maxLen) return text;
+      return text.slice(0, maxLen) + '\n[... forkortet]';
+    }
+
+    function buildCompliancePayload(productData) {
+      return {
+        product_name: (productData.product_name || productData.name || '').slice(0, 200),
+        product_description: truncate(productData.product_description || productData.description || ''),
+        ingredients: truncate(productData.ingredients || '', 2000),
+        nutrition_declaration: truncate(productData.nutrition_declaration || '', 2000),
+        mandatory_text: truncate(productData.mandatory_text || '', 2000),
+        claims_found: (productData.claims_found || '').slice(0, 1000),
+        check_labeling: true,
+        site_context: SITE_CONTEXT,
+        system_prompt: COMPLIANCE_SYSTEM_PROMPT,
+      };
+    }
+
     // ─── Batch engine ───
 
     const SITE_CONTEXT = `Produktet s\u00e6lges p\u00e5 med24.dk. F\u00f8lgende obligatoriske elementer er ALTID til stede p\u00e5 alle kosttilskuds-produktsider og skal IKKE markeres som manglende:
@@ -719,17 +740,7 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
 
         // Step 2: Run compliance check (with 1 retry on empty response)
         onUpdate(idx, { status: 'checking', productData });
-        const payload = {
-          product_name: productData.product_name || productData.name || '',
-          product_description: productData.product_description || productData.description || '',
-          ingredients: productData.ingredients || '',
-          nutrition_declaration: productData.nutrition_declaration || '',
-          mandatory_text: productData.mandatory_text || '',
-          claims_found: productData.claims_found || '',
-          check_labeling: true,
-          site_context: SITE_CONTEXT,
-          system_prompt: COMPLIANCE_SYSTEM_PROMPT,
-        };
+        const payload = buildCompliancePayload(productData);
 
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
@@ -1175,12 +1186,7 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
         setResult(null);
 
         try {
-          const payload = {
-            ...formData,
-            check_labeling: true,
-            site_context: SITE_CONTEXT,
-            system_prompt: COMPLIANCE_SYSTEM_PROMPT,
-          };
+          const payload = buildCompliancePayload(formData);
           const res = await fetch(settings.webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
