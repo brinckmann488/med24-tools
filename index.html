@@ -298,59 +298,15 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
       return { type: 'sku', value: trimmed, url: null };
     }
 
-    // ─── Settings persistence ───
-
-    const STORAGE_KEY = 'med24-compliance-settings';
+    // ─── Webhook URLs ───
 
     const DEFAULT_COMPLIANCE_URL = 'https://n8n2.med24intra.dk/webhook/compliance-check';
     const DEFAULT_PRODUCT_URL = 'https://n8n2.med24intra.dk/webhook/product-fetch';
 
-    function loadSettings() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const s = JSON.parse(raw);
-          return {
-            webhookUrl: s.webhookUrl || DEFAULT_COMPLIANCE_URL,
-            productWebhookUrl: s.productWebhookUrl || DEFAULT_PRODUCT_URL,
-          };
-        }
-      } catch(e) {}
-      return { webhookUrl: DEFAULT_COMPLIANCE_URL, productWebhookUrl: DEFAULT_PRODUCT_URL };
-    }
-
-    function saveSettings(s) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-    }
-
-    // ─── Mock data for demo ───
-
-    const MOCK_RESULT = {
-      status: 'NEEDS_REVIEW',
-      summary: 'Produktteksten indeholder 2 godkendte sundhedsanprisninger og 1 botanical on-hold claim.',
-      findings: [
-        {
-          type: 'BOTANICAL_ON_HOLD',
-          severity: 'LOW',
-          text: 'Kurkuma bidrager til normal ledfunktion',
-          reason: 'Kurkuma (Curcuma longa) sundhedsanprisninger er on-hold i EU siden 2012. EFSA har ikke afsluttet vurderingen.',
-          suggestion: 'Formulering m\u00e5 bruges, men v\u00e6r opm\u00e6rksom p\u00e5 at den ikke er officielt godkendt endnu.',
-        },
-      ],
-      approved_claims_used: [
-        'Vitamin D bidrager til normal funktion af immunsystemet',
-        'Vitamin D bidrager til vedligeholdelse af normale knogler',
-      ],
-      recommendations: [
-        'Overvej at tilf\u00f8je pligttekst: "En varieret og afbalanceret kost og en sund livsstil er vigtig"',
-        'Verificer at daglig dosis indeholder min. 0,75 \u00b5g vitamin D',
-      ],
-    };
-
     // ─── Components ───
 
-    function SettingsPanel({ settings, onUpdate }) {
-      const [open, setOpen] = useState(!settings.webhookUrl);
+    function HowItWorksPanel() {
+      const [open, setOpen] = useState(false);
 
       return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
@@ -359,44 +315,44 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
             className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
           >
             <span className="font-semibold text-med24-black text-sm">
-              {'\u2699\uFE0F'} Indstillinger
-              {!settings.webhookUrl && <span className="ml-2 text-amber-600 font-normal">(Konfigurer webhook URL)</span>}
+              {'\u2139\uFE0F'} S\u00e5dan virker Compliance Checker
             </span>
             <span className="text-med24-muted">{open ? '\u25B2' : '\u25BC'}</span>
           </button>
           {open && (
-            <div className="px-5 pb-4 space-y-3 border-t border-gray-100 pt-3">
+            <div className="px-5 pb-5 border-t border-gray-100 pt-4 text-sm text-med24-muted space-y-4">
+              <p className="text-med24-black font-medium">
+                Toolet tjekker automatisk om produkttekster p\u00e5 med24.dk overholder dansk og EU lovgivning for kosttilskud.
+              </p>
+
               <div>
-                <label className="block text-sm font-semibold text-med24-black mb-1">
-                  n8n Compliance Webhook URL *
-                </label>
-                <input
-                  type="url"
-                  value={settings.webhookUrl}
-                  onChange={(e) => onUpdate({ ...settings, webhookUrl: e.target.value })}
-                  placeholder="https://n8n.med24.dk/webhook/compliance-check"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none"
-                />
-                <p className="text-xs text-med24-muted mt-1">POST-endpoint der modtager produktdata og returnerer compliance JSON</p>
+                <h4 className="font-semibold text-med24-black mb-1">Hvad bliver tjekket?</h4>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li><strong>Sundhedsanprisninger</strong> \u2014 Er claims godkendt i EU\u2019s register (EU 432/2012)? Bruges de korrekt?</li>
+                  <li><strong>Sygdomsanprisninger</strong> \u2014 Ulovlige p\u00e5stande om forebyggelse/behandling af sygdom fanges.</li>
+                  <li><strong>Botanical on-hold claims</strong> \u2014 Plantebaserede claims der afventer EFSA-vurdering markeres.</li>
+                  <li><strong>Obligatorisk m\u00e6rkning</strong> \u2014 Er pligttekster, advarsler og n\u00e6ringsdeklaration til stede?</li>
+                  <li><strong>Formulering</strong> \u2014 Overdriver teksten? Bruges ord som "kurerer", "helbreder" osv.?</li>
+                </ul>
               </div>
+
               <div>
-                <label className="block text-sm font-semibold text-med24-black mb-1">
-                  n8n Produkt-hent Webhook URL (valgfri)
-                </label>
-                <input
-                  type="url"
-                  value={settings.productWebhookUrl}
-                  onChange={(e) => onUpdate({ ...settings, productWebhookUrl: e.target.value })}
-                  placeholder="https://n8n.med24.dk/webhook/product-fetch"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none"
-                />
-                <p className="text-xs text-med24-muted mt-1">POST-endpoint der henter produktdata fra Shop API (til "Hent fra API" mode)</p>
+                <h4 className="font-semibold text-med24-black mb-1">Hvordan virker det teknisk?</h4>
+                <ol className="list-decimal pl-5 space-y-1">
+                  <li>Du indtaster produktdata manuelt eller henter det via SKU/URL.</li>
+                  <li>Data sendes til vores n8n-workflow p\u00e5 den interne server.</li>
+                  <li>En AI-agent (Gemini) analyserer teksten op mod EU-reglerne og returnerer en struktureret vurdering.</li>
+                  <li>Resultatet vises som <strong>Compliant</strong>, <strong>Needs Review</strong> eller <strong>Non-compliant</strong>.</li>
+                </ol>
               </div>
-              <div className="pt-2 flex items-center gap-3">
-                <span className={`inline-block w-2 h-2 rounded-full ${settings.webhookUrl ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                <span className="text-xs text-med24-muted">
-                  {settings.webhookUrl ? 'Webhook konfigureret' : 'Webhook ikke konfigureret \u2014 brug demo-mode'}
-                </span>
+
+              <div>
+                <h4 className="font-semibold text-med24-black mb-1">Vigtigt at vide</h4>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Toolet er en <strong>hj\u00e6lp</strong>, ikke en juridisk garanti. Brug det som f\u00f8rste screening.</li>
+                  <li>Med24.dk\u2019s standardelementer (varebetegnelse, firmainfo, holdbarhed) er allerede kendt af systemet og giver ikke falske advarsler.</li>
+                  <li>Ved tvivl \u2014 kontakt altid den ansvarlige for regulatorisk compliance.</li>
+                </ul>
               </div>
             </div>
           )}
@@ -722,7 +678,7 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
     // ─── Main App ───
 
     function App() {
-      const [settings, setSettings] = useState(loadSettings);
+      const settings = { webhookUrl: DEFAULT_COMPLIANCE_URL, productWebhookUrl: DEFAULT_PRODUCT_URL };
       const [mode, setMode] = useState('manual');
       const [formData, setFormData] = useState({
         product_name: '',
@@ -737,8 +693,6 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
       const [error, setError] = useState('');
       const [fetched, setFetched] = useState(false);
 
-      useEffect(() => { saveSettings(settings); }, [settings]);
-
       const hasInput = formData.product_name.trim() || formData.product_description.trim();
 
       const handleCheck = async () => {
@@ -750,14 +704,6 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
         setLoading(true);
         setError('');
         setResult(null);
-
-        // If no webhook URL, use demo mode
-        if (!settings.webhookUrl) {
-          await new Promise(r => setTimeout(r, 1500));
-          setResult(MOCK_RESULT);
-          setLoading(false);
-          return;
-        }
 
         try {
           const payload = {
@@ -817,7 +763,7 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
           </header>
 
           <main className="max-w-4xl mx-auto px-8 py-8">
-            <SettingsPanel settings={settings} onUpdate={setSettings} />
+            <HowItWorksPanel />
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
               <TabBar mode={mode} onModeChange={setMode} />
@@ -855,9 +801,6 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
                   >
                     Ryd alt
                   </button>
-                )}
-                {!settings.webhookUrl && (
-                  <span className="text-xs text-amber-600">Demo-mode (ingen webhook konfigureret)</span>
                 )}
               </div>
 
