@@ -38,7 +38,7 @@
   </script>
   <script type="text/babel" data-presets="env,react">
 
-    const { useState, useEffect, useCallback } = React;
+    const { useState, useEffect, useCallback, useRef } = React;
 
     // ─── Compliance rules (embedded from skill reference files) ───
 
@@ -367,6 +367,7 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
       const tabs = [
         { id: 'api', label: 'Hent fra API' },
         { id: 'manual', label: 'Manuel indtastning' },
+        { id: 'batch', label: 'Batch-tjek' },
       ];
       return (
         <div className="flex border-b border-gray-200 mb-5">
@@ -678,6 +679,460 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
     }
 
 
+    // ─── Batch engine ───
+
+    const SITE_CONTEXT = `Produktet s\u00e6lges p\u00e5 med24.dk. F\u00f8lgende obligatoriske elementer er ALTID til stede p\u00e5 alle kosttilskuds-produktsider og skal IKKE markeres som manglende:
+- Varebetegnelsen "Kosttilskud" vises tydeligt p\u00e5 produktsiden
+- Virksomhedsoplysninger: Med24.dk ApS med CVR-nr. og kontaktinfo i sidens footer
+- Holdbarhedsdato p\u00e5 fysisk emballage (kan ikke verificeres online)
+- Nettoindhold angivet ved produktnavn (f.eks. "60 stk.", "120 kapsler")
+- Al m\u00e6rkning er p\u00e5 dansk
+- Obligatoriske advarsler vises som standardtekst p\u00e5 alle kosttilskudssider (se mandatory_text feltet)`;
+
+    async function runBatchCheck(inputs, concurrency, onUpdate, abortRef) {
+      let nextIndex = 0;
+
+      async function processOne(idx) {
+        const raw = inputs[idx].trim();
+        if (!raw) { onUpdate(idx, { status: 'done', result: null, error: 'Tom linje' }); return; }
+
+        // Step 1: Fetch product data
+        onUpdate(idx, { status: 'fetching' });
+        let productData;
+        try {
+          const parsed = parseProductInput(raw);
+          const res = await fetch(DEFAULT_PRODUCT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ input_type: parsed.type, input_value: parsed.value, product_url: parsed.url }),
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const text = await res.text();
+          if (!text) throw new Error('Tom respons');
+          productData = JSON.parse(text);
+        } catch (err) {
+          onUpdate(idx, { status: 'error', error: 'Kunne ikke hente produkt: ' + err.message });
+          return;
+        }
+
+        if (abortRef.current) return;
+
+        // Step 2: Run compliance check
+        onUpdate(idx, { status: 'checking', productData });
+        try {
+          const payload = {
+            product_name: productData.product_name || productData.name || '',
+            product_description: productData.product_description || productData.description || '',
+            ingredients: productData.ingredients || '',
+            nutrition_declaration: productData.nutrition_declaration || '',
+            mandatory_text: productData.mandatory_text || '',
+            claims_found: productData.claims_found || '',
+            check_labeling: true,
+            site_context: SITE_CONTEXT,
+            system_prompt: COMPLIANCE_SYSTEM_PROMPT,
+          };
+          const res = await fetch(DEFAULT_COMPLIANCE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const text = await res.text();
+          if (!text) throw new Error('Tom respons fra compliance webhook');
+          const data = JSON.parse(text);
+          if (!data.status || !Array.isArray(data.findings)) throw new Error('Ugyldigt svar');
+          onUpdate(idx, { status: 'done', productData, result: data });
+        } catch (err) {
+          onUpdate(idx, { status: 'error', productData, error: 'Compliance-tjek fejlede: ' + err.message });
+        }
+      }
+
+      async function worker() {
+        while (nextIndex < inputs.length) {
+          if (abortRef.current) return;
+          const idx = nextIndex++;
+          await processOne(idx);
+          // Small delay between jobs to ease n8n load
+          if (nextIndex < inputs.length && !abortRef.current) {
+            await new Promise(r => setTimeout(r, 500));
+          }
+        }
+      }
+
+      const workers = Array.from({ length: Math.min(concurrency, inputs.length) }, () => worker());
+      await Promise.all(workers);
+    }
+
+    // ─── Batch components ───
+
+    function BatchForm({ batchInput, onInputChange, onStart, disabled }) {
+      const lines = batchInput.split('\n').filter(l => l.trim());
+      const count = lines.length;
+
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">
+              {"Produkt-ID'er, SKU'er eller URL'er (en per linje)"}
+            </label>
+            <textarea
+              value={batchInput}
+              onChange={(e) => onInputChange(e.target.value)}
+              placeholder={"12345\n10002\nhttps://www.med24.dk/kosttilskud/.../produkt-navn-67890\n..."}
+              rows={8}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none font-mono"
+            />
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-xs text-med24-muted">
+                {"Kopier en kolonne fra Excel eller skriv ID'er manuelt"}
+              </p>
+              <p className={`text-xs font-semibold ${count > 50 ? 'text-red-600' : count > 30 ? 'text-amber-600' : 'text-med24-muted'}`}>
+                {count} {count === 1 ? 'produkt' : 'produkter'}
+                {count > 50 && ' (max 50)'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onStart}
+            disabled={disabled || count === 0 || count > 50}
+            className="bg-med24-black text-white px-6 py-2.5 rounded-md font-semibold hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {"Start batch-tjek"}
+          </button>
+        </div>
+      );
+    }
+
+    function BatchProgress({ jobs, onStop }) {
+      const total = jobs.length;
+      const completed = jobs.filter(j => j.status === 'done' || j.status === 'error').length;
+      const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      const compliant = jobs.filter(j => j.result?.status === 'COMPLIANT').length;
+      const needsReview = jobs.filter(j => j.result?.status === 'NEEDS_REVIEW').length;
+      const nonCompliant = jobs.filter(j => j.result?.status === 'NON_COMPLIANT').length;
+      const errors = jobs.filter(j => j.status === 'error').length;
+      const running = completed < total;
+
+      return (
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-med24-black">
+              {running ? `Tjekker ${completed} af ${total} produkter...` : `${total} produkter tjekket`}
+            </span>
+            {running && (
+              <button
+                onClick={onStop}
+                className="text-xs text-red-600 font-semibold hover:text-red-800 transition-colors"
+              >
+                {"Stop batch"}
+              </button>
+            )}
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+            <div
+              className="bg-med24-black h-2 rounded-full transition-all duration-300"
+              style={{ width: pct + '%' }}
+            />
+          </div>
+          <div className="flex gap-4 text-xs font-semibold">
+            {compliant > 0 && <span className="text-green-700">{"\u2705"} {compliant} Compliant</span>}
+            {needsReview > 0 && <span className="text-amber-700">{"\uD83D\uDD0D"} {needsReview} Needs Review</span>}
+            {nonCompliant > 0 && <span className="text-red-700">{"\u274C"} {nonCompliant} Non-compliant</span>}
+            {errors > 0 && <span className="text-gray-500">{"\u26A0\uFE0F"} {errors} Fejl</span>}
+          </div>
+        </div>
+      );
+    }
+
+    function BatchResultRow({ job, index, expanded, onToggle, onRetry }) {
+      const statusOrder = { NON_COMPLIANT: 0, NEEDS_REVIEW: 1, COMPLIANT: 2 };
+      const name = job.productData?.product_name || job.productData?.name || job.input;
+      const isRunning = job.status === 'fetching' || job.status === 'checking';
+
+      // Severity counts
+      const sevCounts = {};
+      if (job.result?.findings) {
+        job.result.findings.forEach(f => { sevCounts[f.severity] = (sevCounts[f.severity] || 0) + 1; });
+      }
+
+      return (
+        <React.Fragment>
+          <tr
+            onClick={() => job.status === 'done' && onToggle(index)}
+            className={`border-b border-gray-100 ${job.status === 'done' ? 'cursor-pointer hover:bg-gray-50' : ''} transition-colors`}
+          >
+            <td className="py-3 px-4 text-sm">
+              <div className="font-medium text-med24-black truncate max-w-xs">{name}</div>
+            </td>
+            <td className="py-3 px-3 text-center">
+              {isRunning && (
+                <span className="inline-flex items-center gap-1 text-xs text-med24-muted">
+                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  {job.status === 'fetching' ? 'Henter...' : 'Tjekker...'}
+                </span>
+              )}
+              {job.status === 'done' && job.result && (
+                <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_CONFIG[job.result.status]?.color || ''}`}>
+                  {STATUS_CONFIG[job.result.status]?.label || job.result.status}
+                </span>
+              )}
+              {job.status === 'error' && (
+                <span className="inline-flex items-center gap-1 text-xs text-red-600 font-semibold">
+                  {"\u26A0\uFE0F"} Fejl
+                </span>
+              )}
+              {job.status === 'pending' && (
+                <span className="text-xs text-med24-muted">{"Venter..."}</span>
+              )}
+            </td>
+            <td className="py-3 px-3">
+              <div className="flex gap-1.5 justify-center">
+                {sevCounts.CRITICAL > 0 && <span className="text-xs font-bold text-red-700 bg-red-100 px-1.5 py-0.5 rounded">{sevCounts.CRITICAL}</span>}
+                {sevCounts.HIGH > 0 && <span className="text-xs font-bold text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded">{sevCounts.HIGH}</span>}
+                {sevCounts.MEDIUM > 0 && <span className="text-xs font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">{sevCounts.MEDIUM}</span>}
+                {sevCounts.LOW > 0 && <span className="text-xs font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">{sevCounts.LOW}</span>}
+                {job.status === 'error' && (
+                  <button onClick={(e) => { e.stopPropagation(); onRetry(index); }} className="text-xs text-med24-black underline hover:opacity-70">
+                    {"Pr\u00f8v igen"}
+                  </button>
+                )}
+              </div>
+            </td>
+            <td className="py-3 px-3 text-center w-8">
+              {job.status === 'done' && (
+                <span className="text-med24-muted text-xs">{expanded ? '\u25B2' : '\u25BC'}</span>
+              )}
+            </td>
+          </tr>
+          {expanded && job.result && (
+            <tr>
+              <td colSpan={4} className="p-4 bg-gray-50 border-b border-gray-200">
+                <ResultsPanel result={job.result} onReset={() => onToggle(index)} />
+              </td>
+            </tr>
+          )}
+        </React.Fragment>
+      );
+    }
+
+    function BatchResultsTable({ jobs, onRetry }) {
+      const [expandedIdx, setExpandedIdx] = useState(null);
+      const [sortBy, setSortBy] = useState('status');
+
+      const toggleExpand = (idx) => setExpandedIdx(expandedIdx === idx ? null : idx);
+
+      // Sort jobs by index but display sorted
+      const sortedIndices = [...Array(jobs.length).keys()].sort((a, b) => {
+        const ja = jobs[a], jb = jobs[b];
+        if (sortBy === 'status') {
+          const order = { NON_COMPLIANT: 0, NEEDS_REVIEW: 1, COMPLIANT: 2 };
+          const sa = ja.result ? (order[ja.result.status] ?? 3) : (ja.status === 'error' ? 4 : 5);
+          const sb = jb.result ? (order[jb.result.status] ?? 3) : (jb.status === 'error' ? 4 : 5);
+          return sa - sb;
+        }
+        if (sortBy === 'name') {
+          const na = (ja.productData?.product_name || ja.input).toLowerCase();
+          const nb = (jb.productData?.product_name || jb.input).toLowerCase();
+          return na.localeCompare(nb);
+        }
+        if (sortBy === 'findings') {
+          const fa = ja.result?.findings?.length || 0;
+          const fb = jb.result?.findings?.length || 0;
+          return fb - fa;
+        }
+        return 0;
+      });
+
+      return (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-med24-muted uppercase tracking-wide">
+                <th className="py-2 px-4 text-left cursor-pointer hover:text-med24-black" onClick={() => setSortBy('name')}>
+                  Produkt {sortBy === 'name' && '\u25BC'}
+                </th>
+                <th className="py-2 px-3 text-center cursor-pointer hover:text-med24-black w-36" onClick={() => setSortBy('status')}>
+                  Status {sortBy === 'status' && '\u25BC'}
+                </th>
+                <th className="py-2 px-3 text-center cursor-pointer hover:text-med24-black w-32" onClick={() => setSortBy('findings')}>
+                  Findings {sortBy === 'findings' && '\u25BC'}
+                </th>
+                <th className="py-2 px-3 w-8"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedIndices.map(idx => (
+                <BatchResultRow
+                  key={idx}
+                  job={jobs[idx]}
+                  index={idx}
+                  expanded={expandedIdx === idx}
+                  onToggle={toggleExpand}
+                  onRetry={onRetry}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    function BatchExportBar({ jobs }) {
+      const doneJobs = jobs.filter(j => j.status === 'done' && j.result);
+      if (doneJobs.length === 0) return null;
+
+      const copyReport = () => {
+        const lines = doneJobs.map(j => {
+          const name = j.productData?.product_name || j.input;
+          const status = j.result.status;
+          const findings = j.result.findings || [];
+          let text = `${name} \u2014 ${status}`;
+          if (findings.length > 0) {
+            text += '\n' + findings.map(f => `  [${f.severity}] ${f.type}: ${f.text}\n    Forslag: ${f.suggestion || 'Ingen'}`).join('\n');
+          }
+          return text;
+        });
+        navigator.clipboard.writeText(lines.join('\n\n'));
+      };
+
+      const copyCsv = () => {
+        const header = 'Produkt\tStatus\tCritical\tHigh\tMedium\tLow\tFindings';
+        const rows = doneJobs.map(j => {
+          const name = j.productData?.product_name || j.input;
+          const findings = j.result.findings || [];
+          const c = findings.filter(f => f.severity === 'CRITICAL').length;
+          const h = findings.filter(f => f.severity === 'HIGH').length;
+          const m = findings.filter(f => f.severity === 'MEDIUM').length;
+          const l = findings.filter(f => f.severity === 'LOW').length;
+          const topFinding = findings[0]?.text || '';
+          return `${name}\t${j.result.status}\t${c}\t${h}\t${m}\t${l}\t${topFinding}`;
+        });
+        navigator.clipboard.writeText(header + '\n' + rows.join('\n'));
+      };
+
+      return (
+        <div className="flex gap-3 mt-4">
+          <button
+            onClick={copyReport}
+            className="bg-white border border-gray-300 px-4 py-2 rounded-md text-xs font-semibold hover:bg-gray-50 transition-colors"
+          >
+            {"Kopier rapport"}
+          </button>
+          <button
+            onClick={copyCsv}
+            className="bg-white border border-gray-300 px-4 py-2 rounded-md text-xs font-semibold hover:bg-gray-50 transition-colors"
+          >
+            {"Kopier CSV (til Excel)"}
+          </button>
+        </div>
+      );
+    }
+
+    function BatchTab({ settings }) {
+      const [batchInput, setBatchInput] = useState('');
+      const [batchJobs, setBatchJobs] = useState([]);
+      const [batchRunning, setBatchRunning] = useState(false);
+      const abortRef = useRef(false);
+
+      const handleStart = async () => {
+        const lines = batchInput.split('\n').filter(l => l.trim());
+        if (lines.length === 0 || lines.length > 50) return;
+
+        abortRef.current = false;
+        const initialJobs = lines.map((line, i) => ({
+          input: line.trim(),
+          status: 'pending',
+          productData: null,
+          result: null,
+          error: null,
+        }));
+        setBatchJobs(initialJobs);
+        setBatchRunning(true);
+
+        await runBatchCheck(
+          lines,
+          3,
+          (idx, update) => {
+            setBatchJobs(prev => {
+              const next = [...prev];
+              next[idx] = { ...next[idx], ...update };
+              return next;
+            });
+          },
+          abortRef
+        );
+
+        setBatchRunning(false);
+      };
+
+      const handleStop = () => { abortRef.current = true; };
+
+      const handleRetry = async (idx) => {
+        const job = batchJobs[idx];
+        if (!job) return;
+
+        setBatchJobs(prev => {
+          const next = [...prev];
+          next[idx] = { ...next[idx], status: 'pending', error: null, result: null };
+          return next;
+        });
+
+        abortRef.current = false;
+        await runBatchCheck(
+          [job.input],
+          1,
+          (_, update) => {
+            setBatchJobs(prev => {
+              const next = [...prev];
+              next[idx] = { ...next[idx], ...update };
+              return next;
+            });
+          },
+          abortRef
+        );
+      };
+
+      const handleReset = () => {
+        setBatchJobs([]);
+        setBatchInput('');
+        setBatchRunning(false);
+        abortRef.current = false;
+      };
+
+      const hasResults = batchJobs.length > 0;
+
+      return (
+        <div>
+          {!hasResults ? (
+            <BatchForm
+              batchInput={batchInput}
+              onInputChange={setBatchInput}
+              onStart={handleStart}
+              disabled={batchRunning}
+            />
+          ) : (
+            <div>
+              <BatchProgress jobs={batchJobs} onStop={handleStop} />
+              <BatchResultsTable jobs={batchJobs} onRetry={handleRetry} />
+              <BatchExportBar jobs={batchJobs} />
+              {!batchRunning && (
+                <button
+                  onClick={handleReset}
+                  className="mt-4 text-med24-muted text-sm hover:text-med24-black transition-colors"
+                >
+                  {"Nyt batch-tjek"}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     // ─── Main App ───
 
     function App() {
@@ -712,13 +1167,7 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
           const payload = {
             ...formData,
             check_labeling: true,
-            site_context: `Produktet s\u00e6lges p\u00e5 med24.dk. F\u00f8lgende obligatoriske elementer er ALTID til stede p\u00e5 alle kosttilskuds-produktsider og skal IKKE markeres som manglende:
-- Varebetegnelsen "Kosttilskud" vises tydeligt p\u00e5 produktsiden
-- Virksomhedsoplysninger: Med24.dk ApS med CVR-nr. og kontaktinfo i sidens footer
-- Holdbarhedsdato p\u00e5 fysisk emballage (kan ikke verificeres online)
-- Nettoindhold angivet ved produktnavn (f.eks. "60 stk.", "120 kapsler")
-- Al m\u00e6rkning er p\u00e5 dansk
-- Obligatoriske advarsler vises som standardtekst p\u00e5 alle kosttilskudssider (se mandatory_text feltet)`,
+            site_context: SITE_CONTEXT,
             system_prompt: COMPLIANCE_SYSTEM_PROMPT,
           };
           const res = await fetch(settings.webhookUrl, {
@@ -771,51 +1220,57 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring uden for JSON):
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
               <TabBar mode={mode} onModeChange={setMode} />
 
-              {mode === 'manual' ? (
-                <ManualForm formData={formData} onChange={setFormData} />
+              {mode === 'batch' ? (
+                <BatchTab settings={settings} />
               ) : (
-                <ApiForm
-                  formData={formData}
-                  onChange={setFormData}
-                  settings={settings}
-                  onFetched={setFetched}
-                />
-              )}
-
-              {/* Action buttons */}
-              <div className="mt-6 flex items-center gap-3">
-                <button
-                  onClick={handleCheck}
-                  disabled={loading || !hasInput}
-                  className="bg-med24-black text-white px-6 py-2.5 rounded-md font-semibold hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {loading && (
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
+                <React.Fragment>
+                  {mode === 'manual' ? (
+                    <ManualForm formData={formData} onChange={setFormData} />
+                  ) : (
+                    <ApiForm
+                      formData={formData}
+                      onChange={setFormData}
+                      settings={settings}
+                      onFetched={setFetched}
+                    />
                   )}
-                  {loading ? 'Tjekker compliance...' : 'K\u00f8r Compliance-tjek'}
-                </button>
-                {(hasInput || result) && (
-                  <button
-                    onClick={handleFullReset}
-                    className="text-med24-muted text-sm hover:text-med24-black transition-colors"
-                  >
-                    Ryd alt
-                  </button>
-                )}
-              </div>
 
-              {error && (
-                <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
-                  {error}
-                </div>
+                  {/* Action buttons */}
+                  <div className="mt-6 flex items-center gap-3">
+                    <button
+                      onClick={handleCheck}
+                      disabled={loading || !hasInput}
+                      className="bg-med24-black text-white px-6 py-2.5 rounded-md font-semibold hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {loading && (
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      )}
+                      {loading ? 'Tjekker compliance...' : 'K\u00f8r Compliance-tjek'}
+                    </button>
+                    {(hasInput || result) && (
+                      <button
+                        onClick={handleFullReset}
+                        className="text-med24-muted text-sm hover:text-med24-black transition-colors"
+                      >
+                        Ryd alt
+                      </button>
+                    )}
+                  </div>
+
+                  {error && (
+                    <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
+                </React.Fragment>
               )}
             </div>
 
-            {/* Results */}
-            {result && (
+            {/* Results (single product mode only) */}
+            {mode !== 'batch' && result && (
               <div className="mt-6">
                 <ResultsPanel result={result} onReset={handleReset} />
               </div>
