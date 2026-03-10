@@ -73,4 +73,4 @@ On-hold-listen opdateres løbende. Den autoritative kilde for Med24 er:
 
 **SharePoint Knowledge Bank** → indeholder den aktuelle liste over godkendte, afviste og on-hold claims fra EU Health Claims-registeret, filtreret per ingrediens.
 
-Den automatiserede compliance-checker (n8n workflow `EALpmmrayTqW8tIK`) slår op i Knowledge Bank for at klassificere claims korrekt baseret på produktets specifikke ingredienser.
+Den automatiserede compliance-checker (n8n workflow `YZQ3vFdVtp9WhKMH`) slår op i Knowledge Bank for at klassificere claims korrekt baseret på produktets specifikke ingredienser.

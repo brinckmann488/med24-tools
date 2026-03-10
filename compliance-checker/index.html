@@ -64,14 +64,15 @@
       USPECIFIK_ANPRISNING: 'Uspecifik anprisning',
       VILDLEDNING: 'Vildledning',
       MANGLENDE_MAERKNING: 'Manglende m\u00e6rkning',
+      ERNAERINGSANPRISNING: 'Ern\u00e6ringsanprisning',
     };
 
     // ─── Normalize model output (some models use Danish/mixed case) ───
 
     const SEVERITY_NORMALIZE = {
-      'critical': 'CRITICAL', 'kritisk': 'CRITICAL',
+      'critical': 'CRITICAL', 'kritisk': 'CRITICAL', 'alvorlig': 'CRITICAL',
       'high': 'HIGH', 'h\u00f8j': 'HIGH', 'hoj': 'HIGH',
-      'medium': 'MEDIUM',
+      'medium': 'MEDIUM', 'moderat': 'MEDIUM',
       'low': 'LOW', 'lav': 'LOW',
     };
 
@@ -86,9 +87,17 @@
       'uspecifik_anprisning': 'USPECIFIK_ANPRISNING',
       'vildledning': 'VILDLEDNING',
       'vildledende medicinsk term': 'VILDLEDNING',
+      'medicinsk term': 'VILDLEDNING',
+      'medicinsk_term': 'VILDLEDNING',
+      'vildledende effektgaranti': 'VILDLEDNING',
+      'vildledende_effektgaranti': 'VILDLEDNING',
+      'ulovlig botanisk anprisning': 'BOTANICAL_ON_HOLD',
+      'ulovlig_botanisk_anprisning': 'BOTANICAL_ON_HOLD',
       'manglende m\u00e6rkning': 'MANGLENDE_MAERKNING',
       'manglende_maerkning': 'MANGLENDE_MAERKNING',
       'produktnavn som anprisning': 'VILDLEDNING',
+      'ernaeringsanprisning': 'ERNAERINGSANPRISNING',
+      'ernæringsanprisning': 'ERNAERINGSANPRISNING',
     };
 
     function normalizeFindings(result) {
@@ -150,6 +159,7 @@
                 <h4 className="font-semibold text-med24-black mb-1">{"Hvad bliver tjekket?"}</h4>
                 <ul className="list-disc pl-5 space-y-1">
                   <li><strong>{"Sundhedsanprisninger"}</strong>{" — Er claims godkendt i EU's register (EU 432/2012)? Bruges de korrekt?"}</li>
+                  <li><strong>{"Ernæringsanprisninger"}</strong>{" — Er \"kilde til\", \"højt indhold af\", \"fedtfattig\" osv. brugt korrekt per EU 1924/2006?"}</li>
                   <li><strong>{"Sygdomsanprisninger"}</strong>{" — Ulovlige påstande om forebyggelse/behandling af sygdom fanges."}</li>
                   <li><strong>{"Botanical on-hold claims"}</strong>{" — Plantebaserede claims der afventer EFSA-vurdering markeres."}</li>
                   <li><strong>{"Obligatorisk mærkning"}</strong>{" — Er pligttekster, advarsler og næringsdeklaration til stede?"}</li>
@@ -162,6 +172,7 @@
                 <ol className="list-decimal pl-5 space-y-1">
                   <li>{"Du indtaster produktdata manuelt eller henter det via SKU/URL."}</li>
                   <li>{"Data sendes til vores n8n-workflow på den interne server."}</li>
+                  <li>{"Workflowet henter den fulde EU Health Claims-liste og Botanicals on-hold-liste fra SharePoint Knowledge Bank."}</li>
                   <li>{"En AI-agent (Gemini) analyserer teksten op mod EU-reglerne og returnerer en struktureret vurdering."}</li>
                   <li>{"Resultatet vises som "}<strong>{"Compliant"}</strong>{", "}<strong>{"Needs Review"}</strong>{" eller "}<strong>{"Non-compliant"}</strong>{"."}</li>
                 </ol>
@@ -171,10 +182,10 @@
                 <h4 className="font-semibold text-med24-black mb-1">{"Regler og referencer"}</h4>
                 <ul className="list-disc pl-5 space-y-1">
                   <li><a href="https://food.ec.europa.eu/food-safety/labelling-and-nutrition/nutrition-and-health-claims/eu-register-health-claims_en" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"EU Health Claims Register"}</a>{" — komplet officiel liste over godkendte sundhedsanprisninger"}</li>
-                  <li><a href="references/sundhedsanprisninger.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Godkendte sundhedsanprisninger"}</a>{" — vitamin A/B/C/D/E, calcium, jern, magnesium, zink, selen, omega-3, koffein m.fl."}</li>
-                  <li><a href="references/ernaeringsanprisninger.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Ernæringsanprisninger"}</a>{" — regler for \"kilde til\", \"højt indhold af\", fedtfattig, sukkerfri osv."}</li>
+                  <li><a href="references/sundhedsanprisninger.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Godkendte sundhedsanprisninger"}</a>{" — 32 stoffer, 155 claims — hentes dynamisk fra SharePoint"}</li>
+                  <li><a href="references/ernaeringsanprisninger.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Ernæringsanprisninger"}</a>{" — regler for \"kilde til\", \"højt indhold af\", fedtfattig, sukkerfri osv. (tjekkes automatisk)"}</li>
                   <li><a href="references/obligatorisk-maerkning.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Obligatorisk mærkning"}</a>{" — varebetegnelse, ingrediensliste, næringsdeklaration, advarsler, nettoindhold"}</li>
-                  <li><a href="references/botanicals-on-hold.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Botanicals on-hold"}</a>{" — plantebaserede claims der afventer EFSA-vurdering"}</li>
+                  <li><a href="references/botanicals-on-hold.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Botanicals on-hold"}</a>{" — hentes dynamisk fra SharePoint Knowledge Bank"}</li>
                   <li><a href="references/forbudte-formuleringer.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Forbudte formuleringer"}</a>{" — sygdomsanprisninger, vildledende udsagn og grænsetilfælde"}</li>
                 </ul>
               </div>

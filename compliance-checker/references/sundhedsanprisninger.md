@@ -1,5 +1,7 @@
 # Godkendte EU-sundhedsanprisninger
 
+> **Note:** Den automatiske compliance-checker bruger den fulde EU-liste fra SharePoint Knowledge Bank (155 claims, 32 stoffer). Denne side viser et udvalg af de mest relevante.
+
 Kun anprisninger fra EU-Kommissionens register må anvendes. Her er de mest anvendte.
 
 ## Vitaminer
