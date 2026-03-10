@@ -1,6 +1,6 @@
 # Godkendte EU-sundhedsanprisninger
 
-> **Note:** Den automatiske compliance-checker bruger den fulde EU-liste fra SharePoint Knowledge Bank (155 claims, 32 stoffer). Denne side viser et udvalg af de mest relevante.
+> **Note:** Den automatiske compliance-checker bruger den komplette EU 432/2012-liste fra SharePoint Knowledge Bank (217 claims, 74 stoffer). Denne side viser et udvalg af de mest relevante.
 
 Kun anprisninger fra EU-Kommissionens register må anvendes. Her er de mest anvendte.
 
