@@ -70,15 +70,11 @@
 
     function parseProductInput(input) {
       const trimmed = input.trim();
-      // Check if it's a med24.dk URL
+      // Med24 uses slug-based URLs — always resolve via slug lookup
       if (trimmed.match(/med24\.(dk|se|no)/i)) {
-        // Try to extract product ID from URL patterns like /product/12345 or /p/12345 or item_id=12345
-        const idMatch = trimmed.match(/[/-](\d{3,6})(?:[/-]|$|\?)/);
-        if (idMatch) return { type: 'id', value: idMatch[1], url: trimmed };
-        // Return URL for the webhook to handle
         return { type: 'url', value: trimmed, url: trimmed };
       }
-      // Check if it's a plain number (product ID)
+      // Plain number = product ID
       if (/^\d+$/.test(trimmed)) {
         return { type: 'id', value: trimmed, url: null };
       }
