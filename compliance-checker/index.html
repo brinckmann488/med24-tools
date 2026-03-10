@@ -381,7 +381,15 @@
       );
     }
 
-    function ResultsPanel({ result, onReset }) {
+    const MODEL_LABELS = {
+      '': 'Gemini 3.1 Flash Lite',
+      'models/gemini-3.1-flash-lite-preview': 'Gemini 3.1 Flash Lite',
+      'models/gemini-2.5-flash': 'Gemini 2.5 Flash',
+      'models/gemini-2.5-pro': 'Gemini 2.5 Pro',
+      'default': 'Gemini (n8n default)',
+    };
+
+    function ResultsPanel({ result, onReset, modelUsed }) {
       const status = STATUS_CONFIG[result.status] || STATUS_CONFIG.NEEDS_REVIEW;
 
       const copyJson = () => {
@@ -398,6 +406,7 @@
                 <div>
                   <h3 className="text-xl font-bold">{status.label}</h3>
                   <p className="text-sm mt-1">{result.summary}</p>
+                  {modelUsed && <p className="text-xs opacity-60 mt-1">Model: {MODEL_LABELS[modelUsed] || modelUsed}</p>}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -470,8 +479,8 @@
       return text.slice(0, maxLen) + '\n[... forkortet]';
     }
 
-    function buildCompliancePayload(productData) {
-      return {
+    function buildCompliancePayload(productData, model) {
+      const payload = {
         product_name: (productData.product_name || productData.name || '').slice(0, 200),
         product_description: truncate(productData.product_description || productData.description || ''),
         ingredients: truncate(productData.ingredients || '', 2000),
@@ -481,6 +490,8 @@
         check_labeling: true,
         site_context: SITE_CONTEXT,
       };
+      if (model) payload.model = model;
+      return payload;
     }
 
     // ─── Batch engine ───
@@ -943,6 +954,7 @@
 
     function App() {
       const settings = { webhookUrl: DEFAULT_COMPLIANCE_URL, productWebhookUrl: DEFAULT_PRODUCT_URL };
+      const [selectedModel, setSelectedModel] = useState('');
       const [mode, setMode] = useState('api');
       const [formData, setFormData] = useState({
         product_name: '',
@@ -973,7 +985,7 @@
         try {
           abortRef.current = new AbortController();
           const signal = abortRef.current.signal;
-          const payload = buildCompliancePayload(formData);
+          const payload = buildCompliancePayload(formData, selectedModel);
           let lastErr;
           for (let attempt = 0; attempt < 4; attempt++) {
             if (signal.aborted) break;
@@ -1060,6 +1072,16 @@
 
                   {/* Action buttons */}
                   <div className="mt-6 flex items-center gap-3">
+                    <select
+                      value={selectedModel}
+                      onChange={e => setSelectedModel(e.target.value)}
+                      className="text-sm border border-gray-300 rounded-md px-3 py-2.5 bg-white text-med24-black focus:outline-none focus:ring-1 focus:ring-med24-blue"
+                    >
+                      <option value="">Gemini 3.1 Flash Lite (default)</option>
+                      <option value="models/gemini-2.5-flash">Gemini 2.5 Flash</option>
+                      <option value="models/gemini-2.5-pro">Gemini 2.5 Pro</option>
+                      <option value="default">Gemini (n8n default)</option>
+                    </select>
                     <button
                       onClick={handleCheck}
                       disabled={loading || !hasInput}
@@ -1103,7 +1125,7 @@
             {/* Results (single product mode only) */}
             {mode !== 'batch' && result && (
               <div className="mt-6">
-                <ResultsPanel result={result} onReset={handleReset} />
+                <ResultsPanel result={result} onReset={handleReset} modelUsed={selectedModel || 'models/gemini-3.1-flash-lite-preview'} />
               </div>
             )}
 
