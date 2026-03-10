@@ -172,8 +172,9 @@
                 <ol className="list-decimal pl-5 space-y-1">
                   <li>{"Du indtaster produktdata manuelt eller henter det via SKU/URL."}</li>
                   <li>{"Data sendes til vores n8n-workflow på den interne server."}</li>
-                  <li>{"Workflowet henter den fulde EU Health Claims-liste og Botanicals on-hold-liste fra SharePoint Knowledge Bank."}</li>
-                  <li>{"En AI-agent (Gemini) analyserer teksten op mod EU-reglerne og returnerer en struktureret vurdering."}</li>
+                  <li>{"Workflowet henter to vidensbankslister fra SharePoint Knowledge Bank:"}<ul className="list-disc pl-5 mt-1 space-y-0.5"><li><strong>{"EU-godkendte sundhedsanprisninger"}</strong>{" — 217 claims for 74 stoffer (komplet EU 432/2012)"}</li><li><strong>{"Botanicals on-hold"}</strong>{" — plantebaserede claims der afventer EFSA-vurdering"}</li></ul></li>
+                  <li>{"En detaljeret prompt samler produktdata, de to vidensbankslister og reglerne for ernæringsanprisninger, forbudte formuleringer og obligatorisk mærkning i én samlet instruktion til AI-modellen. Prompten definerer finding-typer, severity-niveauer og kræver at alle overtrædelser rapporteres med fuld sætningscitat og lovligt alternativ."}</li>
+                  <li>{"AI-modellen (Gemini) følger prompten og analyserer teksten sætning for sætning. Den returnerer en struktureret JSON-vurdering."}</li>
                   <li>{"Resultatet vises som "}<strong>{"Compliant"}</strong>{", "}<strong>{"Needs Review"}</strong>{" eller "}<strong>{"Non-compliant"}</strong>{"."}</li>
                 </ol>
               </div>
