@@ -66,6 +66,43 @@
       MANGLENDE_MAERKNING: 'Manglende m\u00e6rkning',
     };
 
+    // ─── Normalize model output (some models use Danish/mixed case) ───
+
+    const SEVERITY_NORMALIZE = {
+      'critical': 'CRITICAL', 'kritisk': 'CRITICAL',
+      'high': 'HIGH', 'h\u00f8j': 'HIGH', 'hoj': 'HIGH',
+      'medium': 'MEDIUM',
+      'low': 'LOW', 'lav': 'LOW',
+    };
+
+    const TYPE_NORMALIZE = {
+      'sygdomsanprisning': 'SYGDOMSANPRISNING',
+      'ulovlig sundhedsanprisning': 'ULOVLIG_SUNDHEDSANPRISNING',
+      'ulovlig_sundhedsanprisning': 'ULOVLIG_SUNDHEDSANPRISNING',
+      'botanical on-hold': 'BOTANICAL_ON_HOLD',
+      'botanical_on_hold': 'BOTANICAL_ON_HOLD',
+      'botanical on-hold anprisning': 'BOTANICAL_ON_HOLD',
+      'uspecifik anprisning': 'USPECIFIK_ANPRISNING',
+      'uspecifik_anprisning': 'USPECIFIK_ANPRISNING',
+      'vildledning': 'VILDLEDNING',
+      'vildledende medicinsk term': 'VILDLEDNING',
+      'manglende m\u00e6rkning': 'MANGLENDE_MAERKNING',
+      'manglende_maerkning': 'MANGLENDE_MAERKNING',
+      'produktnavn som anprisning': 'VILDLEDNING',
+    };
+
+    function normalizeFindings(result) {
+      if (!result || !Array.isArray(result.findings)) return result;
+      return {
+        ...result,
+        findings: result.findings.map(f => ({
+          ...f,
+          severity: SEVERITY_NORMALIZE[f.severity.toLowerCase()] || f.severity.toUpperCase(),
+          type: TYPE_NORMALIZE[f.type.toLowerCase()] || f.type.toUpperCase().replace(/ /g, '_'),
+        })),
+      };
+    }
+
     // ─── URL parser: extract product ID from med24.dk URLs ───
 
     function parseProductInput(input) {
@@ -549,7 +586,7 @@
             if (!text) throw new Error('Tom respons fra compliance webhook');
             const data = JSON.parse(text);
             if (!data.status || !Array.isArray(data.findings)) throw new Error('Ugyldigt svar');
-            onUpdate(idx, { status: 'done', productData, result: data });
+            onUpdate(idx, { status: 'done', productData, result: normalizeFindings(data) });
             return; // success — exit retry loop
           } catch (err) {
             if (attempt === 3) {
@@ -1006,7 +1043,7 @@
               if (!data.status || !Array.isArray(data.findings)) {
                 throw new Error('Ugyldigt svar fra webhook');
               }
-              setResult(data);
+              setResult(normalizeFindings(data));
               lastErr = null;
               break;
             } catch (e) {
