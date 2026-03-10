@@ -960,6 +960,7 @@
       const [result, setResult] = useState(null);
       const [error, setError] = useState('');
       const [fetched, setFetched] = useState(false);
+      const abortRef = useRef(null);
 
       const hasInput = formData.product_name.trim() || formData.product_description.trim();
 
@@ -974,15 +975,20 @@
         setResult(null);
 
         try {
+          abortRef.current = new AbortController();
+          const signal = abortRef.current.signal;
           const payload = buildCompliancePayload(formData);
           let lastErr;
           for (let attempt = 0; attempt < 4; attempt++) {
+            if (signal.aborted) break;
             try {
               if (attempt > 0) await new Promise(r => setTimeout(r, 4000 + attempt * 3000));
+              if (signal.aborted) break;
               const res = await fetch(settings.webhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
+                signal,
               });
               if (!res.ok) throw new Error('Webhook svarede med HTTP ' + res.status);
               const text = await res.text();
@@ -999,12 +1005,19 @@
               lastErr = e;
             }
           }
-          if (lastErr) throw lastErr;
+          if (lastErr && !abortRef.current?.signal.aborted) throw lastErr;
         } catch (err) {
-          setError('Fejl ved compliance-tjek: ' + err.message);
+          if (err.name !== 'AbortError') {
+            setError('Fejl ved compliance-tjek: ' + err.message);
+          }
         } finally {
           setLoading(false);
         }
+      };
+
+      const handleStop = () => {
+        if (abortRef.current) abortRef.current.abort();
+        setLoading(false);
       };
 
       const handleReset = () => {
@@ -1064,7 +1077,15 @@
                       )}
                       {loading ? 'Tjekker compliance...' : 'K\u00f8r Compliance-tjek'}
                     </button>
-                    {(hasInput || result) && (
+                    {loading && (
+                      <button
+                        onClick={handleStop}
+                        className="text-red-600 text-sm font-medium hover:text-red-800 transition-colors"
+                      >
+                        Stop
+                      </button>
+                    )}
+                    {!loading && (hasInput || result) && (
                       <button
                         onClick={handleFullReset}
                         className="text-med24-muted text-sm hover:text-med24-black transition-colors"
