@@ -150,6 +150,12 @@ async function search() {
 
 document.getElementById('q').addEventListener('input', () => {
   clearTimeout(timer);
+  const q = document.getElementById('q').value.trim();
+  if (q.length < 2) {
+    document.getElementById('results').innerHTML = '';
+    document.getElementById('stats').textContent = '';
+    return;
+  }
   timer = setTimeout(search, 250);
 });
 
