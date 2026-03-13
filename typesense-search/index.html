@@ -96,9 +96,36 @@
     .empty { text-align: center; color: #bbb; padding: 48px 20px; font-size: 15px; }
     .start-hint { text-align: center; color: #ccc; padding: 48px 20px; font-size: 14px; }
 
+    /* ── VIEW D: Analytics ── */
+    .view-d .container { max-width: 900px; }
+    .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    @media (max-width: 640px) { .analytics-grid { grid-template-columns: 1fr; } }
+    .analytics-card { background: white; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,.08); overflow: hidden; }
+    .analytics-card-header { padding: 14px 18px 12px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
+    .analytics-card-title { font-size: 13px; font-weight: 700; color: #333; }
+    .analytics-card-subtitle { font-size: 11px; color: #bbb; }
+    .analytics-row { display: flex; align-items: center; gap: 10px; padding: 9px 18px; border-bottom: 1px solid #fafafa; }
+    .analytics-row:last-child { border-bottom: none; }
+    .analytics-rank { font-size: 11px; color: #ccc; width: 18px; flex-shrink: 0; text-align: right; }
+    .analytics-query { flex: 1; font-size: 14px; color: #333; }
+    .analytics-count { font-size: 12px; color: #999; background: #f5f5f5; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
+    .analytics-nohit .analytics-count { background: #fde8e8; color: #c0392b; }
+    .analytics-bar-wrap { width: 60px; height: 4px; background: #f0f0f0; border-radius: 2px; flex-shrink: 0; }
+    .analytics-bar { height: 4px; border-radius: 2px; background: #e0004d; }
+    .analytics-empty { padding: 32px 18px; text-align: center; color: #ccc; font-size: 13px; }
+    .analytics-loading { padding: 32px 18px; text-align: center; color: #ccc; font-size: 13px; }
+    .analytics-meta { padding: 10px 18px; font-size: 11px; color: #bbb; background: #fafafa; border-top: 1px solid #f0f0f0; }
+    .analytics-add-synonym { font-size: 11px; color: #e0004d; cursor: pointer; margin-left: 6px; opacity: 0; transition: opacity .15s; }
+    .analytics-row:hover .analytics-add-synonym { opacity: 1; }
+    .stat-boxes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-box { background: white; border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
+    .stat-box-label { font-size: 11px; color: #aaa; margin-bottom: 4px; }
+    .stat-box-value { font-size: 24px; font-weight: 700; color: #222; }
+    .stat-box-sub { font-size: 11px; color: #bbb; margin-top: 2px; }
+
     /* Hidden until correct view */
-    .view-a, .view-b, .view-c { display: none; }
-    .view-a.active, .view-b.active, .view-c.active { display: block; }
+    .view-a, .view-b, .view-c, .view-d { display: none; }
+    .view-a.active, .view-b.active, .view-c.active, .view-d.active { display: block; }
     .container { margin: 0 auto; }
   </style>
 </head>
@@ -114,6 +141,7 @@
     <button class="view-btn" data-view="a">A — Kombineret søgning</button>
     <button class="view-btn active" data-view="b">B — Kort (nuværende)</button>
     <button class="view-btn" data-view="c">C — Kompakt</button>
+    <a href="analytics.html" class="view-btn" style="margin-left:auto;text-decoration:none">📊 Analytics</a>
   </div>
 
   <!-- Search bar (shared) -->
@@ -148,6 +176,38 @@
 <div class="view-c" id="view-c">
   <div class="container" style="max-width:700px;">
     <div id="results-c"></div>
+  </div>
+</div>
+
+<!-- VIEW D: Analytics -->
+<div class="view-d" id="view-d">
+  <div class="container" style="max-width:900px;">
+    <div class="stat-boxes" id="analytics-stats">
+      <div class="stat-box"><div class="stat-box-label">Zero-results søgninger</div><div class="stat-box-value" id="stat-nohits">–</div><div class="stat-box-sub">unikke søgetermer uden hits</div></div>
+      <div class="stat-box"><div class="stat-box-label">Populære søgninger</div><div class="stat-box-value" id="stat-popular">–</div><div class="stat-box-sub">unikke søgetermer tracked</div></div>
+      <div class="stat-box"><div class="stat-box-label">Synonymsæt</div><div class="stat-box-value" id="stat-synonyms">20</div><div class="stat-box-sub">aktive synonym-mappings</div></div>
+    </div>
+    <div class="analytics-grid">
+      <div class="analytics-card">
+        <div class="analytics-card-header">
+          <span class="analytics-card-title">Søgninger uden resultater</span>
+          <span class="analytics-card-subtitle" id="nohits-market">DK</span>
+        </div>
+        <div id="nohits-list"><div class="analytics-loading">Henter data...</div></div>
+        <div class="analytics-meta">Opdateres løbende · Hover for at tilføje synonym</div>
+      </div>
+      <div class="analytics-card">
+        <div class="analytics-card-header">
+          <span class="analytics-card-title">Populære søgninger</span>
+          <span class="analytics-card-subtitle" id="popular-market">DK</span>
+        </div>
+        <div id="popular-list"><div class="analytics-loading">Henter data...</div></div>
+        <div class="analytics-meta">Top 20 søgetermer siden aktivering</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:#bbb;margin-top:4px;">
+      Data samles fra det tidspunkt analytics-reglerne blev aktiveret. Zero-results vises i rød — kandidater til nye synonymer.
+    </div>
   </div>
 </div>
 
@@ -247,7 +307,7 @@ function renderA(data, q, currency) {
       : `<div class="fed-product-img-placeholder"></div>`;
     const link = d.product_url || '#';
     return `
-      <a class="fed-product" href="${link}" target="_blank">
+      <a class="fed-product" href="${link}" target="_blank" data-doc-id="${d.id}" data-pos="${products.indexOf(h)+1}">
         ${img}
         <div class="fed-product-info">
           <div class="fed-product-name">${name}</div>
@@ -298,7 +358,8 @@ function renderB(data, q, currency) {
     const img = d.image_url
       ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">`
       : `<div class="card-img-placeholder"></div>`;
-    const link = d.product_url ? `<a class="card-link" href="${d.product_url}" target="_blank">Åbn produkt ↗</a>` : '';
+    const pos = data.hits.indexOf(hit) + 1;
+    const link = d.product_url ? `<a class="card-link" href="${d.product_url}" target="_blank" data-doc-id="${d.id}" data-pos="${pos}">Åbn produkt ↗</a>` : '';
     return `
       <div class="card">
         ${img}
@@ -333,8 +394,9 @@ function renderC(data, q, currency) {
     const name = hlMap.name || d.name || '';
     const brand = d.brand || '';
     const link = d.product_url || '#';
+    const pos2 = data.hits.indexOf(h) + 1;
     return `
-      <a class="compact-row" href="${link}" target="_blank" style="text-decoration:none">
+      <a class="compact-row" href="${link}" target="_blank" style="text-decoration:none" data-doc-id="${d.id}" data-pos="${pos2}">
         <span class="compact-stock ${d.in_stock ? 'in' : 'out'}"></span>
         <span class="compact-name">${name}${brand ? `<span class="compact-brand">· ${brand}</span>` : ''}</span>
         <span class="compact-price">${fmtPrice(d.price, currency)}</span>
@@ -390,6 +452,7 @@ async function search() {
     : `Ingen resultater · ${ms} ms`;
 
   renderAll(data, q, currency);
+  setTimeout(attachClickTracking, 0);
 }
 
 document.getElementById('q').addEventListener('input', () => {
@@ -401,6 +464,98 @@ document.getElementById('q').addEventListener('input', () => {
 
 document.getElementById('market').addEventListener('change', () => {
   if (document.getElementById('q').value.trim().length >= 2) search();
+  if (currentView === 'd') loadAnalytics();
+});
+
+// ── Click tracking ──
+// Fires a search_click event to Typesense analytics when user opens a product
+function trackClick(docId, position) {
+  if (!lastQ) return;
+  const userId = localStorage.getItem('ts_uid') || (() => {
+    const id = 'u' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('ts_uid', id);
+    return id;
+  })();
+  fetch(`${HOST}/analytics/events`, {
+    method: 'POST',
+    headers: { 'X-TYPESENSE-API-KEY': API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'search_click', data: { q: lastQ, doc_id: String(docId), user_id: userId, position } })
+  }).catch(() => {});
+}
+
+// Attach click tracking to result links (called after each render)
+function attachClickTracking() {
+  document.querySelectorAll('[data-doc-id]').forEach(el => {
+    el.addEventListener('click', () => trackClick(el.dataset.docId, parseInt(el.dataset.pos)));
+  });
+}
+
+// ── Analytics view ──
+async function loadAnalytics() {
+  const collection = document.getElementById('market').value;
+  const market = collection.split('_')[1].toUpperCase();
+  const marketCode = collection.split('_')[1];
+
+  document.getElementById('nohits-market').textContent = market;
+  document.getElementById('popular-market').textContent = market;
+  document.getElementById('nohits-list').innerHTML = '<div class="analytics-loading">Henter...</div>';
+  document.getElementById('popular-list').innerHTML = '<div class="analytics-loading">Henter...</div>';
+
+  const headers = { 'X-TYPESENSE-API-KEY': API_KEY };
+
+  async function fetchAnalytics(collectionName) {
+    const params = new URLSearchParams({ q: '*', sort_by: 'count:desc', per_page: 20 });
+    const res = await fetch(`${HOST}/collections/${collectionName}/documents/search?${params}`, { headers });
+    const data = await res.json();
+    return data.hits || [];
+  }
+
+  const [nohitsHits, popularHits] = await Promise.all([
+    fetchAnalytics(`analytics_nohits_${marketCode}`),
+    fetchAnalytics(`analytics_popular_${marketCode}`)
+  ]);
+
+  // Update stat boxes
+  document.getElementById('stat-nohits').textContent = nohitsHits.length;
+  document.getElementById('stat-popular').textContent = popularHits.length;
+
+  // Render no-hits list
+  const maxNohits = nohitsHits[0]?.document?.count || 1;
+  document.getElementById('nohits-list').innerHTML = nohitsHits.length === 0
+    ? '<div class="analytics-empty">Ingen zero-results endnu — data samles løbende</div>'
+    : nohitsHits.map((h, i) => {
+        const d = h.document;
+        const pct = Math.round((d.count / maxNohits) * 100);
+        return `<div class="analytics-row analytics-nohit">
+          <span class="analytics-rank">${i + 1}</span>
+          <span class="analytics-query">${d.q}<span class="analytics-add-synonym" title="Tilføj synonym">+ synonym</span></span>
+          <div class="analytics-bar-wrap"><div class="analytics-bar" style="width:${pct}%"></div></div>
+          <span class="analytics-count">${d.count}×</span>
+        </div>`;
+      }).join('');
+
+  // Render popular list
+  const maxPop = popularHits[0]?.document?.count || 1;
+  document.getElementById('popular-list').innerHTML = popularHits.length === 0
+    ? '<div class="analytics-empty">Ingen søgninger registreret endnu</div>'
+    : popularHits.map((h, i) => {
+        const d = h.document;
+        const pct = Math.round((d.count / maxPop) * 100);
+        return `<div class="analytics-row">
+          <span class="analytics-rank">${i + 1}</span>
+          <span class="analytics-query">${d.q}</span>
+          <div class="analytics-bar-wrap"><div class="analytics-bar" style="width:${pct}%;background:#4a90d9"></div></div>
+          <span class="analytics-count">${d.count}×</span>
+        </div>`;
+      }).join('');
+}
+
+// Load analytics when switching to view D
+const origViewSwitch = document.querySelectorAll('.view-btn');
+origViewSwitch.forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.view === 'd') loadAnalytics();
+  });
 });
 
 showHints();
