@@ -251,28 +251,35 @@ function extractBrands(hits) {
   return brands;
 }
 
-function buildSuggestions(q, hits) {
-  const suggestions = [];
-  // Unique brand matches
-  const brands = extractBrands(hits);
-  for (const b of brands.slice(0, 4)) {
-    if (b.toLowerCase().startsWith(q.toLowerCase()) || b.toLowerCase().includes(q.toLowerCase())) {
-      suggestions.push({ icon: '◆', text: b, type: 'brand' });
-    }
-  }
-  // Categories from top hits
+function extractCategories(hits, maxCats = 4) {
   const seenCats = new Set();
-  for (const h of hits.slice(0, 6)) {
-    const cats = h.document.categories || [];
-    for (const cat of cats.slice(0, 2)) {
-      if (!seenCats.has(cat) && cat.toLowerCase().includes(q.toLowerCase())) {
+  const cats = [];
+  for (const h of hits.slice(0, 10)) {
+    for (const cat of (h.document.categories || []).slice(0, 3)) {
+      if (!seenCats.has(cat)) {
         seenCats.add(cat);
-        suggestions.push({ icon: '≡', text: cat, type: 'cat' });
+        cats.push(cat);
       }
-      if (seenCats.size >= 2) break;
+      if (cats.length >= maxCats) return cats;
     }
   }
-  return suggestions.slice(0, 7);
+  return cats;
+}
+
+// Return top 5 diverse products (max 2 per brand)
+function diverseProducts(hits, max = 5) {
+  const brandCount = new Map();
+  const result = [];
+  for (const h of hits) {
+    const brand = h.document.brand || '';
+    const count = brandCount.get(brand) || 0;
+    if (count < 2) {
+      result.push(h);
+      brandCount.set(brand, count + 1);
+    }
+    if (result.length >= max) break;
+  }
+  return result;
 }
 
 // ── Render VIEW A ──
@@ -283,18 +290,26 @@ function renderA(data, q, currency) {
     return;
   }
 
-  const suggestions = buildSuggestions(q, data.hits);
-  const products = data.hits.slice(0, 5);
   const brands = extractBrands(data.hits);
+  const cats = extractCategories(data.hits);
+  const products = diverseProducts(data.hits, 5);
 
-  const suggestionsHtml = suggestions.map(s => `
-    <div class="suggestion-item">
-      <span class="suggestion-icon">${s.icon}</span>
-      <span class="suggestion-text">${s.text}</span>
+  // Left: brands + categories as separate sections
+  const brandsLeftHtml = brands.slice(0, 4).map(b => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
+      <span class="suggestion-icon">◆</span>
+      <span class="suggestion-text">${b}</span>
       <span class="suggestion-arrow">↗</span>
     </div>`).join('');
 
-  const productsHtml = products.map(h => {
+  const catsHtml = cats.map(c => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c)})">
+      <span class="suggestion-icon">≡</span>
+      <span class="suggestion-text">${c}</span>
+      <span class="suggestion-arrow">↗</span>
+    </div>`).join('');
+
+  const productsHtml = products.map((h, i) => {
     const d = h.document;
     const hl = h.highlights || [];
     const hlMap = Object.fromEntries(hl.map(x => [x.field, x.snippet || x.value || '']));
@@ -304,7 +319,7 @@ function renderA(data, q, currency) {
       : `<div class="fed-product-img-placeholder"></div>`;
     const link = d.product_url || '#';
     return `
-      <a class="fed-product" href="${link}" target="_blank" data-doc-id="${d.id}" data-pos="${products.indexOf(h)+1}">
+      <a class="fed-product" href="${link}" target="_blank" data-doc-id="${d.id}" data-pos="${i+1}">
         ${img}
         <div class="fed-product-info">
           <div class="fed-product-name">${name}</div>
@@ -314,23 +329,15 @@ function renderA(data, q, currency) {
       </a>`;
   }).join('');
 
-  const brandsHtml = brands.map(b =>
-    `<span class="brand-chip">${b}</span>`
-  ).join('');
-
   el.innerHTML = `
     <div class="federated-panel">
       <div class="fed-left">
-        <div class="fed-section-title">Søgeforslag</div>
-        ${suggestionsHtml}
+        ${brandsLeftHtml ? `<div class="fed-section-title">Mærker</div>${brandsLeftHtml}` : ''}
+        ${catsHtml ? `<hr class="fed-divider">${cats.length ? '<div class="fed-section-title">Kategorier</div>' : ''}${catsHtml}` : ''}
       </div>
       <div class="fed-right">
         <div class="fed-section-title">Produkter</div>
         <div class="fed-products-grid">${productsHtml}</div>
-        ${brands.length ? `
-          <hr class="fed-divider">
-          <div class="fed-section-title">Mærker</div>
-          <div class="fed-brands">${brandsHtml}</div>` : ''}
         <div class="fed-see-all">Se alle ${(data.found||0).toLocaleString('da')} resultater →</div>
       </div>
     </div>`;
