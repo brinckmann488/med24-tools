@@ -123,6 +123,25 @@
     .stat-box-value { font-size: 24px; font-weight: 700; color: #222; }
     .stat-box-sub { font-size: 11px; color: #bbb; margin-top: 2px; }
 
+    /* ── VIEW D: Product grid ── */
+    .view-d .container { max-width: 960px; }
+    .grid-panel { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+    .grid-card { background: white; border-radius: 10px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.08); display: flex; flex-direction: column; gap: 8px; transition: box-shadow .15s; text-decoration: none; color: inherit; }
+    .grid-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.13); }
+    .grid-card img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 6px; background: #f9f9f9; }
+    .grid-card-img-placeholder { width: 100%; aspect-ratio: 1; background: #f3f3f3; border-radius: 6px; }
+    .grid-card-name { font-size: 13px; font-weight: 500; color: #222; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .grid-card-brand { font-size: 11px; color: #e0004d; font-weight: 500; }
+    .grid-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+    .grid-card-price { font-size: 15px; font-weight: 700; color: #222; }
+    .grid-card-stock { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .grid-card-stock.in { background: #2ecc71; }
+    .grid-card-stock.out { background: #e74c3c; }
+
+    /* Analytics link button — distinct style */
+    .analytics-link { padding: 6px 18px; font-size: 13px; border: 2px solid #e0004d; border-radius: 20px; background: white; cursor: pointer; color: #e0004d; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: all .15s; }
+    .analytics-link:hover { background: #e0004d; color: white; }
+
     /* Hidden until correct view */
     .view-a, .view-b, .view-c, .view-d { display: none; }
     .view-a.active, .view-b.active, .view-c.active, .view-d.active { display: block; }
@@ -141,7 +160,8 @@
     <button class="view-btn" data-view="a">A — Kombineret søgning</button>
     <button class="view-btn active" data-view="b">B — Kort (nuværende)</button>
     <button class="view-btn" data-view="c">C — Kompakt</button>
-    <a href="analytics.html" class="view-btn" style="margin-left:auto;text-decoration:none">📊 Analytics</a>
+    <button class="view-btn" data-view="d">D — Produktgrid</button>
+    <a href="analytics.html" class="analytics-link" style="margin-left:auto">📊 Analytics</a>
   </div>
 
   <!-- Search bar (shared) -->
@@ -179,7 +199,14 @@
   </div>
 </div>
 
-<!-- VIEW D: Analytics -->
+<!-- VIEW D: Product grid -->
+<div class="view-d" id="view-d">
+  <div class="container" style="max-width:960px;">
+    <div id="results-d"></div>
+  </div>
+</div>
+
+<!-- (unused legacy block) -->
 <div class="view-d" id="view-d">
   <div class="container" style="max-width:900px;">
     <div class="stat-boxes" id="analytics-stats">
@@ -415,16 +442,46 @@ function renderC(data, q, currency) {
     </div>`;
 }
 
+// ── Render VIEW D ──
+function renderD(data, q, currency) {
+  const el = document.getElementById('results-d');
+  if (!data.hits || data.hits.length === 0) {
+    el.innerHTML = '<div class="empty">Ingen resultater</div>';
+    return;
+  }
+  el.innerHTML = `<div class="grid-panel">${data.hits.map((h, i) => {
+    const d = h.document;
+    const hl = h.highlights || [];
+    const hlMap = Object.fromEntries(hl.map(x => [x.field, x.snippet || x.value || '']));
+    const name = hlMap.name || d.name || '';
+    const img = d.image_url
+      ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">`
+      : `<div class="grid-card-img-placeholder"></div>`;
+    const link = d.product_url || '#';
+    return `<a class="grid-card" href="${link}" target="_blank" data-doc-id="${d.id}" data-pos="${i+1}">
+      ${img}
+      <div class="grid-card-name">${name}</div>
+      ${d.brand ? `<div class="grid-card-brand">${d.brand}</div>` : ''}
+      <div class="grid-card-footer">
+        <span class="grid-card-price">${fmtPrice(d.price, currency)}</span>
+        <span class="grid-card-stock ${d.in_stock ? 'in' : 'out'}"></span>
+      </div>
+    </a>`;
+  }).join('')}</div>`;
+}
+
 function renderAll(data, q, currency) {
   if (currentView === 'a') renderA(data, q, currency);
   else if (currentView === 'b') renderB(data, q, currency);
   else if (currentView === 'c') renderC(data, q, currency);
+  else if (currentView === 'd') renderD(data, q, currency);
 }
 
 function showHints() {
   document.getElementById('results-a').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
   document.getElementById('results-b').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
   document.getElementById('results-c').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
+  document.getElementById('results-d').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
   document.getElementById('stats').textContent = '';
 }
 
@@ -438,7 +495,8 @@ async function search() {
 
   if (!q) { lastData = null; showHints(); return; }
 
-  const params = new URLSearchParams({ q, preset, per_page: 12, highlight_full_fields: 'name,brand' });
+  const perPage = currentView === 'd' ? 24 : 12;
+  const params = new URLSearchParams({ q, preset, per_page: perPage, highlight_full_fields: 'name,brand' });
   const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, {
     headers: { 'X-TYPESENSE-API-KEY': API_KEY }
   });
@@ -458,12 +516,12 @@ async function search() {
 document.getElementById('q').addEventListener('input', () => {
   clearTimeout(timer);
   const q = document.getElementById('q').value.trim();
-  if (q.length < 2) { lastData = null; showHints(); return; }
+  if (q.length < 1) { lastData = null; showHints(); return; }
   timer = setTimeout(search, 200);
 });
 
 document.getElementById('market').addEventListener('change', () => {
-  if (document.getElementById('q').value.trim().length >= 2) search();
+  if (document.getElementById('q').value.trim().length >= 1) search();
   if (currentView === 'd') loadAnalytics();
 });
 
