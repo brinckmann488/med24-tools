@@ -6,25 +6,35 @@
   <title>Typesense Søgetest – Med24</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; padding: 40px 20px; }
-    .container { max-width: 700px; margin: 0 auto; }
-    h1 { font-size: 22px; color: #333; margin-bottom: 6px; }
-    .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
-    .controls { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
-    .search-wrap { position: relative; flex: 1; min-width: 260px; }
-    input[type=text] { width: 100%; padding: 12px 16px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; outline: none; transition: border-color .2s; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f0f0; padding: 32px 20px; }
+    .page-header { max-width: 960px; margin: 0 auto 20px; }
+    h1 { font-size: 20px; color: #333; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: #999; }
+
+    /* View switcher */
+    .view-switcher { display: flex; gap: 6px; margin-bottom: 18px; }
+    .view-btn { padding: 6px 14px; font-size: 13px; border: 2px solid #ddd; border-radius: 20px; background: white; cursor: pointer; color: #555; transition: all .15s; font-weight: 500; }
+    .view-btn:hover { border-color: #bbb; color: #222; }
+    .view-btn.active { border-color: #e0004d; background: #e0004d; color: white; }
+
+    /* Search bar */
+    .search-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
+    .search-wrap { position: relative; flex: 1; }
+    input[type=text] { width: 100%; padding: 13px 18px; font-size: 16px; border: 2px solid #ddd; border-radius: 10px; outline: none; transition: border-color .2s; background: white; }
     input[type=text]:focus { border-color: #e0004d; }
-    select { padding: 11px 12px; font-size: 14px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; }
-    .stats { font-size: 12px; color: #999; margin-bottom: 14px; min-height: 18px; }
-    .results { display: flex; flex-direction: column; gap: 10px; }
+    select { padding: 12px 12px; font-size: 14px; border: 2px solid #ddd; border-radius: 10px; background: white; cursor: pointer; }
+    .stats { font-size: 12px; color: #bbb; margin-bottom: 16px; min-height: 18px; }
+
+    /* ── VIEW B: Card list (current) ── */
+    .view-b .container { max-width: 700px; }
+    .results-b { display: flex; flex-direction: column; gap: 10px; }
     .card { background: white; border-radius: 10px; padding: 14px 16px; display: flex; gap: 14px; align-items: flex-start; box-shadow: 0 1px 4px rgba(0,0,0,.08); transition: box-shadow .15s; }
     .card:hover { box-shadow: 0 3px 12px rgba(0,0,0,.13); }
     .card img { width: 64px; height: 64px; object-fit: contain; border-radius: 6px; background: #f9f9f9; flex-shrink: 0; }
+    .card-img-placeholder { width: 64px; height: 64px; background: #f0f0f0; border-radius: 6px; flex-shrink: 0; }
     .card-body { flex: 1; min-width: 0; }
     .card-name { font-size: 15px; font-weight: 600; color: #222; margin-bottom: 3px; }
-    .card-name mark { background: #fff3c4; border-radius: 3px; padding: 0 2px; font-style: normal; }
     .card-brand { font-size: 12px; color: #e0004d; font-weight: 500; margin-bottom: 5px; }
-    .card-brand mark { background: #ffe5ee; border-radius: 3px; padding: 0 2px; font-style: normal; }
     .card-cats { font-size: 11px; color: #999; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .card-price { font-size: 17px; font-weight: 700; color: #222; }
@@ -34,16 +44,80 @@
     .card-score { font-size: 11px; color: #bbb; margin-left: auto; }
     .card-link { font-size: 11px; color: #aaa; text-decoration: none; }
     .card-link:hover { color: #e0004d; }
-    .empty { text-align: center; color: #aaa; padding: 40px; font-size: 15px; }
-    .spinner { display: none; text-align: center; padding: 30px; color: #bbb; font-size: 14px; }
+    mark { background: #fff3c4; border-radius: 2px; padding: 0 2px; font-style: normal; }
+    .brand-mark mark { background: #ffe5ee; }
+
+    /* ── VIEW A: Federated (Matas-style) ── */
+    .view-a .container { max-width: 960px; }
+    .federated-panel { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.12); display: flex; overflow: hidden; }
+    .fed-left { width: 260px; flex-shrink: 0; border-right: 1px solid #f0f0f0; padding: 16px 0; }
+    .fed-right { flex: 1; padding: 16px 20px; min-width: 0; }
+    .fed-section-title { font-size: 11px; font-weight: 700; color: #aaa; letter-spacing: .06em; text-transform: uppercase; padding: 0 16px 10px; }
+    .suggestion-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; cursor: pointer; transition: background .1s; color: #222; font-size: 14px; }
+    .suggestion-item:hover { background: #f9f9f9; }
+    .suggestion-icon { font-size: 13px; color: #bbb; flex-shrink: 0; }
+    .suggestion-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .suggestion-arrow { font-size: 11px; color: #ddd; flex-shrink: 0; }
+    .fed-products-grid { display: flex; flex-direction: column; gap: 2px; margin-bottom: 16px; }
+    .fed-product { display: flex; align-items: center; gap: 12px; padding: 8px 6px; border-radius: 8px; cursor: pointer; transition: background .1s; text-decoration: none; color: inherit; }
+    .fed-product:hover { background: #f9f9f9; }
+    .fed-product img { width: 48px; height: 48px; object-fit: contain; border-radius: 6px; background: #f9f9f9; flex-shrink: 0; }
+    .fed-product-img-placeholder { width: 48px; height: 48px; background: #f3f3f3; border-radius: 6px; flex-shrink: 0; }
+    .fed-product-info { flex: 1; min-width: 0; }
+    .fed-product-name { font-size: 13px; font-weight: 500; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fed-product-brand { font-size: 11px; color: #e0004d; margin-top: 1px; }
+    .fed-product-price { font-size: 14px; font-weight: 700; color: #222; flex-shrink: 0; }
+    .fed-brands { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
+    .brand-chip { display: inline-block; padding: 5px 12px; border: 1px solid #eee; border-radius: 20px; font-size: 13px; font-weight: 500; color: #444; cursor: pointer; transition: all .15s; background: #fafafa; }
+    .brand-chip:hover { border-color: #e0004d; color: #e0004d; background: #fff5f8; }
+    .fed-divider { border: none; border-top: 1px solid #f0f0f0; margin: 12px 0; }
+    .fed-see-all { display: block; text-align: center; padding: 10px; font-size: 13px; color: #e0004d; font-weight: 500; cursor: pointer; border-top: 1px solid #f5f5f5; margin-top: 8px; }
+    .fed-see-all:hover { background: #fff5f8; }
+
+    /* ── VIEW C: Compact typeahead ── */
+    .view-c .container { max-width: 700px; }
+    .compact-panel { background: white; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.1); overflow: hidden; }
+    .compact-section-title { font-size: 10px; font-weight: 700; color: #bbb; letter-spacing: .06em; text-transform: uppercase; padding: 10px 16px 6px; background: #fafafa; border-bottom: 1px solid #f0f0f0; }
+    .compact-row { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid #f8f8f8; cursor: pointer; transition: background .1s; }
+    .compact-row:hover { background: #fdf5f7; }
+    .compact-row:last-child { border-bottom: none; }
+    .compact-dot { width: 6px; height: 6px; border-radius: 50%; background: #ddd; flex-shrink: 0; }
+    .compact-name { flex: 1; font-size: 14px; color: #222; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .compact-brand { font-size: 12px; color: #999; margin-left: 4px; }
+    .compact-price { font-size: 14px; font-weight: 600; color: #222; flex-shrink: 0; }
+    .compact-stock { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .compact-stock.in { background: #2ecc71; }
+    .compact-stock.out { background: #e74c3c; }
+    .compact-brands-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px; }
+    .compact-brand-tag { padding: 3px 10px; background: #f5f5f5; border-radius: 12px; font-size: 12px; color: #555; cursor: pointer; }
+    .compact-brand-tag:hover { background: #ffe5ee; color: #e0004d; }
+
+    /* Shared */
+    .empty { text-align: center; color: #bbb; padding: 48px 20px; font-size: 15px; }
+    .start-hint { text-align: center; color: #ccc; padding: 48px 20px; font-size: 14px; }
+
+    /* Hidden until correct view */
+    .view-a, .view-b, .view-c { display: none; }
+    .view-a.active, .view-b.active, .view-c.active { display: block; }
+    .container { margin: 0 auto; }
   </style>
 </head>
 <body>
-<div class="container">
+<div class="page-header">
   <h1>Typesense Søgetest</h1>
-  <p class="subtitle">Tester direkte mod Typesense cluster med preset konfiguration — ikke live på sitet endnu</p>
+  <p class="subtitle">Tester direkte mod Typesense cluster — ikke live på sitet endnu</p>
+</div>
 
-  <div class="controls">
+<div style="max-width:960px;margin:0 auto;">
+  <!-- View switcher -->
+  <div class="view-switcher">
+    <button class="view-btn" data-view="a">A — Federet</button>
+    <button class="view-btn active" data-view="b">B — Kort (nuværende)</button>
+    <button class="view-btn" data-view="c">C — Kompakt</button>
+  </div>
+
+  <!-- Search bar (shared) -->
+  <div class="search-bar">
     <div class="search-wrap">
       <input type="text" id="q" placeholder="Søg efter produkt, brand eller indholdsstof..." autofocus>
     </div>
@@ -53,113 +127,283 @@
       <option value="products_no">🇳🇴 NO</option>
     </select>
   </div>
-
   <div class="stats" id="stats"></div>
-  <div class="spinner" id="spinner">Søger...</div>
-  <div class="results" id="results"></div>
+</div>
+
+<!-- VIEW A: Federated -->
+<div class="view-a" id="view-a">
+  <div class="container">
+    <div id="results-a"></div>
+  </div>
+</div>
+
+<!-- VIEW B: Card list -->
+<div class="view-b active" id="view-b">
+  <div class="container" style="max-width:700px;">
+    <div class="results-b" id="results-b"></div>
+  </div>
+</div>
+
+<!-- VIEW C: Compact -->
+<div class="view-c" id="view-c">
+  <div class="container" style="max-width:700px;">
+    <div id="results-c"></div>
+  </div>
 </div>
 
 <script>
 const API_KEY = 'vg9DFhFXwCNxujx9U18CtGFF4bQpthgu';
 const HOST = 'https://hw3ea2fxs7vnzd61p-1.a2.typesense.net';
-
-const presetMap = {
-  products_dk: 'product-search-dk',
-  products_se: 'product-search-se',
-  products_no: 'product-search-no',
-};
-
+const presetMap = { products_dk: 'product-search-dk', products_se: 'product-search-se', products_no: 'product-search-no' };
 const currencyMap = { products_dk: 'kr.', products_se: 'kr.', products_no: 'kr.' };
 
 let timer;
+let currentView = 'b';
+let lastData = null;
+let lastQ = '';
+let lastCollection = 'products_dk';
 
-async function search() {
-  const q = document.getElementById('q').value.trim();
-  const collection = document.getElementById('market').value;
-  const preset = presetMap[collection];
-  const currency = currencyMap[collection];
+// View switcher
+document.querySelectorAll('.view-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentView = btn.dataset.view;
+    document.querySelectorAll('.view-a,.view-b,.view-c').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + currentView).classList.add('active');
+    if (lastData) renderAll(lastData, lastQ, currencyMap[lastCollection]);
+    else if (!document.getElementById('q').value.trim()) showHints();
+  });
+});
 
-  if (!q) {
-    document.getElementById('results').innerHTML = '';
-    document.getElementById('stats').textContent = '';
-    return;
+function fmtPrice(p, currency) {
+  if (!p) return '–';
+  return Number(p).toLocaleString('da', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + currency;
+}
+
+function extractBrands(hits) {
+  const seen = new Set();
+  const brands = [];
+  for (const h of hits) {
+    const b = h.document.brand;
+    if (b && !seen.has(b)) { seen.add(b); brands.push(b); }
+    if (brands.length >= 6) break;
   }
+  return brands;
+}
 
-  document.getElementById('spinner').style.display = 'block';
-  document.getElementById('results').innerHTML = '';
+function buildSuggestions(q, hits) {
+  const suggestions = [];
+  // The query itself
+  suggestions.push({ icon: '🔍', text: q });
+  // Unique brand matches
+  const brands = extractBrands(hits);
+  for (const b of brands.slice(0, 4)) {
+    if (b.toLowerCase().startsWith(q.toLowerCase()) || b.toLowerCase().includes(q.toLowerCase())) {
+      suggestions.push({ icon: '◆', text: b, type: 'brand' });
+    }
+  }
+  // Categories from top hits
+  const seenCats = new Set();
+  for (const h of hits.slice(0, 6)) {
+    const cats = h.document.categories || [];
+    for (const cat of cats.slice(0, 2)) {
+      if (!seenCats.has(cat) && cat.toLowerCase().includes(q.toLowerCase())) {
+        seenCats.add(cat);
+        suggestions.push({ icon: '≡', text: cat, type: 'cat' });
+      }
+      if (seenCats.size >= 2) break;
+    }
+  }
+  return suggestions.slice(0, 7);
+}
 
-  const params = new URLSearchParams({
-    q,
-    preset,
-    per_page: 10,
-    highlight_full_fields: 'name,brand',
-  });
-
-  const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, {
-    headers: { 'X-TYPESENSE-API-KEY': API_KEY }
-  });
-  const data = await res.json();
-  document.getElementById('spinner').style.display = 'none';
-
-  const found = data.found || 0;
-  const ms = data.search_time_ms || 0;
-  document.getElementById('stats').textContent = `${found.toLocaleString('da')} resultater på ${ms} ms`;
-
+// ── Render VIEW A ──
+function renderA(data, q, currency) {
+  const el = document.getElementById('results-a');
   if (!data.hits || data.hits.length === 0) {
-    document.getElementById('results').innerHTML = '<div class="empty">Ingen resultater — prøv et andet søgeord</div>';
+    el.innerHTML = '<div class="empty">Ingen resultater</div>';
     return;
   }
 
-  const html = data.hits.map(hit => {
+  const suggestions = buildSuggestions(q, data.hits);
+  const products = data.hits.slice(0, 5);
+  const brands = extractBrands(data.hits);
+
+  const suggestionsHtml = suggestions.map(s => `
+    <div class="suggestion-item">
+      <span class="suggestion-icon">${s.icon}</span>
+      <span class="suggestion-text">${s.text}</span>
+      <span class="suggestion-arrow">↗</span>
+    </div>`).join('');
+
+  const productsHtml = products.map(h => {
+    const d = h.document;
+    const hl = h.highlights || [];
+    const hlMap = Object.fromEntries(hl.map(x => [x.field, x.snippet || x.value || '']));
+    const name = hlMap.name || d.name || '';
+    const img = d.image_url
+      ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="fed-product-img-placeholder" style="display:none"></div>`
+      : `<div class="fed-product-img-placeholder"></div>`;
+    const link = d.product_url || '#';
+    return `
+      <a class="fed-product" href="${link}" target="_blank">
+        ${img}
+        <div class="fed-product-info">
+          <div class="fed-product-name">${name}</div>
+          ${d.brand ? `<div class="fed-product-brand">${d.brand}</div>` : ''}
+        </div>
+        <div class="fed-product-price">${fmtPrice(d.price, currency)}</div>
+      </a>`;
+  }).join('');
+
+  const brandsHtml = brands.map(b =>
+    `<span class="brand-chip">${b}</span>`
+  ).join('');
+
+  el.innerHTML = `
+    <div class="federated-panel">
+      <div class="fed-left">
+        <div class="fed-section-title">Søgeforslag</div>
+        ${suggestionsHtml}
+      </div>
+      <div class="fed-right">
+        <div class="fed-section-title">Produkter</div>
+        <div class="fed-products-grid">${productsHtml}</div>
+        ${brands.length ? `
+          <hr class="fed-divider">
+          <div class="fed-section-title">Mærker</div>
+          <div class="fed-brands">${brandsHtml}</div>` : ''}
+        <div class="fed-see-all">Se alle ${(data.found||0).toLocaleString('da')} resultater →</div>
+      </div>
+    </div>`;
+}
+
+// ── Render VIEW B ──
+function renderB(data, q, currency) {
+  const el = document.getElementById('results-b');
+  if (!data.hits || data.hits.length === 0) {
+    el.innerHTML = '<div class="empty">Ingen resultater — prøv et andet søgeord</div>';
+    return;
+  }
+  el.innerHTML = data.hits.map(hit => {
     const d = hit.document;
     const hl = hit.highlights || [];
     const hlMap = Object.fromEntries(hl.map(h => [h.field, h.snippet || h.value || '']));
-
     const name = hlMap.name || d.name || '(intet navn)';
     const brand = hlMap.brand || d.brand || '';
     const cats = (d.categories || []).slice(0, 3).join(' › ');
-    const price = d.price ? `${Number(d.price).toLocaleString('da', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ${currency}` : '–';
-    const inStock = d.in_stock;
+    const price = fmtPrice(d.price, currency);
     const score = d.ranking_score ? `Score: ${d.ranking_score}` : '';
     const img = d.image_url
       ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">`
-      : `<div style="width:64px;height:64px;background:#f0f0f0;border-radius:6px;flex-shrink:0"></div>`;
-    const link = d.product_url
-      ? `<a class="card-link" href="${d.product_url}" target="_blank">Åbn produkt ↗</a>`
-      : '';
-
+      : `<div class="card-img-placeholder"></div>`;
+    const link = d.product_url ? `<a class="card-link" href="${d.product_url}" target="_blank">Åbn produkt ↗</a>` : '';
     return `
       <div class="card">
         ${img}
         <div class="card-body">
           <div class="card-name">${name}</div>
-          ${brand ? `<div class="card-brand">${brand}</div>` : ''}
+          ${brand ? `<div class="card-brand brand-mark">${brand}</div>` : ''}
           ${cats ? `<div class="card-cats">${cats}</div>` : ''}
           <div class="card-footer">
             <span class="card-price">${price}</span>
-            <span class="badge ${inStock ? 'badge-in' : 'badge-out'}">${inStock ? 'På lager' : 'Udsolgt'}</span>
+            <span class="badge ${d.in_stock ? 'badge-in' : 'badge-out'}">${d.in_stock ? 'På lager' : 'Udsolgt'}</span>
             ${link}
             <span class="card-score">${score}</span>
           </div>
         </div>
       </div>`;
   }).join('');
+}
 
-  document.getElementById('results').innerHTML = html;
+// ── Render VIEW C ──
+function renderC(data, q, currency) {
+  const el = document.getElementById('results-c');
+  if (!data.hits || data.hits.length === 0) {
+    el.innerHTML = '<div class="empty">Ingen resultater</div>';
+    return;
+  }
+  const brands = extractBrands(data.hits);
+
+  const rowsHtml = data.hits.slice(0, 12).map(h => {
+    const d = h.document;
+    const hl = h.highlights || [];
+    const hlMap = Object.fromEntries(hl.map(x => [x.field, x.snippet || x.value || '']));
+    const name = hlMap.name || d.name || '';
+    const brand = d.brand || '';
+    const link = d.product_url || '#';
+    return `
+      <a class="compact-row" href="${link}" target="_blank" style="text-decoration:none">
+        <span class="compact-stock ${d.in_stock ? 'in' : 'out'}"></span>
+        <span class="compact-name">${name}${brand ? `<span class="compact-brand">· ${brand}</span>` : ''}</span>
+        <span class="compact-price">${fmtPrice(d.price, currency)}</span>
+      </a>`;
+  }).join('');
+
+  const brandsHtml = brands.length
+    ? `<div class="compact-brands-row">${brands.map(b => `<span class="compact-brand-tag">${b}</span>`).join('')}</div>`
+    : '';
+
+  el.innerHTML = `
+    <div class="compact-panel">
+      ${brandsHtml ? `<div class="compact-section-title">Mærker</div>${brandsHtml}` : ''}
+      <div class="compact-section-title">Produkter · ${(data.found||0).toLocaleString('da')} resultater</div>
+      ${rowsHtml}
+    </div>`;
+}
+
+function renderAll(data, q, currency) {
+  if (currentView === 'a') renderA(data, q, currency);
+  else if (currentView === 'b') renderB(data, q, currency);
+  else if (currentView === 'c') renderC(data, q, currency);
+}
+
+function showHints() {
+  document.getElementById('results-a').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
+  document.getElementById('results-b').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
+  document.getElementById('results-c').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
+  document.getElementById('stats').textContent = '';
+}
+
+async function search() {
+  const q = document.getElementById('q').value.trim();
+  const collection = document.getElementById('market').value;
+  const preset = presetMap[collection];
+  const currency = currencyMap[collection];
+  lastCollection = collection;
+  lastQ = q;
+
+  if (!q) { lastData = null; showHints(); return; }
+
+  const params = new URLSearchParams({ q, preset, per_page: 12, highlight_full_fields: 'name,brand' });
+  const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, {
+    headers: { 'X-TYPESENSE-API-KEY': API_KEY }
+  });
+  const data = await res.json();
+  lastData = data;
+
+  const found = data.found || 0;
+  const ms = data.search_time_ms || 0;
+  document.getElementById('stats').textContent = found > 0
+    ? `${found.toLocaleString('da')} resultater på ${ms} ms`
+    : `Ingen resultater · ${ms} ms`;
+
+  renderAll(data, q, currency);
 }
 
 document.getElementById('q').addEventListener('input', () => {
   clearTimeout(timer);
   const q = document.getElementById('q').value.trim();
-  if (q.length < 2) {
-    document.getElementById('results').innerHTML = '';
-    document.getElementById('stats').textContent = '';
-    return;
-  }
-  timer = setTimeout(search, 250);
+  if (q.length < 2) { lastData = null; showHints(); return; }
+  timer = setTimeout(search, 200);
 });
 
-document.getElementById('market').addEventListener('change', search);
+document.getElementById('market').addEventListener('change', () => {
+  if (document.getElementById('q').value.trim().length >= 2) search();
+});
+
+showHints();
 </script>
 </body>
 </html>
