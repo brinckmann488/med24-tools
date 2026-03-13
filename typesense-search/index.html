@@ -157,8 +157,8 @@
 <div style="max-width:960px;margin:0 auto;">
   <!-- View switcher -->
   <div class="view-switcher">
-    <button class="view-btn" data-view="a">A — Kombineret søgning</button>
-    <button class="view-btn active" data-view="b">B — Kort (nuværende)</button>
+    <button class="view-btn active" data-view="a">A — Kombineret søgning</button>
+    <button class="view-btn" data-view="b">B — Kort</button>
     <button class="view-btn" data-view="c">C — Kompakt</button>
     <button class="view-btn" data-view="d">D — Produktgrid</button>
     <a href="analytics.html" class="analytics-link" style="margin-left:auto">📊 Analytics</a>
@@ -179,14 +179,14 @@
 </div>
 
 <!-- VIEW A: Federated -->
-<div class="view-a" id="view-a">
+<div class="view-a active" id="view-a">
   <div class="container">
     <div id="results-a"></div>
   </div>
 </div>
 
 <!-- VIEW B: Card list -->
-<div class="view-b active" id="view-b">
+<div class="view-b" id="view-b">
   <div class="container" style="max-width:700px;">
     <div class="results-b" id="results-b"></div>
   </div>
@@ -245,7 +245,7 @@ const presetMap = { products_dk: 'product-search-dk', products_se: 'product-sear
 const currencyMap = { products_dk: 'kr.', products_se: 'kr.', products_no: 'kr.' };
 
 let timer;
-let currentView = 'b';
+let currentView = 'a';
 let lastData = null;
 let lastQ = '';
 let lastCollection = 'products_dk';
@@ -281,8 +281,6 @@ function extractBrands(hits) {
 
 function buildSuggestions(q, hits) {
   const suggestions = [];
-  // The query itself
-  suggestions.push({ icon: '🔍', text: q });
   // Unique brand matches
   const brands = extractBrands(hits);
   for (const b of brands.slice(0, 4)) {
