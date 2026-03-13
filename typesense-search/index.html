@@ -170,9 +170,9 @@
       <input type="text" id="q" placeholder="Søg efter produkt, brand eller indholdsstof..." autofocus>
     </div>
     <select id="market">
-      <option value="products_dk">🇩🇰 DK</option>
-      <option value="products_se">🇸🇪 SE</option>
-      <option value="products_no">🇳🇴 NO</option>
+      <option value="products_dk">DK &mdash; Danmark</option>
+      <option value="products_se">SE &mdash; Sverige</option>
+      <option value="products_no">NO &mdash; Norge</option>
     </select>
   </div>
   <div class="stats" id="stats"></div>
@@ -522,11 +522,22 @@ async function search() {
   if (!q) { lastData = null; showHints(); return; }
 
   const perPage = currentView === 'd' ? 24 : 12;
-  const params = new URLSearchParams({ q, preset, per_page: perPage, highlight_full_fields: 'name,brand' });
+  const params = new URLSearchParams({ q, preset, per_page: perPage, highlight_full_fields: 'name,brand', group_by: 'brand', group_limit: '3' });
   const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, {
     headers: { 'X-TYPESENSE-API-KEY': API_KEY }
   });
-  const data = await res.json();
+  const raw = await res.json();
+  // Flatten grouped_hits into regular hits array
+  if (raw.grouped_hits && !raw.hits) {
+    raw.hits = [];
+    for (const group of raw.grouped_hits) {
+      for (const hit of group.hits) {
+        raw.hits.push(hit);
+      }
+    }
+    if (!raw.found) raw.found = raw.found_docs || raw.hits.length;
+  }
+  const data = raw;
   lastData = data;
 
   const found = data.found || 0;
