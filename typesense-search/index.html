@@ -206,37 +206,6 @@
   </div>
 </div>
 
-<!-- (unused legacy block) -->
-<div class="view-d" id="view-d">
-  <div class="container" style="max-width:900px;">
-    <div class="stat-boxes" id="analytics-stats">
-      <div class="stat-box"><div class="stat-box-label">Zero-results søgninger</div><div class="stat-box-value" id="stat-nohits">–</div><div class="stat-box-sub">unikke søgetermer uden hits</div></div>
-      <div class="stat-box"><div class="stat-box-label">Populære søgninger</div><div class="stat-box-value" id="stat-popular">–</div><div class="stat-box-sub">unikke søgetermer tracked</div></div>
-      <div class="stat-box"><div class="stat-box-label">Synonymsæt</div><div class="stat-box-value" id="stat-synonyms">20</div><div class="stat-box-sub">aktive synonym-mappings</div></div>
-    </div>
-    <div class="analytics-grid">
-      <div class="analytics-card">
-        <div class="analytics-card-header">
-          <span class="analytics-card-title">Søgninger uden resultater</span>
-          <span class="analytics-card-subtitle" id="nohits-market">DK</span>
-        </div>
-        <div id="nohits-list"><div class="analytics-loading">Henter data...</div></div>
-        <div class="analytics-meta">Opdateres løbende · Hover for at tilføje synonym</div>
-      </div>
-      <div class="analytics-card">
-        <div class="analytics-card-header">
-          <span class="analytics-card-title">Populære søgninger</span>
-          <span class="analytics-card-subtitle" id="popular-market">DK</span>
-        </div>
-        <div id="popular-list"><div class="analytics-loading">Henter data...</div></div>
-        <div class="analytics-meta">Top 20 søgetermer siden aktivering</div>
-      </div>
-    </div>
-    <div style="font-size:12px;color:#bbb;margin-top:4px;">
-      Data samles fra det tidspunkt analytics-reglerne blev aktiveret. Zero-results vises i rød — kandidater til nye synonymer.
-    </div>
-  </div>
-</div>
 
 <script>
 const API_KEY = 'vg9DFhFXwCNxujx9U18CtGFF4bQpthgu';
@@ -256,10 +225,13 @@ document.querySelectorAll('.view-btn').forEach(btn => {
     document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentView = btn.dataset.view;
-    document.querySelectorAll('.view-a,.view-b,.view-c').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.view-a,.view-b,.view-c,.view-d').forEach(v => v.classList.remove('active'));
     document.getElementById('view-' + currentView).classList.add('active');
     if (lastData) renderAll(lastData, lastQ, currencyMap[lastCollection]);
-    else if (!document.getElementById('q').value.trim()) showHints();
+    else if (!document.getElementById('q').value.trim()) {
+      if (currentView === 'a') showPopular();
+      else showHints();
+    }
   });
 });
 
@@ -483,6 +455,55 @@ function showHints() {
   document.getElementById('stats').textContent = '';
 }
 
+// ── Popular on focus (Matas-style) ──
+let cachedPopular = null;
+
+async function loadPopularQueries() {
+  if (cachedPopular) return cachedPopular;
+  const marketCode = document.getElementById('market').value.split('_')[1];
+  try {
+    const params = new URLSearchParams({ q: '*', sort_by: 'count:desc', per_page: 8 });
+    const res = await fetch(`${HOST}/collections/analytics_popular_${marketCode}/documents/search?${params}`, {
+      headers: { 'X-TYPESENSE-API-KEY': API_KEY }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    cachedPopular = (data.hits || []).map(h => h.document.q).filter(Boolean);
+    return cachedPopular;
+  } catch { return []; }
+}
+
+async function showPopular() {
+  const queries = await loadPopularQueries();
+  const el = document.getElementById('results-a');
+  if (!el) return;
+  if (!queries.length) {
+    el.innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
+    return;
+  }
+  const itemsHtml = queries.map(q => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(q)})">
+      <span class="suggestion-icon" style="color:#e0004d">↑</span>
+      <span class="suggestion-text">${q}</span>
+      <span class="suggestion-arrow">↗</span>
+    </div>`).join('');
+  el.innerHTML = `
+    <div class="federated-panel">
+      <div class="fed-left">
+        <div class="fed-section-title">Populære søgninger</div>
+        ${itemsHtml}
+      </div>
+      <div class="fed-right" style="display:flex;align-items:center;justify-content:center;">
+        <div style="color:#ccc;font-size:14px;text-align:center;padding:24px;">Klik på en søgning<br>eller begynd at skrive</div>
+      </div>
+    </div>`;
+}
+
+function fillSearch(q) {
+  document.getElementById('q').value = q;
+  search();
+}
+
 async function search() {
   const q = document.getElementById('q').value.trim();
   const collection = document.getElementById('market').value;
@@ -514,12 +535,24 @@ async function search() {
 document.getElementById('q').addEventListener('input', () => {
   clearTimeout(timer);
   const q = document.getElementById('q').value.trim();
-  if (q.length < 1) { lastData = null; showHints(); return; }
+  if (q.length < 2) {
+    lastData = null;
+    if (currentView === 'a') showPopular();
+    else showHints();
+    return;
+  }
   timer = setTimeout(search, 200);
 });
 
+document.getElementById('q').addEventListener('focus', () => {
+  if (!document.getElementById('q').value.trim() && currentView === 'a') showPopular();
+});
+
 document.getElementById('market').addEventListener('change', () => {
-  if (document.getElementById('q').value.trim().length >= 1) search();
+  cachedPopular = null;
+  const q = document.getElementById('q').value.trim();
+  if (q.length >= 2) search();
+  else if (currentView === 'a') showPopular();
   if (currentView === 'd') loadAnalytics();
 });
 
@@ -615,6 +648,7 @@ origViewSwitch.forEach(btn => {
 });
 
 showHints();
+showPopular(); // pre-load popular queries for view A
 </script>
 </body>
 </html>
