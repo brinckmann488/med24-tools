@@ -522,20 +522,19 @@ async function search() {
   if (!q) { lastData = null; showHints(); return; }
 
   const perPage = currentView === 'd' ? 24 : 12;
-  const params = new URLSearchParams({ q, preset, per_page: perPage, highlight_full_fields: 'name,brand', group_by: 'brand', group_limit: '3' });
+  const params = new URLSearchParams({ q, preset, per_page: perPage, highlight_full_fields: 'name,brand' });
   const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, {
     headers: { 'X-TYPESENSE-API-KEY': API_KEY }
   });
   const raw = await res.json();
-  // Flatten grouped_hits into regular hits array
-  if (raw.grouped_hits && !raw.hits) {
-    raw.hits = [];
-    for (const group of raw.grouped_hits) {
-      for (const hit of group.hits) {
-        raw.hits.push(hit);
-      }
-    }
-    if (!raw.found) raw.found = raw.found_docs || raw.hits.length;
+  // Client-side brand diversity: max 3 products per brand
+  if (raw.hits && raw.hits.length > 0) {
+    const brandCount = {};
+    raw.hits = raw.hits.filter(h => {
+      const brand = (h.document.brand || "").toLowerCase();
+      brandCount[brand] = (brandCount[brand] || 0) + 1;
+      return brandCount[brand] <= 3;
+    });
   }
   const data = raw;
   lastData = data;
