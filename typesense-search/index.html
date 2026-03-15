@@ -169,6 +169,14 @@
     .sim-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
     .sim-card-price { font-size: 14px; font-weight: 700; }
     .sim-card-dist { position: absolute; top: 6px; right: 6px; font-size: 10px; color: #bbb; background: rgba(255,255,255,.85); padding: 2px 6px; border-radius: 8px; }
+    .picker-dropdown { position: absolute; top: 0; left: 0; right: 0; background: white; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,.15); z-index: 10; overflow: hidden; }
+    .picker-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; transition: background .1s; border-bottom: 1px solid #f5f5f5; }
+    .picker-item:hover { background: #fdf5f7; }
+    .picker-item:last-child { border-bottom: none; }
+    .picker-item img { width: 40px; height: 40px; object-fit: contain; border-radius: 4px; background: #f9f9f9; flex-shrink: 0; }
+    .picker-item-info { flex: 1; min-width: 0; }
+    .picker-item-name { font-size: 13px; font-weight: 500; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .picker-item-meta { font-size: 11px; color: #999; }
   </style>
 </head>
 <body>
@@ -234,9 +242,10 @@
 <div class="view-e" id="view-e">
   <div class="container" style="max-width:960px;">
     <div class="similar-input-bar">
-      <input type="text" id="similar-id" placeholder="Indtast produkt-ID (f.eks. 45)...">
+      <input type="text" id="similar-q" placeholder="Søg produkt ved navn eller ID..." autocomplete="off">
       <button onclick="searchSimilar()">Find alternativer</button>
     </div>
+    <div id="similar-picker" style="position:relative;"></div>
     <div id="source-product"></div>
     <div id="similar-results"></div>
   </div>
@@ -706,8 +715,67 @@ showHints();
 showPopular(); // pre-load popular queries for view A
 
 // ── VIEW E: Alternative Produkter (vector search) ──
+let similarSelectedId = null;
+let similarTimer = null;
+
+// Typeahead: search products by name as user types
+document.getElementById('similar-q').addEventListener('input', () => {
+  clearTimeout(similarTimer);
+  const q = document.getElementById('similar-q').value.trim();
+  if (q.length < 2) { closePicker(); return; }
+  // If input is purely numeric, treat as direct ID
+  if (/^\d+$/.test(q)) { closePicker(); similarSelectedId = q; return; }
+  similarTimer = setTimeout(() => searchPicker(q), 200);
+});
+
+document.getElementById('similar-q').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { closePicker(); searchSimilar(); }
+});
+
+// Close picker when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#similar-picker') && !e.target.closest('#similar-q')) closePicker();
+});
+
+function closePicker() {
+  document.getElementById('similar-picker').innerHTML = '';
+}
+
+async function searchPicker(q) {
+  const collection = document.getElementById('market').value;
+  const currency = currencyMap[collection];
+  const params = new URLSearchParams({ q, query_by: 'name,brand', per_page: 6, exclude_fields: 'embedding', highlight_full_fields: 'name' });
+  try {
+    const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } });
+    const data = await res.json();
+    if (!data.hits || data.hits.length === 0) { closePicker(); return; }
+    const html = data.hits.map(h => {
+      const d = h.document;
+      const img = d.image_url ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">` : '';
+      return `<div class="picker-item" data-id="${d.id}">
+        ${img}
+        <div class="picker-item-info">
+          <div class="picker-item-name">${d.name}</div>
+          <div class="picker-item-meta">${d.brand || ''} · ${fmtPrice(d.price, currency)} · ID: ${d.id}</div>
+        </div>
+      </div>`;
+    }).join('');
+    const picker = document.getElementById('similar-picker');
+    picker.innerHTML = `<div class="picker-dropdown">${html}</div>`;
+    picker.querySelectorAll('.picker-item').forEach(el => {
+      el.addEventListener('click', () => {
+        similarSelectedId = el.dataset.id;
+        document.getElementById('similar-q').value = el.querySelector('.picker-item-name').textContent;
+        closePicker();
+        searchSimilar();
+      });
+    });
+  } catch (e) { closePicker(); }
+}
+
 async function searchSimilar() {
-  const productId = document.getElementById('similar-id').value.trim();
+  const input = document.getElementById('similar-q').value.trim();
+  const productId = similarSelectedId || (/^\d+$/.test(input) ? input : null);
   if (!productId) return;
   const collection = document.getElementById('market').value;
   const currency = currencyMap[collection];
@@ -726,7 +794,6 @@ async function searchSimilar() {
     sourceDoc = await srcRes.json();
   } catch (e) { srcEl.innerHTML = '<div class="empty">Fejl ved hentning af produkt</div>'; return; }
 
-  // Render source product
   const srcImg = sourceDoc.image_url
     ? `<img src="${sourceDoc.image_url}" alt="" onerror="this.style.display='none'">`
     : '';
@@ -784,11 +851,6 @@ async function searchSimilar() {
     resEl.innerHTML = '<div class="empty">Fejl ved vektor-søgning</div>';
   }
 }
-
-// Allow Enter key in similar-id input
-document.getElementById('similar-id').addEventListener('keydown', e => {
-  if (e.key === 'Enter') searchSimilar();
-});
 </script>
 </body>
 </html>
