@@ -74,23 +74,7 @@
     .fed-see-all { display: block; text-align: center; padding: 10px; font-size: 13px; color: #e0004d; font-weight: 500; cursor: pointer; border-top: 1px solid #f5f5f5; margin-top: 8px; }
     .fed-see-all:hover { background: #fff5f8; }
 
-    /* ── VIEW C: Compact typeahead ── */
-    .view-c .container { max-width: 700px; }
-    .compact-panel { background: white; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.1); overflow: hidden; }
-    .compact-section-title { font-size: 10px; font-weight: 700; color: #bbb; letter-spacing: .06em; text-transform: uppercase; padding: 10px 16px 6px; background: #fafafa; border-bottom: 1px solid #f0f0f0; }
-    .compact-row { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid #f8f8f8; cursor: pointer; transition: background .1s; }
-    .compact-row:hover { background: #fdf5f7; }
-    .compact-row:last-child { border-bottom: none; }
-    .compact-dot { width: 6px; height: 6px; border-radius: 50%; background: #ddd; flex-shrink: 0; }
-    .compact-name { flex: 1; font-size: 14px; color: #222; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .compact-brand { font-size: 12px; color: #999; margin-left: 4px; }
-    .compact-price { font-size: 14px; font-weight: 600; color: #222; flex-shrink: 0; }
-    .compact-stock { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-    .compact-stock.in { background: #2ecc71; }
-    .compact-stock.out { background: #e74c3c; }
-    .compact-brands-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px; }
-    .compact-brand-tag { padding: 3px 10px; background: #f5f5f5; border-radius: 12px; font-size: 12px; color: #555; cursor: pointer; }
-    .compact-brand-tag:hover { background: #ffe5ee; color: #e0004d; }
+    /* ── VIEW C: Product grid ── */
 
     /* Shared */
     .empty { text-align: center; color: #bbb; padding: 48px 20px; font-size: 15px; }
@@ -123,8 +107,8 @@
     .stat-box-value { font-size: 24px; font-weight: 700; color: #222; }
     .stat-box-sub { font-size: 11px; color: #bbb; margin-top: 2px; }
 
-    /* ── VIEW D: Product grid ── */
-    .view-d .container { max-width: 960px; }
+    /* ── VIEW C: Product grid ── */
+    .view-c .container { max-width: 960px; }
     .grid-panel { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
     .grid-card { background: white; border-radius: 10px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.08); display: flex; flex-direction: column; gap: 8px; transition: box-shadow .15s; text-decoration: none; color: inherit; }
     .grid-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.13); }
@@ -190,8 +174,8 @@
   <div class="view-switcher">
     <button class="view-btn active" data-view="a">A — Kombineret søgning</button>
     <button class="view-btn" data-view="b">B — Kort</button>
-    <button class="view-btn" data-view="c">C — Andre købte også</button>
-    <button class="view-btn" data-view="d">D — Produktgrid</button>
+    <button class="view-btn" data-view="c">C — Produktgrid</button>
+    <button class="view-btn" data-view="d">D — Andre købte også</button>
     <button class="view-btn" data-view="e">E — Alternative Produkter</button>
     <a href="analytics.html" class="analytics-link" style="margin-left:auto">📊 Analytics</a>
   </div>
@@ -224,8 +208,15 @@
   </div>
 </div>
 
-<!-- VIEW C: Andre købte også -->
+<!-- VIEW C: Product grid -->
 <div class="view-c" id="view-c">
+  <div class="container" style="max-width:960px;">
+    <div id="results-c"></div>
+  </div>
+</div>
+
+<!-- VIEW D: Andre købte også -->
+<div class="view-d" id="view-d">
   <div class="container" style="max-width:960px;">
     <div class="similar-input-bar">
       <input type="text" id="copurchase-q" placeholder="Søg produkt ved navn eller ID..." autocomplete="off">
@@ -234,13 +225,6 @@
     <div id="copurchase-picker" style="position:relative;"></div>
     <div id="copurchase-source"></div>
     <div id="copurchase-results"></div>
-  </div>
-</div>
-
-<!-- VIEW D: Product grid -->
-<div class="view-d" id="view-d">
-  <div class="container" style="max-width:960px;">
-    <div id="results-d"></div>
   </div>
 </div>
 
@@ -277,7 +261,7 @@ document.querySelectorAll('.view-btn').forEach(btn => {
     currentView = btn.dataset.view;
     document.querySelectorAll('.view-a,.view-b,.view-c,.view-d,.view-e').forEach(v => v.classList.remove('active'));
     // Hide search bar in view E (it has its own input)
-    const hideSearch = currentView === 'c' || currentView === 'e';
+    const hideSearch = currentView === 'd' || currentView === 'e';
     document.querySelector('.search-bar').style.display = hideSearch ? 'none' : 'flex';
     document.getElementById('stats').style.display = hideSearch ? 'none' : 'block';
     document.getElementById('view-' + currentView).classList.add('active');
@@ -436,12 +420,9 @@ function renderB(data, q, currency) {
   }).join('');
 }
 
-// ── Render VIEW C (no longer used for search results — co-purchase has own UI) ──
-function renderC() {}
-
-// ── Render VIEW D ──
-function renderD(data, q, currency) {
-  const el = document.getElementById('results-d');
+// ── Render VIEW C (Product grid) ──
+function renderC(data, q, currency) {
+  const el = document.getElementById('results-c');
   if (!data.hits || data.hits.length === 0) {
     el.innerHTML = '<div class="empty">Ingen resultater</div>';
     return;
@@ -471,14 +452,12 @@ function renderAll(data, q, currency) {
   if (currentView === 'a') renderA(data, q, currency);
   else if (currentView === 'b') renderB(data, q, currency);
   else if (currentView === 'c') renderC(data, q, currency);
-  else if (currentView === 'd') renderD(data, q, currency);
 }
 
 function showHints() {
   document.getElementById('results-a').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
   document.getElementById('results-b').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
   document.getElementById('results-c').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
-  document.getElementById('results-d').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
   document.getElementById('stats').textContent = '';
 }
 
@@ -675,14 +654,6 @@ async function loadAnalytics() {
         </div>`;
       }).join('');
 }
-
-// Load analytics when switching to view D
-const origViewSwitch = document.querySelectorAll('.view-btn');
-origViewSwitch.forEach(btn => {
-  btn.addEventListener('click', () => {
-    if (btn.dataset.view === 'd') loadAnalytics();
-  });
-});
 
 showHints();
 showPopular(); // pre-load popular queries for view A
