@@ -745,8 +745,8 @@ async function searchSimilar() {
   try {
     const params = new URLSearchParams({
       q: '*',
-      vector_query: `embedding:([], id: "${productId}")`,
-      filter_by: `id:!=${productId} && in_stock:true`,
+      vector_query: `embedding:([], id:${productId})`,
+      filter_by: `id:!=${productId}&&in_stock:true`,
       per_page: 10,
       exclude_fields: 'embedding'
     });
