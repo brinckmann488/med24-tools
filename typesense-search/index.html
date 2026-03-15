@@ -143,9 +143,32 @@
     .analytics-link:hover { background: #e0004d; color: white; }
 
     /* Hidden until correct view */
-    .view-a, .view-b, .view-c, .view-d { display: none; }
-    .view-a.active, .view-b.active, .view-c.active, .view-d.active { display: block; }
+    .view-a, .view-b, .view-c, .view-d, .view-e { display: none; }
+    .view-a.active, .view-b.active, .view-c.active, .view-d.active, .view-e.active { display: block; }
     .container { margin: 0 auto; }
+    /* ── VIEW E: Similar Products ── */
+    .view-e .container { max-width: 960px; }
+    .similar-input-bar { display: flex; gap: 10px; margin-bottom: 16px; }
+    .similar-input-bar input { flex: 1; padding: 12px 16px; font-size: 15px; border: 2px solid #ddd; border-radius: 10px; outline: none; }
+    .similar-input-bar input:focus { border-color: #e0004d; }
+    .similar-input-bar button { padding: 12px 24px; font-size: 14px; font-weight: 600; border: none; border-radius: 10px; background: #e0004d; color: white; cursor: pointer; transition: background .15s; }
+    .similar-input-bar button:hover { background: #c20040; }
+    .source-product { background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; display: flex; gap: 16px; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,.1); border-left: 4px solid #e0004d; }
+    .source-product img { width: 72px; height: 72px; object-fit: contain; border-radius: 8px; background: #f9f9f9; }
+    .source-product-info h3 { font-size: 16px; margin-bottom: 4px; }
+    .source-product-info .sp-brand { font-size: 13px; color: #e0004d; font-weight: 500; }
+    .source-product-info .sp-meta { font-size: 12px; color: #999; margin-top: 4px; }
+    .similar-label { font-size: 12px; font-weight: 700; color: #aaa; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 12px; }
+    .similar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    @media (max-width: 700px) { .similar-grid { grid-template-columns: repeat(2, 1fr); } }
+    .sim-card { background: white; border-radius: 10px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; transition: box-shadow .15s; position: relative; }
+    .sim-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.13); }
+    .sim-card img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 6px; background: #f9f9f9; }
+    .sim-card-name { font-size: 12px; font-weight: 500; color: #222; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .sim-card-brand { font-size: 11px; color: #e0004d; }
+    .sim-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+    .sim-card-price { font-size: 14px; font-weight: 700; }
+    .sim-card-dist { position: absolute; top: 6px; right: 6px; font-size: 10px; color: #bbb; background: rgba(255,255,255,.85); padding: 2px 6px; border-radius: 8px; }
   </style>
 </head>
 <body>
@@ -161,6 +184,7 @@
     <button class="view-btn" data-view="b">B — Kort</button>
     <button class="view-btn" data-view="c">C — Kompakt</button>
     <button class="view-btn" data-view="d">D — Produktgrid</button>
+    <button class="view-btn" data-view="e">E — Alternative Produkter</button>
     <a href="analytics.html" class="analytics-link" style="margin-left:auto">📊 Analytics</a>
   </div>
 
@@ -206,6 +230,17 @@
   </div>
 </div>
 
+<!-- VIEW E: Alternative Produkter (vector search) -->
+<div class="view-e" id="view-e">
+  <div class="container" style="max-width:960px;">
+    <div class="similar-input-bar">
+      <input type="text" id="similar-id" placeholder="Indtast produkt-ID (f.eks. 45)...">
+      <button onclick="searchSimilar()">Find alternativer</button>
+    </div>
+    <div id="source-product"></div>
+    <div id="similar-results"></div>
+  </div>
+</div>
 
 <script>
 const API_KEY = 'vg9DFhFXwCNxujx9U18CtGFF4bQpthgu';
@@ -225,7 +260,10 @@ document.querySelectorAll('.view-btn').forEach(btn => {
     document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentView = btn.dataset.view;
-    document.querySelectorAll('.view-a,.view-b,.view-c,.view-d').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.view-a,.view-b,.view-c,.view-d,.view-e').forEach(v => v.classList.remove('active'));
+    // Hide search bar in view E (it has its own input)
+    document.querySelector('.search-bar').style.display = currentView === 'e' ? 'none' : 'flex';
+    document.getElementById('stats').style.display = currentView === 'e' ? 'none' : 'block';
     document.getElementById('view-' + currentView).classList.add('active');
     if (lastData) renderAll(lastData, lastQ, currencyMap[lastCollection]);
     else if (!document.getElementById('q').value.trim()) {
@@ -666,6 +704,91 @@ origViewSwitch.forEach(btn => {
 
 showHints();
 showPopular(); // pre-load popular queries for view A
+
+// ── VIEW E: Alternative Produkter (vector search) ──
+async function searchSimilar() {
+  const productId = document.getElementById('similar-id').value.trim();
+  if (!productId) return;
+  const collection = document.getElementById('market').value;
+  const currency = currencyMap[collection];
+  const srcEl = document.getElementById('source-product');
+  const resEl = document.getElementById('similar-results');
+  srcEl.innerHTML = '<div class="start-hint">Henter produkt...</div>';
+  resEl.innerHTML = '';
+
+  const headers = { 'X-TYPESENSE-API-KEY': API_KEY };
+
+  // 1. Fetch source product
+  let sourceDoc;
+  try {
+    const srcRes = await fetch(`${HOST}/collections/${collection}/documents/${productId}`, { headers });
+    if (!srcRes.ok) { srcEl.innerHTML = '<div class="empty">Produkt ikke fundet — tjek ID og marked</div>'; return; }
+    sourceDoc = await srcRes.json();
+  } catch (e) { srcEl.innerHTML = '<div class="empty">Fejl ved hentning af produkt</div>'; return; }
+
+  // Render source product
+  const srcImg = sourceDoc.image_url
+    ? `<img src="${sourceDoc.image_url}" alt="" onerror="this.style.display='none'">`
+    : '';
+  srcEl.innerHTML = `
+    <div class="source-product">
+      ${srcImg}
+      <div class="source-product-info">
+        <h3>${sourceDoc.name || 'Ukendt'}</h3>
+        ${sourceDoc.brand ? `<div class="sp-brand">${sourceDoc.brand}</div>` : ''}
+        <div class="sp-meta">ID: ${sourceDoc.id} · ${fmtPrice(sourceDoc.price, currency)} · ${sourceDoc.in_stock ? 'På lager' : 'Udsolgt'}</div>
+      </div>
+    </div>`;
+
+  // 2. Vector search for similar products
+  resEl.innerHTML = '<div class="start-hint">Søger efter alternativer...</div>';
+  try {
+    const params = new URLSearchParams({
+      q: '*',
+      vector_query: `embedding:([], id: "${productId}")`,
+      filter_by: `id:!=${productId} && in_stock:true`,
+      per_page: 10,
+      exclude_fields: 'embedding'
+    });
+    const simRes = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers });
+    const simData = await simRes.json();
+
+    if (!simData.hits || simData.hits.length === 0) {
+      resEl.innerHTML = '<div class="empty">Ingen alternativer fundet</div>';
+      return;
+    }
+
+    const cardsHtml = simData.hits.map(h => {
+      const d = h.document;
+      const dist = h.vector_distance != null ? (h.vector_distance).toFixed(3) : '';
+      const img = d.image_url
+        ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">`
+        : `<div class="grid-card-img-placeholder"></div>`;
+      const link = d.product_url || '#';
+      return `<a class="sim-card" href="${link}" target="_blank">
+        ${dist ? `<span class="sim-card-dist">${dist}</span>` : ''}
+        ${img}
+        <div class="sim-card-name">${d.name || ''}</div>
+        ${d.brand ? `<div class="sim-card-brand">${d.brand}</div>` : ''}
+        <div class="sim-card-footer">
+          <span class="sim-card-price">${fmtPrice(d.price, currency)}</span>
+          <span class="grid-card-stock ${d.in_stock ? 'in' : 'out'}"></span>
+        </div>
+      </a>`;
+    }).join('');
+
+    resEl.innerHTML = `
+      <div class="similar-label">Alternative produkter (${simData.hits.length} fundet via vektor-søgning)</div>
+      <div class="similar-grid">${cardsHtml}</div>`;
+  } catch (e) {
+    resEl.innerHTML = '<div class="empty">Fejl ved vektor-søgning</div>';
+  }
+}
+
+// Allow Enter key in similar-id input
+document.getElementById('similar-id').addEventListener('keydown', e => {
+  if (e.key === 'Enter') searchSimilar();
+});
 </script>
 </body>
 </html>
