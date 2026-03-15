@@ -190,7 +190,7 @@
   <div class="view-switcher">
     <button class="view-btn active" data-view="a">A — Kombineret søgning</button>
     <button class="view-btn" data-view="b">B — Kort</button>
-    <button class="view-btn" data-view="c">C — Kompakt</button>
+    <button class="view-btn" data-view="c">C — Andre købte også</button>
     <button class="view-btn" data-view="d">D — Produktgrid</button>
     <button class="view-btn" data-view="e">E — Alternative Produkter</button>
     <a href="analytics.html" class="analytics-link" style="margin-left:auto">📊 Analytics</a>
@@ -224,10 +224,16 @@
   </div>
 </div>
 
-<!-- VIEW C: Compact -->
+<!-- VIEW C: Andre købte også -->
 <div class="view-c" id="view-c">
-  <div class="container" style="max-width:700px;">
-    <div id="results-c"></div>
+  <div class="container" style="max-width:960px;">
+    <div class="similar-input-bar">
+      <input type="text" id="copurchase-q" placeholder="Søg produkt ved navn eller ID..." autocomplete="off">
+      <button onclick="searchCoPurchase()">Vis co-køb</button>
+    </div>
+    <div id="copurchase-picker" style="position:relative;"></div>
+    <div id="copurchase-source"></div>
+    <div id="copurchase-results"></div>
   </div>
 </div>
 
@@ -271,8 +277,9 @@ document.querySelectorAll('.view-btn').forEach(btn => {
     currentView = btn.dataset.view;
     document.querySelectorAll('.view-a,.view-b,.view-c,.view-d,.view-e').forEach(v => v.classList.remove('active'));
     // Hide search bar in view E (it has its own input)
-    document.querySelector('.search-bar').style.display = currentView === 'e' ? 'none' : 'flex';
-    document.getElementById('stats').style.display = currentView === 'e' ? 'none' : 'block';
+    const hideSearch = currentView === 'c' || currentView === 'e';
+    document.querySelector('.search-bar').style.display = hideSearch ? 'none' : 'flex';
+    document.getElementById('stats').style.display = hideSearch ? 'none' : 'block';
     document.getElementById('view-' + currentView).classList.add('active');
     if (lastData) renderAll(lastData, lastQ, currencyMap[lastCollection]);
     else if (!document.getElementById('q').value.trim()) {
@@ -429,42 +436,8 @@ function renderB(data, q, currency) {
   }).join('');
 }
 
-// ── Render VIEW C ──
-function renderC(data, q, currency) {
-  const el = document.getElementById('results-c');
-  if (!data.hits || data.hits.length === 0) {
-    el.innerHTML = '<div class="empty">Ingen resultater</div>';
-    return;
-  }
-  const brands = extractBrands(data.hits);
-
-  const rowsHtml = data.hits.slice(0, 12).map(h => {
-    const d = h.document;
-    const hl = h.highlights || [];
-    const hlMap = Object.fromEntries(hl.map(x => [x.field, x.snippet || x.value || '']));
-    const name = hlMap.name || d.name || '';
-    const brand = d.brand || '';
-    const link = d.product_url || '#';
-    const pos2 = data.hits.indexOf(h) + 1;
-    return `
-      <a class="compact-row" href="${link}" target="_blank" style="text-decoration:none" data-doc-id="${d.id}" data-pos="${pos2}">
-        <span class="compact-stock ${d.in_stock ? 'in' : 'out'}"></span>
-        <span class="compact-name">${name}${brand ? `<span class="compact-brand">· ${brand}</span>` : ''}</span>
-        <span class="compact-price">${fmtPrice(d.price, currency)}</span>
-      </a>`;
-  }).join('');
-
-  const brandsHtml = brands.length
-    ? `<div class="compact-brands-row">${brands.map(b => `<span class="compact-brand-tag">${b}</span>`).join('')}</div>`
-    : '';
-
-  el.innerHTML = `
-    <div class="compact-panel">
-      ${brandsHtml ? `<div class="compact-section-title">Mærker</div>${brandsHtml}` : ''}
-      <div class="compact-section-title">Produkter · ${(data.found||0).toLocaleString('da')} resultater</div>
-      ${rowsHtml}
-    </div>`;
-}
+// ── Render VIEW C (no longer used for search results — co-purchase has own UI) ──
+function renderC() {}
 
 // ── Render VIEW D ──
 function renderD(data, q, currency) {
@@ -849,6 +822,152 @@ async function searchSimilar() {
       <div class="similar-grid">${cardsHtml}</div>`;
   } catch (e) {
     resEl.innerHTML = '<div class="empty">Fejl ved vektor-søgning</div>';
+  }
+}
+
+// ── VIEW C: Andre købte også ──
+let copurchaseSelectedId = null;
+let copurchaseTimer = null;
+
+document.getElementById('copurchase-q').addEventListener('input', () => {
+  clearTimeout(copurchaseTimer);
+  const q = document.getElementById('copurchase-q').value.trim();
+  if (q.length < 2) { closeCopurchasePicker(); return; }
+  if (/^\d+$/.test(q)) { closeCopurchasePicker(); copurchaseSelectedId = q; return; }
+  copurchaseTimer = setTimeout(() => searchCopurchasePicker(q), 200);
+});
+
+document.getElementById('copurchase-q').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { closeCopurchasePicker(); searchCoPurchase(); }
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#copurchase-picker') && !e.target.closest('#copurchase-q')) closeCopurchasePicker();
+});
+
+function closeCopurchasePicker() {
+  document.getElementById('copurchase-picker').innerHTML = '';
+}
+
+async function searchCopurchasePicker(q) {
+  const collection = document.getElementById('market').value;
+  const currency = currencyMap[collection];
+  const params = new URLSearchParams({ q, query_by: 'name,brand', per_page: 6, exclude_fields: 'embedding', highlight_full_fields: 'name' });
+  try {
+    const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } });
+    const data = await res.json();
+    if (!data.hits || data.hits.length === 0) { closeCopurchasePicker(); return; }
+    const html = data.hits.map(h => {
+      const d = h.document;
+      const hasCo = d.bought_together_ids && d.bought_together_ids.length > 0;
+      const img = d.image_url ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">` : '';
+      return `<div class="picker-item" data-id="${d.id}">
+        ${img}
+        <div class="picker-item-info">
+          <div class="picker-item-name">${d.name}</div>
+          <div class="picker-item-meta">${d.brand || ''} · ${fmtPrice(d.price, currency)} · ID: ${d.id}${hasCo ? ' · ' + d.bought_together_ids.length + ' co-køb' : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+    const picker = document.getElementById('copurchase-picker');
+    picker.innerHTML = `<div class="picker-dropdown">${html}</div>`;
+    picker.querySelectorAll('.picker-item').forEach(el => {
+      el.addEventListener('click', () => {
+        copurchaseSelectedId = el.dataset.id;
+        document.getElementById('copurchase-q').value = el.querySelector('.picker-item-name').textContent;
+        closeCopurchasePicker();
+        searchCoPurchase();
+      });
+    });
+  } catch (e) { closeCopurchasePicker(); }
+}
+
+async function searchCoPurchase() {
+  const input = document.getElementById('copurchase-q').value.trim();
+  const productId = copurchaseSelectedId || (/^\d+$/.test(input) ? input : null);
+  if (!productId) return;
+  const collection = document.getElementById('market').value;
+  const currency = currencyMap[collection];
+  const srcEl = document.getElementById('copurchase-source');
+  const resEl = document.getElementById('copurchase-results');
+  srcEl.innerHTML = '<div class="start-hint">Henter produkt...</div>';
+  resEl.innerHTML = '';
+
+  const headers = { 'X-TYPESENSE-API-KEY': API_KEY };
+
+  // 1. Fetch source product (including bought_together_ids)
+  let sourceDoc;
+  try {
+    const srcRes = await fetch(`${HOST}/collections/${collection}/documents/${productId}`, { headers });
+    if (!srcRes.ok) { srcEl.innerHTML = '<div class="empty">Produkt ikke fundet — tjek ID og marked</div>'; return; }
+    sourceDoc = await srcRes.json();
+  } catch (e) { srcEl.innerHTML = '<div class="empty">Fejl ved hentning af produkt</div>'; return; }
+
+  const srcImg = sourceDoc.image_url
+    ? `<img src="${sourceDoc.image_url}" alt="" onerror="this.style.display='none'">`
+    : '';
+  srcEl.innerHTML = `
+    <div class="source-product">
+      ${srcImg}
+      <div class="source-product-info">
+        <h3>${sourceDoc.name || 'Ukendt'}</h3>
+        ${sourceDoc.brand ? `<div class="sp-brand">${sourceDoc.brand}</div>` : ''}
+        <div class="sp-meta">ID: ${sourceDoc.id} · ${fmtPrice(sourceDoc.price, currency)} · ${sourceDoc.in_stock ? 'På lager' : 'Udsolgt'}</div>
+      </div>
+    </div>`;
+
+  // 2. Check bought_together_ids
+  const coIds = sourceDoc.bought_together_ids || [];
+  if (coIds.length === 0) {
+    resEl.innerHTML = '<div class="empty">Ikke nok ordredata til dette produkt endnu.</div>';
+    return;
+  }
+
+  // 3. Fetch the co-purchased products by ID filter
+  resEl.innerHTML = '<div class="start-hint">Henter co-køb...</div>';
+  try {
+    const idFilter = coIds.map(id => `id:=${id}`).join(' || ');
+    const params = new URLSearchParams({
+      q: '*',
+      filter_by: `(${idFilter})&&in_stock:true`,
+      per_page: coIds.length,
+      exclude_fields: 'embedding'
+    });
+    const coRes = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers });
+    const coData = await coRes.json();
+
+    if (!coData.hits || coData.hits.length === 0) {
+      resEl.innerHTML = '<div class="empty">Ingen co-købte produkter på lager</div>';
+      return;
+    }
+
+    // Sort results by original co-purchase order
+    const orderMap = {};
+    coIds.forEach((id, i) => orderMap[id] = i);
+    coData.hits.sort((a, b) => (orderMap[a.document.id] ?? 999) - (orderMap[b.document.id] ?? 999));
+
+    const cardsHtml = coData.hits.map(h => {
+      const d = h.document;
+      const img = d.image_url
+        ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">`
+        : `<div class="grid-card-img-placeholder"></div>`;
+      const link = d.product_url || '#';
+      return `<a class="sim-card" href="${link}" target="_blank">
+        ${img}
+        <div class="sim-card-name">${d.name || ''}</div>
+        ${d.brand ? `<div class="sim-card-brand">${d.brand}</div>` : ''}
+        <div class="sim-card-footer">
+          <span class="sim-card-price">${fmtPrice(d.price, currency)}</span>
+          <span class="grid-card-stock ${d.in_stock ? 'in' : 'out'}"></span>
+        </div>
+      </a>`;
+    }).join('');
+
+    resEl.innerHTML = `
+      <div class="similar-label">Andre købte også (${coData.hits.length} produkter baseret på ordredata)</div>
+      <div class="similar-grid">${cardsHtml}</div>`;
+  } catch (e) {
+    resEl.innerHTML = '<div class="empty">Fejl ved hentning af co-køb</div>';
   }
 }
 </script>
