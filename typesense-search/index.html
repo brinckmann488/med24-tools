@@ -260,9 +260,9 @@ document.querySelectorAll('.view-btn').forEach(btn => {
     btn.classList.add('active');
     currentView = btn.dataset.view;
     document.querySelectorAll('.view-a,.view-b,.view-c,.view-d,.view-e').forEach(v => v.classList.remove('active'));
-    // Hide search bar in view E (it has its own input)
+    // Hide search input in views D/E (they have their own input), but keep market selector visible
     const hideSearch = currentView === 'd' || currentView === 'e';
-    document.querySelector('.search-bar').style.display = hideSearch ? 'none' : 'flex';
+    document.querySelector('.search-wrap').style.display = hideSearch ? 'none' : 'block';
     document.getElementById('stats').style.display = hideSearch ? 'none' : 'block';
     document.getElementById('view-' + currentView).classList.add('active');
     if (lastData) renderAll(lastData, lastQ, currencyMap[lastCollection]);
