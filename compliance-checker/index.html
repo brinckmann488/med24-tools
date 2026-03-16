@@ -100,15 +100,19 @@
       'ernæringsanprisning': 'ERNAERINGSANPRISNING',
     };
 
+    const VALID_FINDING_TYPES = new Set(Object.keys(TYPE_LABELS));
+
     function normalizeFindings(result) {
       if (!result || !Array.isArray(result.findings)) return result;
       return {
         ...result,
-        findings: result.findings.map(f => ({
-          ...f,
-          severity: SEVERITY_NORMALIZE[f.severity.toLowerCase()] || f.severity.toUpperCase(),
-          type: TYPE_NORMALIZE[f.type.toLowerCase()] || f.type.toUpperCase().replace(/ /g, '_'),
-        })),
+        findings: result.findings
+          .map(f => ({
+            ...f,
+            severity: SEVERITY_NORMALIZE[f.severity.toLowerCase()] || f.severity.toUpperCase(),
+            type: TYPE_NORMALIZE[f.type.toLowerCase()] || f.type.toUpperCase().replace(/ /g, '_'),
+          }))
+          .filter(f => VALID_FINDING_TYPES.has(f.type)),
       };
     }
 
