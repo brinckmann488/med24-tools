@@ -437,6 +437,9 @@
     const MODEL_LABELS = {
       '': 'Gemini 2.5 Pro',
       'models/gemini-2.5-pro': 'Gemini 2.5 Pro',
+      'models/gemini-2.5-flash': 'Gemini 2.5 Flash',
+      'models/gemini-2.0-flash': 'Gemini 2.0 Flash',
+      'models/gemini-3.1-pro-preview': 'Gemini 3.1 Pro (Preview)',
     };
 
     function ResultsPanel({ result, onReset, modelUsed }) {
@@ -598,6 +601,14 @@
             const text = await res.text();
             if (!text) throw new Error('Tom respons fra compliance webhook');
             const data = JSON.parse(text);
+            // Detect structured error from backend (model failure etc.)
+            if (data.status === 'ERROR' && data.error) {
+              const errDetail = data.modelUsed
+                ? `Model-fejl (${data.modelUsed}): ${data.errorMessage}`
+                : `AI-fejl: ${data.errorMessage}`;
+              onUpdate(idx, { status: 'error', productData, error: errDetail });
+              return; // don't retry — backend already handled the error
+            }
             if (!data.status || !Array.isArray(data.findings)) throw new Error('Ugyldigt svar');
             onUpdate(idx, { status: 'done', productData, result: normalizeFindings(data) });
             return; // success — exit retry loop
@@ -1053,6 +1064,13 @@
               if (!text) throw new Error('Tom respons fra webhook');
               let data;
               try { data = JSON.parse(text); } catch(e) { throw new Error('Ugyldig JSON fra webhook: ' + text.slice(0, 200)); }
+              // Detect structured error from backend (model failure etc.)
+              if (data.status === 'ERROR' && data.error) {
+                const errDetail = data.modelUsed
+                  ? `Model-fejl (${data.modelUsed}): ${data.errorMessage}`
+                  : `AI-fejl: ${data.errorMessage}`;
+                throw new Error(errDetail);
+              }
               if (!data.status || !Array.isArray(data.findings)) {
                 throw new Error('Ugyldigt svar fra webhook');
               }
@@ -1128,6 +1146,9 @@
                       className="text-sm border border-gray-300 rounded-md px-3 py-2.5 bg-white text-med24-black focus:outline-none focus:ring-1 focus:ring-med24-blue"
                     >
                       <option value="">Gemini 2.5 Pro</option>
+                      <option value="models/gemini-2.5-flash">Gemini 2.5 Flash</option>
+                      <option value="models/gemini-2.0-flash">Gemini 2.0 Flash</option>
+                      <option value="models/gemini-3.1-pro-preview">Gemini 3.1 Pro (Preview)</option>
                     </select>
                     <button
                       onClick={handleCheck}
