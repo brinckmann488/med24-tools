@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kosttilskud Compliance Checker — Med24</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.9/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'med24-blue': '#133C68',
+            'med24-black': '#222222',
+            'med24-bg': '#F9F9F9',
+            'med24-badge': '#F7F7F7',
+            'med24-muted': '#6A6A6A',
+          },
+          fontFamily: {
+            sans: ['Source Sans Pro', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body>
+  <div id="root"><p style="padding:2rem;font-family:sans-serif;color:#999">Indl&#230;ser...</p></div>
+  <script>
+    window.onerror = function(msg, url, line, col, err) {
+      document.getElementById('root').innerHTML =
+        '<pre style="padding:2rem;color:red;font-family:monospace">Fejl: ' + msg + '\nLinje: ' + line + '</pre>';
+    };
+  </script>
+  <script type="text/babel" data-presets="env,react">
+
+    const { useState, useEffect, useCallback, useRef } = React;
+
+    // ─── System prompt is now hardcoded in n8n Build Prompt node (workflow YZQ3vFdVtp9WhKMH) ───
+
+    // ─── Severity config ───
+
+    const SEVERITY_CONFIG = {
+      CRITICAL: { color: 'bg-red-100 text-red-800 border-red-200', icon: '\u26D4', label: 'Kritisk' },
+      HIGH:     { color: 'bg-orange-100 text-orange-800 border-orange-200', icon: '\u26A0\uFE0F', label: 'H\u00f8j' },
+      MEDIUM:   { color: 'bg-amber-100 text-amber-800 border-amber-200', icon: '\u2139\uFE0F', label: 'Medium' },
+      LOW:      { color: 'bg-gray-100 text-gray-700 border-gray-200', icon: '\uD83D\uDCA1', label: 'Lav' },
+    };
+
+    const STATUS_CONFIG = {
+      COMPLIANT:     { color: 'bg-green-100 text-green-800 border-green-300', icon: '\u2705', label: 'Compliant' },
+      NON_COMPLIANT: { color: 'bg-red-100 text-red-800 border-red-300', icon: '\u274C', label: 'Non-compliant' },
+      NEEDS_REVIEW:  { color: 'bg-amber-100 text-amber-800 border-amber-300', icon: '\uD83D\uDD0D', label: 'Needs Review' },
+    };
+
+    const TYPE_LABELS = {
+      SYGDOMSANPRISNING: 'Sygdomsanprisning',
+      ULOVLIG_SUNDHEDSANPRISNING: 'Ulovlig sundhedsanprisning',
+      BOTANICAL_ON_HOLD: 'Botanical on-hold',
+      USPECIFIK_ANPRISNING: 'Uspecifik anprisning',
+      VILDLEDNING: 'Vildledning',
+      MANGLENDE_MAERKNING: 'Manglende m\u00e6rkning',
+      ERNAERINGSANPRISNING: 'Ern\u00e6ringsanprisning',
+    };
+
+    // ─── Normalize model output (some models use Danish/mixed case) ───
+
+    const SEVERITY_NORMALIZE = {
+      'critical': 'CRITICAL', 'kritisk': 'CRITICAL', 'alvorlig': 'CRITICAL',
+      'high': 'HIGH', 'h\u00f8j': 'HIGH', 'hoj': 'HIGH',
+      'medium': 'MEDIUM', 'moderat': 'MEDIUM',
+      'low': 'LOW', 'lav': 'LOW',
+    };
+
+    const TYPE_NORMALIZE = {
+      'sygdomsanprisning': 'SYGDOMSANPRISNING',
+      'ulovlig sundhedsanprisning': 'ULOVLIG_SUNDHEDSANPRISNING',
+      'ulovlig_sundhedsanprisning': 'ULOVLIG_SUNDHEDSANPRISNING',
+      'botanical on-hold': 'BOTANICAL_ON_HOLD',
+      'botanical_on_hold': 'BOTANICAL_ON_HOLD',
+      'botanical on-hold anprisning': 'BOTANICAL_ON_HOLD',
+      'uspecifik anprisning': 'USPECIFIK_ANPRISNING',
+      'uspecifik_anprisning': 'USPECIFIK_ANPRISNING',
+      'vildledning': 'VILDLEDNING',
+      'vildledende medicinsk term': 'VILDLEDNING',
+      'medicinsk term': 'VILDLEDNING',
+      'medicinsk_term': 'VILDLEDNING',
+      'vildledende effektgaranti': 'VILDLEDNING',
+      'vildledende_effektgaranti': 'VILDLEDNING',
+      'ulovlig botanisk anprisning': 'BOTANICAL_ON_HOLD',
+      'ulovlig_botanisk_anprisning': 'BOTANICAL_ON_HOLD',
+      'manglende m\u00e6rkning': 'MANGLENDE_MAERKNING',
+      'manglende_maerkning': 'MANGLENDE_MAERKNING',
+      'produktnavn som anprisning': 'VILDLEDNING',
+      'ernaeringsanprisning': 'ERNAERINGSANPRISNING',
+      'ernæringsanprisning': 'ERNAERINGSANPRISNING',
+    };
+
+    const VALID_FINDING_TYPES = new Set(Object.keys(TYPE_LABELS));
+
+    function normalizeFindings(result) {
+      if (!result || !Array.isArray(result.findings)) return result;
+      return {
+        ...result,
+        findings: result.findings
+          .map(f => ({
+            ...f,
+            severity: SEVERITY_NORMALIZE[f.severity.toLowerCase()] || f.severity.toUpperCase(),
+            type: TYPE_NORMALIZE[f.type.toLowerCase()] || f.type.toUpperCase().replace(/ /g, '_'),
+          }))
+          .filter(f => VALID_FINDING_TYPES.has(f.type)),
+      };
+    }
+
+    // ─── URL parser: extract product ID from med24.dk URLs ───
+
+    function parseProductInput(input) {
+      const trimmed = input.trim();
+      // Med24 uses slug-based URLs — always resolve via slug lookup
+      if (trimmed.match(/med24\.(dk|se|no)/i)) {
+        return { type: 'url', value: trimmed, url: trimmed };
+      }
+      // Plain number = product ID
+      if (/^\d+$/.test(trimmed)) {
+        return { type: 'id', value: trimmed, url: null };
+      }
+      // Assume SKU
+      return { type: 'sku', value: trimmed, url: null };
+    }
+
+    // ─── Webhook URLs ───
+
+    const DEFAULT_COMPLIANCE_URL = 'https://n8n2.med24intra.dk/webhook/compliance-check';
+    const DEFAULT_PRODUCT_URL = 'https://n8n2.med24intra.dk/webhook/product-fetch';
+
+    // ─── Components ───
+
+    function HowItWorksPanel() {
+      const [open, setOpen] = useState(false);
+
+      return (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+          <button
+            onClick={() => setOpen(!open)}
+            className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+          >
+            <span className="font-semibold text-med24-black text-sm">
+              {"ℹ️ Sådan virker Compliance Checker"}
+            </span>
+            <span className="text-med24-muted">{open ? '▲' : '▼'}</span>
+          </button>
+          {open && (
+            <div className="px-5 pb-5 border-t border-gray-100 pt-4 text-sm text-med24-muted space-y-4">
+              <p className="text-med24-black font-medium">
+                {"Toolet tjekker automatisk om produkttekster på med24.dk overholder dansk og EU lovgivning for kosttilskud."}
+              </p>
+
+              <div>
+                <h4 className="font-semibold text-med24-black mb-1">{"Hvad bliver tjekket?"}</h4>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li><strong>{"Sundhedsanprisninger"}</strong>{" — Er claims godkendt i EU's register (EU 432/2012)? Bruges de korrekt?"}</li>
+                  <li><strong>{"Ernæringsanprisninger"}</strong>{" — Er \"kilde til\", \"højt indhold af\", \"fedtfattig\" osv. brugt korrekt per EU 1924/2006?"}</li>
+                  <li><strong>{"Sygdomsanprisninger"}</strong>{" — Ulovlige påstande om forebyggelse/behandling af sygdom fanges."}</li>
+                  <li><strong>{"Botanical on-hold claims"}</strong>{" — Plantebaserede claims der afventer EFSA-vurdering markeres."}</li>
+                  <li><strong>{"Obligatorisk mærkning"}</strong>{" — Er pligttekster, advarsler og næringsdeklaration til stede?"}</li>
+                  <li><strong>{"Formulering"}</strong>{" — Overdriver teksten? Bruges ord som \"kurerer\", \"helbreder\" osv.?"}</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-med24-black mb-1">{"Hvordan virker det teknisk?"}</h4>
+                <ol className="list-decimal pl-5 space-y-1">
+                  <li>{"Du indtaster produktdata manuelt eller henter det via SKU/URL."}</li>
+                  <li>{"Data sendes til vores n8n-workflow på den interne server."}</li>
+                  <li>{"Workflowet henter to vidensbankslister fra SharePoint Knowledge Bank:"}<ul className="list-disc pl-5 mt-1 space-y-0.5"><li><strong>{"EU-godkendte sundhedsanprisninger"}</strong>{" — 217 claims for 74 stoffer (komplet EU 432/2012)"}</li><li><strong>{"Botanicals on-hold"}</strong>{" — plantebaserede claims der afventer EFSA-vurdering"}</li></ul></li>
+                  <li>{"En detaljeret prompt samler produktdata, de to vidensbankslister og reglerne for ernæringsanprisninger, forbudte formuleringer og obligatorisk mærkning i én samlet instruktion til AI-modellen. Prompten definerer finding-typer, severity-niveauer og kræver at alle overtrædelser rapporteres med fuld sætningscitat og lovligt alternativ."}</li>
+                  <li>{"AI-modellen (Gemini) følger prompten og analyserer teksten sætning for sætning. Den returnerer en struktureret JSON-vurdering."}</li>
+                  <li>{"Resultatet vises som "}<strong>{"Compliant"}</strong>{", "}<strong>{"Needs Review"}</strong>{" eller "}<strong>{"Non-compliant"}</strong>{"."}</li>
+                </ol>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100">
+                <h4 className="font-semibold text-med24-black mb-1">{"Regler og referencer"}</h4>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li><a href="https://food.ec.europa.eu/food-safety/labelling-and-nutrition/nutrition-and-health-claims/eu-register-health-claims_en" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"EU Health Claims Register"}</a>{" — komplet officiel liste over godkendte sundhedsanprisninger"}</li>
+                  <li><a href="references/sundhedsanprisninger.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Godkendte sundhedsanprisninger"}</a>{" — 74 stoffer, 217 claims (komplet EU 432/2012) — hentes dynamisk fra SharePoint"}</li>
+                  <li><a href="references/ernaeringsanprisninger.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Ernæringsanprisninger"}</a>{" — regler for \"kilde til\", \"højt indhold af\", fedtfattig, sukkerfri osv. (tjekkes automatisk)"}</li>
+                  <li><a href="references/obligatorisk-maerkning.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Obligatorisk mærkning"}</a>{" — varebetegnelse, ingrediensliste, næringsdeklaration, advarsler, nettoindhold"}</li>
+                  <li><a href="references/botanicals-on-hold.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Botanicals on-hold"}</a>{" — hentes dynamisk fra SharePoint Knowledge Bank"}</li>
+                  <li><a href="references/forbudte-formuleringer.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Forbudte formuleringer"}</a>{" — sygdomsanprisninger, vildledende udsagn og grænsetilfælde"}</li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function TabBar({ mode, onModeChange }) {
+      const tabs = [
+        { id: 'api', label: 'Hent fra API' },
+        { id: 'manual', label: 'Manuel indtastning' },
+        { id: 'batch', label: 'Batch-tjek' },
+      ];
+      return (
+        <div className="flex border-b border-gray-200 mb-5">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => onModeChange(t.id)}
+              className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                mode === t.id
+                  ? 'border-med24-black text-med24-black'
+                  : 'border-transparent text-med24-muted hover:text-med24-black'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    function ManualForm({ formData, onChange }) {
+      const update = (field, value) => onChange({ ...formData, [field]: value });
+
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">Produktnavn</label>
+            <input
+              type="text"
+              value={formData.product_name}
+              onChange={(e) => update('product_name', e.target.value)}
+              placeholder={"Fx Biosym D-vitamin 35\u00b5g"}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">
+              {"Produkttekst / markedsf\u00f8ringstekst"}
+            </label>
+            <textarea
+              value={formData.product_description}
+              onChange={(e) => update('product_description', e.target.value)}
+              placeholder={"Inds\u00e6t produktbeskrivelse, hjemmesidetekst, emballagetekst eller reklamemateriale her..."}
+              rows={8}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none resize-y"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">Ingrediensliste</label>
+            <textarea
+              value={formData.ingredients}
+              onChange={(e) => update('ingredients', e.target.value)}
+              placeholder={"Fx: D-vitamin (cholecalciferol) 35\u00b5g, Kurkuma-ekstrakt (Curcuma longa) 300mg..."}
+              rows={3}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none resize-y"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">
+              {"N\u00e6ringsdeklaration"}
+            </label>
+            <textarea
+              value={formData.nutrition_declaration}
+              onChange={(e) => update('nutrition_declaration', e.target.value)}
+              placeholder={"Fx: Vitamin D3 10,5 \u00b5g (210% RI), Calcium 300 mg (37,5% RI)..."}
+              rows={3}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none resize-y"
+            />
+            <p className="text-xs text-med24-muted mt-1">{"Vitaminer/mineraler med m\u00e6ngder per daglig dosis og %-RI \u2014 udfyldes automatisk ved API-hent"}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">
+              {"Obligatorisk m\u00e6rkningstekst"} <span className="font-normal text-med24-muted">(advarsler, dosering mv.)</span>
+            </label>
+            <textarea
+              value={formData.mandatory_text}
+              onChange={(e) => update('mandatory_text', e.target.value)}
+              placeholder={"Fx: Den anbefalede daglige dosis b\u00f8r ikke overskrides. Kosttilskud b\u00f8r ikke tr\u00e6de i stedet for varieret kost..."}
+              rows={2}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none resize-y"
+            />
+            <p className="text-xs text-med24-muted mt-1">{"Obligatoriske advarsler og pligttekster fra produktsiden \u2014 udfyldes automatisk ved API-hent"}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">
+              {"Anprisninger fundet p\u00e5 emballage/web"} <span className="font-normal text-med24-muted">(valgfri)</span>
+            </label>
+            <textarea
+              value={formData.claims_found}
+              onChange={(e) => update('claims_found', e.target.value)}
+              placeholder={"Fx: Bidrager til immunforsvaret, St\u00e6rk antioxidant, God for ledfunktion..."}
+              rows={2}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none resize-y"
+            />
+          </div>
+        </div>
+      );
+    }
+
+    function ApiForm({ formData, onChange, settings, onFetched }) {
+      const [productInput, setProductInput] = useState('');
+      const [fetching, setFetching] = useState(false);
+      const [fetchError, setFetchError] = useState('');
+      const [fetchSuccess, setFetchSuccess] = useState('');
+
+      const handleFetch = async () => {
+        if (!settings.productWebhookUrl) {
+          setFetchError('Konfigurer "Produkt-hent Webhook URL" i indstillinger f\u00f8rst.');
+          return;
+        }
+        if (!productInput.trim()) {
+          setFetchError('Indtast et produkt-ID, SKU eller URL.');
+          return;
+        }
+        setFetching(true);
+        setFetchError('');
+        setFetchSuccess('');
+        try {
+          const parsed = parseProductInput(productInput);
+          const res = await fetch(settings.productWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              input_type: parsed.type,
+              input_value: parsed.value,
+              product_url: parsed.url,
+            }),
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const text = await res.text();
+          if (!text) throw new Error('Tom respons fra webhook — tjek at workflow er aktiv i n8n.');
+          let data;
+          try { data = JSON.parse(text); } catch(e) { throw new Error('Ugyldig JSON fra webhook: ' + text.slice(0, 200)); }
+          onChange({
+            product_name: data.product_name || data.name || '',
+            product_description: data.product_description || data.description || '',
+            ingredients: data.ingredients || '',
+            nutrition_declaration: data.nutrition_declaration || '',
+            mandatory_text: data.mandatory_text || '',
+            claims_found: data.claims_found || '',
+          });
+          onFetched(true);
+          setFetchSuccess('Produktdata hentet! Gennemse felterne nedenfor og klik "K\u00f8r Compliance-tjek".');
+        } catch (err) {
+          setFetchError('Kunne ikke hente produkt: ' + err.message);
+        } finally {
+          setFetching(false);
+        }
+      };
+
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">
+              Produkt-ID, SKU eller URL
+            </label>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={productInput}
+                onChange={(e) => { setProductInput(e.target.value); setFetchError(''); setFetchSuccess(''); }}
+                placeholder={"Fx 12345, 10001 eller https://www.med24.dk/kosttilskud/..."}
+                className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none"
+                onKeyDown={(e) => e.key === 'Enter' && handleFetch()}
+              />
+              <button
+                onClick={handleFetch}
+                disabled={fetching}
+                className="bg-med24-black text-white px-5 py-2 rounded-md text-sm font-semibold hover:bg-opacity-90 transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {fetching ? 'Henter...' : 'Hent produkt'}
+              </button>
+            </div>
+            <p className="text-xs text-med24-muted mt-1">
+              {"Inds\u00e6t produktets URL fra med24.dk, eller skriv produkt-ID / SKU direkte"}
+            </p>
+          </div>
+          {fetchError && <p className="text-sm text-red-600">{fetchError}</p>}
+          {fetchSuccess && <p className="text-sm text-green-600">{fetchSuccess}</p>}
+          {!settings.productWebhookUrl && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
+              {"Produkt-hent webhook er ikke konfigureret. \u00c5bn indstillinger og tilf\u00f8j URL, eller brug manuel indtastning."}
+            </div>
+          )}
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-xs text-med24-muted mb-3">
+              {"Felterne nedenfor udfyldes automatisk n\u00e5r du henter et produkt. Du kan ogs\u00e5 redigere dem manuelt f\u00f8r tjek."}
+            </p>
+            <ManualForm formData={formData} onChange={onChange} />
+          </div>
+        </div>
+      );
+    }
+
+    function FindingCard({ finding, index }) {
+      const sev = SEVERITY_CONFIG[finding.severity] || SEVERITY_CONFIG.MEDIUM;
+      const typeLabel = TYPE_LABELS[finding.type] || finding.type;
+
+      return (
+        <div className={`rounded-lg border p-4 ${sev.color}`}>
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{sev.icon}</span>
+              <span className="font-semibold text-sm">{typeLabel}</span>
+            </div>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${sev.color}`}>
+              {sev.label}
+            </span>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div>
+              <span className="font-semibold">Tekst: </span>
+              <span className="italic">"{finding.text}"</span>
+            </div>
+            <div>
+              <span className="font-semibold">Begrundelse: </span>
+              {finding.reason}
+            </div>
+            {finding.suggestion && (
+              <div>
+                <span className="font-semibold">Forslag: </span>
+                <span className="text-green-800">{finding.suggestion}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const MODEL_LABELS = {
+      '': 'Gemini 2.5 Pro',
+      'models/gemini-2.5-pro': 'Gemini 2.5 Pro',
+    };
+
+    function ResultsPanel({ result, onReset, modelUsed }) {
+      const status = STATUS_CONFIG[result.status] || STATUS_CONFIG.NEEDS_REVIEW;
+
+      const copyJson = () => {
+        navigator.clipboard.writeText(JSON.stringify(result, null, 2));
+      };
+
+      return (
+        <div className="space-y-5">
+          {/* Status badge */}
+          <div className={`rounded-lg border-2 p-5 ${status.color}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">{status.icon}</span>
+                <div>
+                  <h3 className="text-xl font-bold">{status.label}</h3>
+                  <p className="text-sm mt-1">{result.summary}</p>
+                  {modelUsed && <p className="text-xs opacity-60 mt-1">Model: {MODEL_LABELS[modelUsed] || modelUsed}</p>}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={copyJson}
+                  className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  {"Kopi\u00e9r JSON"}
+                </button>
+                <button
+                  onClick={onReset}
+                  className="bg-med24-black text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-opacity-90 transition-colors"
+                >
+                  Nyt tjek
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Findings */}
+          {result.findings && result.findings.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-med24-black mb-3">
+                Findings ({result.findings.length})
+              </h3>
+              <div className="space-y-3">
+                {result.findings.map((f, i) => (
+                  <FindingCard key={i} finding={f} index={i} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Approved claims */}
+          {result.approved_claims_used && result.approved_claims_used.length > 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-green-800 mb-2">
+                {'\u2705'} Godkendte anprisninger brugt ({result.approved_claims_used.length})
+              </h3>
+              <ul className="space-y-1">
+                {result.approved_claims_used.map((claim, i) => (
+                  <li key={i} className="text-sm text-green-700">{'\u2022'} {claim}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Recommendations */}
+          {result.recommendations && result.recommendations.length > 0 && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-med24-black mb-2">
+                Anbefalinger
+              </h3>
+              <ul className="space-y-1">
+                {result.recommendations.map((rec, i) => (
+                  <li key={i} className="text-sm text-med24-muted">{'\u2022'} {rec}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+
+    // ─── Text truncation (prevent Gemini timeout on very long texts) ───
+
+    function truncate(text, maxLen = 4000) {
+      if (!text || text.length <= maxLen) return text;
+      return text.slice(0, maxLen) + '\n[... forkortet]';
+    }
+
+    function buildCompliancePayload(productData, model) {
+      const payload = {
+        product_name: (productData.product_name || productData.name || '').slice(0, 200),
+        product_description: truncate(productData.product_description || productData.description || ''),
+        ingredients: truncate(productData.ingredients || '', 2000),
+        nutrition_declaration: truncate(productData.nutrition_declaration || '', 2000),
+        mandatory_text: truncate(productData.mandatory_text || '', 2000),
+        claims_found: (productData.claims_found || '').slice(0, 1000),
+        check_labeling: true,
+        site_context: SITE_CONTEXT,
+      };
+      if (model) payload.model = model;
+      return payload;
+    }
+
+    // ─── Batch engine ───
+
+    const SITE_CONTEXT = `Produktet s\u00e6lges p\u00e5 med24.dk. F\u00f8lgende obligatoriske elementer er ALTID til stede p\u00e5 alle kosttilskuds-produktsider og skal IKKE markeres som manglende:
+- Varebetegnelsen "Kosttilskud" vises tydeligt p\u00e5 produktsiden
+- Virksomhedsoplysninger: Med24.dk ApS med CVR-nr. og kontaktinfo i sidens footer
+- Holdbarhedsdato p\u00e5 fysisk emballage (kan ikke verificeres online)
+- Nettoindhold angivet ved produktnavn (f.eks. "60 stk.", "120 kapsler")
+- Al m\u00e6rkning er p\u00e5 dansk
+- Obligatoriske advarsler vises som standardtekst p\u00e5 alle kosttilskudssider (se mandatory_text feltet)`;
+
+    async function runBatchCheck(inputs, concurrency, onUpdate, abortRef) {
+      let nextIndex = 0;
+
+      async function processOne(idx) {
+        const raw = inputs[idx].trim();
+        if (!raw) { onUpdate(idx, { status: 'done', result: null, error: 'Tom linje' }); return; }
+
+        // Step 1: Fetch product data
+        onUpdate(idx, { status: 'fetching' });
+        let productData;
+        try {
+          const parsed = parseProductInput(raw);
+          const res = await fetch(DEFAULT_PRODUCT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ input_type: parsed.type, input_value: parsed.value, product_url: parsed.url }),
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const text = await res.text();
+          if (!text) throw new Error('Tom respons');
+          productData = JSON.parse(text);
+        } catch (err) {
+          onUpdate(idx, { status: 'error', error: 'Kunne ikke hente produkt: ' + err.message });
+          return;
+        }
+
+        if (abortRef.current) return;
+
+        // Step 2: Run compliance check (with 1 retry on empty response)
+        onUpdate(idx, { status: 'checking', productData });
+        const payload = buildCompliancePayload(productData);
+
+        for (let attempt = 0; attempt < 4; attempt++) {
+          try {
+            if (attempt > 0) await new Promise(r => setTimeout(r, 4000 + attempt * 3000));
+            const res = await fetch(DEFAULT_COMPLIANCE_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const text = await res.text();
+            if (!text) throw new Error('Tom respons fra compliance webhook');
+            const data = JSON.parse(text);
+            // Detect structured error from backend (model failure etc.)
+            if (data.status === 'ERROR' && data.error) {
+              const errDetail = data.modelUsed
+                ? `Model-fejl (${data.modelUsed}): ${data.errorMessage}`
+                : `AI-fejl: ${data.errorMessage}`;
+              onUpdate(idx, { status: 'error', productData, error: errDetail });
+              return; // don't retry — backend already handled the error
+            }
+            if (!data.status || !Array.isArray(data.findings)) throw new Error('Ugyldigt svar');
+            onUpdate(idx, { status: 'done', productData, result: normalizeFindings(data) });
+            return; // success — exit retry loop
+          } catch (err) {
+            if (attempt === 3) {
+              onUpdate(idx, { status: 'error', productData, error: 'Compliance-tjek fejlede: ' + err.message });
+            }
+            // else: retry
+          }
+        }
+      }
+
+      async function worker() {
+        while (nextIndex < inputs.length) {
+          if (abortRef.current) return;
+          const idx = nextIndex++;
+          await processOne(idx);
+          // Small delay between jobs to ease n8n load
+          if (nextIndex < inputs.length && !abortRef.current) {
+            await new Promise(r => setTimeout(r, 2000));
+          }
+        }
+      }
+
+      const workers = Array.from({ length: Math.min(concurrency, inputs.length) }, () => worker());
+      await Promise.all(workers);
+    }
+
+    // ─── Batch components ───
+
+    function BatchForm({ batchInput, onInputChange, onStart, disabled }) {
+      const lines = batchInput.split('\n').filter(l => l.trim());
+      const count = lines.length;
+
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-med24-black mb-1">
+              {"Produkt-ID'er, SKU'er eller URL'er (en per linje)"}
+            </label>
+            <textarea
+              value={batchInput}
+              onChange={(e) => onInputChange(e.target.value)}
+              placeholder={"12345\n10002\nhttps://www.med24.dk/kosttilskud/.../produkt-navn-67890\n..."}
+              rows={8}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none font-mono"
+            />
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-xs text-med24-muted">
+                {"Kopier en kolonne fra Excel eller skriv ID'er manuelt"}
+              </p>
+              <p className={`text-xs font-semibold ${count > 50 ? 'text-red-600' : count > 30 ? 'text-amber-600' : 'text-med24-muted'}`}>
+                {count} {count === 1 ? 'produkt' : 'produkter'}
+                {count > 50 && ' (max 50)'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onStart}
+            disabled={disabled || count === 0 || count > 50}
+            className="bg-med24-black text-white px-6 py-2.5 rounded-md font-semibold hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {"Start batch-tjek"}
+          </button>
+        </div>
+      );
+    }
+
+    function BatchProgress({ jobs, onStop }) {
+      const total = jobs.length;
+      const completed = jobs.filter(j => j.status === 'done' || j.status === 'error').length;
+      const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      const compliant = jobs.filter(j => j.result?.status === 'COMPLIANT').length;
+      const needsReview = jobs.filter(j => j.result?.status === 'NEEDS_REVIEW').length;
+      const nonCompliant = jobs.filter(j => j.result?.status === 'NON_COMPLIANT').length;
+      const errors = jobs.filter(j => j.status === 'error').length;
+      const running = completed < total;
+
+      return (
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-med24-black">
+              {running ? `Tjekker ${completed} af ${total} produkter...` : `${total} produkter tjekket`}
+            </span>
+            {running && (
+              <button
+                onClick={onStop}
+                className="text-xs text-red-600 font-semibold hover:text-red-800 transition-colors"
+              >
+                {"Stop batch"}
+              </button>
+            )}
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+            <div
+              className="bg-med24-black h-2 rounded-full transition-all duration-300"
+              style={{ width: pct + '%' }}
+            />
+          </div>
+          <div className="flex gap-4 text-xs font-semibold">
+            {compliant > 0 && <span className="text-green-700">{"\u2705"} {compliant} Compliant</span>}
+            {needsReview > 0 && <span className="text-amber-700">{"\uD83D\uDD0D"} {needsReview} Needs Review</span>}
+            {nonCompliant > 0 && <span className="text-red-700">{"\u274C"} {nonCompliant} Non-compliant</span>}
+            {errors > 0 && <span className="text-gray-500">{"\u26A0\uFE0F"} {errors} Fejl</span>}
+          </div>
+        </div>
+      );
+    }
+
+    function BatchResultRow({ job, index, expanded, onToggle, onRetry }) {
+      const statusOrder = { NON_COMPLIANT: 0, NEEDS_REVIEW: 1, COMPLIANT: 2 };
+      const productName = job.productData?.product_name || job.productData?.name || '';
+      const name = productName ? `${job.input.trim()} \u2014 ${productName}` : job.input;
+      const isRunning = job.status === 'fetching' || job.status === 'checking';
+
+      // Severity counts
+      const sevCounts = {};
+      if (job.result?.findings) {
+        job.result.findings.forEach(f => { sevCounts[f.severity] = (sevCounts[f.severity] || 0) + 1; });
+      }
+
+      return (
+        <React.Fragment>
+          <tr
+            onClick={() => job.status === 'done' && onToggle(index)}
+            className={`border-b border-gray-100 ${job.status === 'done' ? 'cursor-pointer hover:bg-gray-50' : ''} transition-colors`}
+          >
+            <td className="py-3 px-4 text-sm">
+              <div className="font-medium text-med24-black truncate max-w-xs">{name}</div>
+            </td>
+            <td className="py-3 px-3 text-center">
+              {isRunning && (
+                <span className="inline-flex items-center gap-1 text-xs text-med24-muted">
+                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  {job.status === 'fetching' ? 'Henter...' : 'Tjekker...'}
+                </span>
+              )}
+              {job.status === 'done' && job.result && (
+                <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_CONFIG[job.result.status]?.color || ''}`}>
+                  {STATUS_CONFIG[job.result.status]?.label || job.result.status}
+                </span>
+              )}
+              {job.status === 'error' && (
+                <div>
+                  <span className="inline-flex items-center gap-1 text-xs text-red-600 font-semibold">
+                    {"\u26A0\uFE0F"} Fejl
+                  </span>
+                  {job.error && <p className="text-xs text-red-500 mt-0.5 max-w-xs">{job.error}</p>}
+                </div>
+              )}
+              {job.status === 'pending' && (
+                <span className="text-xs text-med24-muted">{"Venter..."}</span>
+              )}
+            </td>
+            <td className="py-3 px-3">
+              <div className="flex gap-1.5 justify-center">
+                {sevCounts.CRITICAL > 0 && <span className="text-xs font-bold text-red-700 bg-red-100 px-1.5 py-0.5 rounded">{sevCounts.CRITICAL}</span>}
+                {sevCounts.HIGH > 0 && <span className="text-xs font-bold text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded">{sevCounts.HIGH}</span>}
+                {sevCounts.MEDIUM > 0 && <span className="text-xs font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">{sevCounts.MEDIUM}</span>}
+                {sevCounts.LOW > 0 && <span className="text-xs font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">{sevCounts.LOW}</span>}
+                {job.status === 'error' && (
+                  <button onClick={(e) => { e.stopPropagation(); onRetry(index); }} className="text-xs text-med24-black underline hover:opacity-70">
+                    {"Pr\u00f8v igen"}
+                  </button>
+                )}
+              </div>
+            </td>
+            <td className="py-3 px-3 text-center w-8">
+              {job.status === 'done' && (
+                <span className="text-med24-muted text-xs">{expanded ? '\u25B2' : '\u25BC'}</span>
+              )}
+            </td>
+          </tr>
+          {expanded && job.result && (
+            <tr>
+              <td colSpan={4} className="p-4 bg-gray-50 border-b border-gray-200">
+                <ResultsPanel result={job.result} onReset={() => onToggle(index)} />
+              </td>
+            </tr>
+          )}
+        </React.Fragment>
+      );
+    }
+
+    function BatchResultsTable({ jobs, onRetry }) {
+      const [expandedIdx, setExpandedIdx] = useState(null);
+      const [sortBy, setSortBy] = useState('status');
+
+      const toggleExpand = (idx) => setExpandedIdx(expandedIdx === idx ? null : idx);
+
+      // Sort jobs by index but display sorted
+      const sortedIndices = [...Array(jobs.length).keys()].sort((a, b) => {
+        const ja = jobs[a], jb = jobs[b];
+        if (sortBy === 'status') {
+          const order = { NON_COMPLIANT: 0, NEEDS_REVIEW: 1, COMPLIANT: 2 };
+          const sa = ja.result ? (order[ja.result.status] ?? 3) : (ja.status === 'error' ? 4 : 5);
+          const sb = jb.result ? (order[jb.result.status] ?? 3) : (jb.status === 'error' ? 4 : 5);
+          return sa - sb;
+        }
+        if (sortBy === 'name') {
+          const na = (ja.productData?.product_name || ja.input).toLowerCase();
+          const nb = (jb.productData?.product_name || jb.input).toLowerCase();
+          return na.localeCompare(nb);
+        }
+        if (sortBy === 'findings') {
+          const fa = ja.result?.findings?.length || 0;
+          const fb = jb.result?.findings?.length || 0;
+          return fb - fa;
+        }
+        return 0;
+      });
+
+      return (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-med24-muted uppercase tracking-wide">
+                <th className="py-2 px-4 text-left cursor-pointer hover:text-med24-black" onClick={() => setSortBy('name')}>
+                  Produkt {sortBy === 'name' && '\u25BC'}
+                </th>
+                <th className="py-2 px-3 text-center cursor-pointer hover:text-med24-black w-36" onClick={() => setSortBy('status')}>
+                  Status {sortBy === 'status' && '\u25BC'}
+                </th>
+                <th className="py-2 px-3 text-center cursor-pointer hover:text-med24-black w-32" onClick={() => setSortBy('findings')}>
+                  Findings {sortBy === 'findings' && '\u25BC'}
+                </th>
+                <th className="py-2 px-3 w-8"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedIndices.map(idx => (
+                <BatchResultRow
+                  key={idx}
+                  job={jobs[idx]}
+                  index={idx}
+                  expanded={expandedIdx === idx}
+                  onToggle={toggleExpand}
+                  onRetry={onRetry}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    function BatchExportBar({ jobs }) {
+      const doneJobs = jobs.filter(j => j.status === 'done' && j.result);
+      if (doneJobs.length === 0) return null;
+
+      const copyReport = () => {
+        const lines = doneJobs.map(j => {
+          const name = j.productData?.product_name || j.input;
+          const status = j.result.status;
+          const findings = j.result.findings || [];
+          let text = `${name} \u2014 ${status}`;
+          if (findings.length > 0) {
+            text += '\n' + findings.map(f => `  [${f.severity}] ${f.type}: ${f.text}\n    Forslag: ${f.suggestion || 'Ingen'}`).join('\n');
+          }
+          return text;
+        });
+        navigator.clipboard.writeText(lines.join('\n\n'));
+      };
+
+      const copyCsv = () => {
+        const header = 'Produkt\tStatus\tCritical\tHigh\tMedium\tLow\tFindings';
+        const rows = doneJobs.map(j => {
+          const name = j.productData?.product_name || j.input;
+          const findings = j.result.findings || [];
+          const c = findings.filter(f => f.severity === 'CRITICAL').length;
+          const h = findings.filter(f => f.severity === 'HIGH').length;
+          const m = findings.filter(f => f.severity === 'MEDIUM').length;
+          const l = findings.filter(f => f.severity === 'LOW').length;
+          const topFinding = findings[0]?.text || '';
+          return `${name}\t${j.result.status}\t${c}\t${h}\t${m}\t${l}\t${topFinding}`;
+        });
+        navigator.clipboard.writeText(header + '\n' + rows.join('\n'));
+      };
+
+      return (
+        <div className="flex gap-3 mt-4">
+          <button
+            onClick={copyReport}
+            className="bg-white border border-gray-300 px-4 py-2 rounded-md text-xs font-semibold hover:bg-gray-50 transition-colors"
+          >
+            {"Kopier rapport"}
+          </button>
+          <button
+            onClick={copyCsv}
+            className="bg-white border border-gray-300 px-4 py-2 rounded-md text-xs font-semibold hover:bg-gray-50 transition-colors"
+          >
+            {"Kopier CSV (til Excel)"}
+          </button>
+        </div>
+      );
+    }
+
+    function BatchTab({ settings }) {
+      const [batchInput, setBatchInput] = useState('');
+      const [batchJobs, setBatchJobs] = useState([]);
+      const [batchRunning, setBatchRunning] = useState(false);
+      const abortRef = useRef(false);
+
+      const handleStart = async () => {
+        const lines = batchInput.split('\n').filter(l => l.trim());
+        if (lines.length === 0 || lines.length > 50) return;
+
+        abortRef.current = false;
+        const initialJobs = lines.map((line, i) => ({
+          input: line.trim(),
+          status: 'pending',
+          productData: null,
+          result: null,
+          error: null,
+        }));
+        setBatchJobs(initialJobs);
+        setBatchRunning(true);
+
+        await runBatchCheck(
+          lines,
+          1,
+          (idx, update) => {
+            setBatchJobs(prev => {
+              const next = [...prev];
+              next[idx] = { ...next[idx], ...update };
+              return next;
+            });
+          },
+          abortRef
+        );
+
+        setBatchRunning(false);
+      };
+
+      const handleStop = () => { abortRef.current = true; };
+
+      const handleRetry = async (idx) => {
+        const job = batchJobs[idx];
+        if (!job) return;
+
+        setBatchJobs(prev => {
+          const next = [...prev];
+          next[idx] = { ...next[idx], status: 'pending', error: null, result: null };
+          return next;
+        });
+
+        abortRef.current = false;
+        await runBatchCheck(
+          [job.input],
+          1,
+          (_, update) => {
+            setBatchJobs(prev => {
+              const next = [...prev];
+              next[idx] = { ...next[idx], ...update };
+              return next;
+            });
+          },
+          abortRef
+        );
+      };
+
+      const handleReset = () => {
+        setBatchJobs([]);
+        setBatchInput('');
+        setBatchRunning(false);
+        abortRef.current = false;
+      };
+
+      const hasResults = batchJobs.length > 0;
+
+      return (
+        <div>
+          {!hasResults ? (
+            <BatchForm
+              batchInput={batchInput}
+              onInputChange={setBatchInput}
+              onStart={handleStart}
+              disabled={batchRunning}
+            />
+          ) : (
+            <div>
+              <BatchProgress jobs={batchJobs} onStop={handleStop} />
+              <BatchResultsTable jobs={batchJobs} onRetry={handleRetry} />
+              <BatchExportBar jobs={batchJobs} />
+              {!batchRunning && (
+                <button
+                  onClick={handleReset}
+                  className="mt-4 text-med24-muted text-sm hover:text-med24-black transition-colors"
+                >
+                  {"Nyt batch-tjek"}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ─── Main App ───
+
+    function App() {
+      const settings = { webhookUrl: DEFAULT_COMPLIANCE_URL, productWebhookUrl: DEFAULT_PRODUCT_URL };
+      const [selectedModel, setSelectedModel] = useState('');
+      const [mode, setMode] = useState('api');
+      const [formData, setFormData] = useState({
+        product_name: '',
+        product_description: '',
+        ingredients: '',
+        nutrition_declaration: '',
+        mandatory_text: '',
+        claims_found: '',
+      });
+      const [loading, setLoading] = useState(false);
+      const [result, setResult] = useState(null);
+      const [error, setError] = useState('');
+      const [fetched, setFetched] = useState(false);
+      const abortRef = useRef(null);
+
+      const hasInput = formData.product_name.trim() || formData.product_description.trim();
+
+      const handleCheck = async () => {
+        if (!hasInput) {
+          setError('Udfyld mindst produktnavn eller produkttekst.');
+          return;
+        }
+
+        setLoading(true);
+        setError('');
+        setResult(null);
+
+        try {
+          abortRef.current = new AbortController();
+          const signal = abortRef.current.signal;
+          const payload = buildCompliancePayload(formData, selectedModel);
+          let lastErr;
+          for (let attempt = 0; attempt < 4; attempt++) {
+            if (signal.aborted) break;
+            try {
+              if (attempt > 0) await new Promise(r => setTimeout(r, 4000 + attempt * 3000));
+              if (signal.aborted) break;
+              const res = await fetch(settings.webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal,
+              });
+              if (!res.ok) throw new Error('Webhook svarede med HTTP ' + res.status);
+              const text = await res.text();
+              if (!text) throw new Error('Tom respons fra webhook');
+              let data;
+              try { data = JSON.parse(text); } catch(e) { throw new Error('Ugyldig JSON fra webhook: ' + text.slice(0, 200)); }
+              // Detect structured error from backend (model failure etc.)
+              if (data.status === 'ERROR' && data.error) {
+                const errDetail = data.modelUsed
+                  ? `Model-fejl (${data.modelUsed}): ${data.errorMessage}`
+                  : `AI-fejl: ${data.errorMessage}`;
+                throw new Error(errDetail);
+              }
+              if (!data.status || !Array.isArray(data.findings)) {
+                throw new Error('Ugyldigt svar fra webhook');
+              }
+              setResult(normalizeFindings(data));
+              lastErr = null;
+              break;
+            } catch (e) {
+              lastErr = e;
+            }
+          }
+          if (lastErr && !abortRef.current?.signal.aborted) throw lastErr;
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            setError('Fejl ved compliance-tjek: ' + err.message);
+          }
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleStop = () => {
+        if (abortRef.current) abortRef.current.abort();
+        setLoading(false);
+      };
+
+      const handleReset = () => {
+        setResult(null);
+        setError('');
+      };
+
+      const handleFullReset = () => {
+        setFormData({ product_name: '', product_description: '', ingredients: '', nutrition_declaration: '', mandatory_text: '', claims_found: '' });
+        setResult(null);
+        setError('');
+        setFetched(false);
+      };
+
+      return (
+        <div className="min-h-screen bg-med24-bg font-sans text-med24-black">
+          <header className="bg-med24-black text-white py-4">
+            <div className="max-w-4xl mx-auto px-8">
+              <h1 className="text-2xl font-semibold">Kosttilskud Compliance Checker</h1>
+              <p className="text-sm opacity-70 mt-0.5">{"Tjek produkttekster mod dansk/EU kosttilskudslovgivning"}</p>
+            </div>
+          </header>
+
+          <main className="max-w-4xl mx-auto px-8 py-8">
+            <HowItWorksPanel />
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+              <TabBar mode={mode} onModeChange={setMode} />
+
+              {mode === 'batch' ? (
+                <BatchTab settings={settings} />
+              ) : (
+                <React.Fragment>
+                  {mode === 'manual' ? (
+                    <ManualForm formData={formData} onChange={setFormData} />
+                  ) : (
+                    <ApiForm
+                      formData={formData}
+                      onChange={setFormData}
+                      settings={settings}
+                      onFetched={setFetched}
+                    />
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="mt-6 flex items-center gap-3">
+                    <select
+                      value={selectedModel}
+                      onChange={e => setSelectedModel(e.target.value)}
+                      className="text-sm border border-gray-300 rounded-md px-3 py-2.5 bg-white text-med24-black focus:outline-none focus:ring-1 focus:ring-med24-blue"
+                    >
+                      <option value="">Gemini 2.5 Pro</option>
+                    </select>
+                    <button
+                      onClick={handleCheck}
+                      disabled={loading || !hasInput}
+                      className="bg-med24-black text-white px-6 py-2.5 rounded-md font-semibold hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {loading && (
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      )}
+                      {loading ? 'Tjekker compliance...' : 'K\u00f8r Compliance-tjek'}
+                    </button>
+                    {loading && (
+                      <button
+                        onClick={handleStop}
+                        className="text-red-600 text-sm font-medium hover:text-red-800 transition-colors"
+                      >
+                        Stop
+                      </button>
+                    )}
+                    {!loading && (hasInput || result) && (
+                      <button
+                        onClick={handleFullReset}
+                        className="text-med24-muted text-sm hover:text-med24-black transition-colors"
+                      >
+                        Ryd alt
+                      </button>
+                    )}
+                  </div>
+
+                  {error && (
+                    <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
+                </React.Fragment>
+              )}
+            </div>
+
+            {/* Results (single product mode only) */}
+            {mode !== 'batch' && result && (
+              <div className="mt-6">
+                <ResultsPanel result={result} onReset={handleReset} modelUsed={selectedModel || 'models/gemini-2.5-pro'} />
+              </div>
+            )}
+
+
+            <footer className="mt-8 text-center text-xs text-med24-muted">
+              <p>Kosttilskud Compliance Checker v1.0 — Med24.dk</p>
+              <p className="mt-1">
+                {"Regler baseret p\u00e5 EU Health Claims-registeret og dansk kosttilskudslovgivning."}
+              </p>
+            </footer>
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
