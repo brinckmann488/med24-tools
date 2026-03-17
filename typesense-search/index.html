@@ -246,6 +246,7 @@ const API_KEY = 'vg9DFhFXwCNxujx9U18CtGFF4bQpthgu';
 const HOST = 'https://hw3ea2fxs7vnzd61p-1.a2.typesense.net';
 const presetMap = { products_dk: 'product-search-dk', products_se: 'product-search-se', products_no: 'product-search-no' };
 const currencyMap = { products_dk: 'kr.', products_se: 'kr.', products_no: 'kr.' };
+const suggestionsMap = { products_dk: 'suggestions_dk', products_se: 'suggestions_se', products_no: 'suggestions_no' };
 
 let timer;
 let currentView = 'a';
@@ -329,10 +330,10 @@ function renderA(data, q, currency) {
   }
 
   const brands = extractBrands(data.hits);
-  const cats = extractCategories(data.hits);
+  const suggestions = data._suggestions || [];
   const products = diverseProducts(data.hits, 5);
 
-  // Left: brands + categories as separate sections
+  // Left: brands + landing page suggestions as separate sections
   const brandsLeftHtml = brands.slice(0, 4).map(b => `
     <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
       <span class="suggestion-icon">◆</span>
@@ -340,12 +341,15 @@ function renderA(data, q, currency) {
       <span class="suggestion-arrow">↗</span>
     </div>`).join('');
 
-  const catsHtml = cats.map(c => `
-    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c)})">
+  const catsHtml = suggestions.slice(0, 6).map(s => {
+    const url = s.url ? `https://www.med24.dk${s.url}` : '#';
+    return `
+    <a class="suggestion-item" href="${url}" target="_blank" style="text-decoration:none;color:inherit">
       <span class="suggestion-icon">≡</span>
-      <span class="suggestion-text">${c}</span>
+      <span class="suggestion-text">${s.name}</span>
       <span class="suggestion-arrow">↗</span>
-    </div>`).join('');
+    </a>`;
+  }).join('');
 
   const productsHtml = products.map((h, i) => {
     const d = h.document;
@@ -371,7 +375,7 @@ function renderA(data, q, currency) {
     <div class="federated-panel">
       <div class="fed-left">
         ${brandsLeftHtml ? `<div class="fed-section-title">Mærker</div>${brandsLeftHtml}` : ''}
-        ${catsHtml ? `<hr class="fed-divider">${cats.length ? '<div class="fed-section-title">Kategorier</div>' : ''}${catsHtml}` : ''}
+        ${catsHtml ? `<hr class="fed-divider"><div class="fed-section-title">Kategorier</div>${catsHtml}` : ''}
       </div>
       <div class="fed-right">
         <div class="fed-section-title">Produkter</div>
@@ -522,10 +526,18 @@ async function search() {
 
   const perPage = currentView === 'd' ? 24 : 12;
   const params = new URLSearchParams({ q, preset, per_page: perPage, highlight_full_fields: 'name,brand' });
-  const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, {
-    headers: { 'X-TYPESENSE-API-KEY': API_KEY }
-  });
-  const raw = await res.json();
+
+  // Parallel: products + suggestions (for View A landing page suggestions)
+  const suggestionsCollection = suggestionsMap[collection];
+  const suggestionsParams = new URLSearchParams({ q, query_by: 'name', per_page: 6, highlight_fields: 'name' });
+  const [productRes, suggestionsRes] = await Promise.all([
+    fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } }),
+    fetch(`${HOST}/collections/${suggestionsCollection}/documents/search?${suggestionsParams}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } })
+  ]);
+  const raw = await productRes.json();
+  const suggestionsData = await suggestionsRes.json();
+  raw._suggestions = (suggestionsData.hits || []).map(h => h.document);
+
   // Client-side brand diversity: max 3 products per brand
   if (raw.hits && raw.hits.length > 0) {
     const brandCount = {};
