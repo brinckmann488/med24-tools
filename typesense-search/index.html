@@ -529,7 +529,8 @@ async function search() {
 
   // Parallel: products + suggestions (for View A landing page suggestions)
   const suggestionsCollection = suggestionsMap[collection];
-  const suggestionsParams = new URLSearchParams({ q, query_by: 'name', per_page: 6, highlight_fields: 'name' });
+  const sugQ = q.replace(/\s+/g, '-');  // "b vit" → "b-vit" — landing page names use hyphens
+  const suggestionsParams = new URLSearchParams({ q: sugQ, query_by: 'name', per_page: 6, highlight_fields: 'name' });
   const [productRes, suggestionsRes] = await Promise.all([
     fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } }),
     fetch(`${HOST}/collections/${suggestionsCollection}/documents/search?${suggestionsParams}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } })
