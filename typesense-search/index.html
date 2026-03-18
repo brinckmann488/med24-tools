@@ -354,15 +354,24 @@ function renderA(data, q, currency) {
       <span class="suggestion-arrow">↗</span>
     </div>`).join('');
 
-  const catsHtml = suggestions.slice(0, 6).map(s => {
-    const url = s.url ? `https://www.med24.dk${s.url}` : '#';
-    return `
-    <a class="suggestion-item" href="${url}" target="_blank" style="text-decoration:none;color:inherit">
+  // Kategorier: prefer category-typed suggestions (har URLs), ellers brug facets fra Typesense
+  const catSuggestions = suggestions.filter(s => s.context === 'category').slice(0, 4);
+  const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 4).map(c => c.value);
+  const productCats = catSuggestions.length > 0 ? [] : facetCats;
+  const catsHtml = [
+    ...catSuggestions.map(s => `
+    <a class="suggestion-item" href="https://www.med24.dk${s.url}" target="_blank" style="text-decoration:none;color:inherit">
       <span class="suggestion-icon">≡</span>
       <span class="suggestion-text">${s.name}</span>
       <span class="suggestion-arrow">↗</span>
-    </a>`;
-  }).join('');
+    </a>`),
+    ...productCats.map(c => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c)})">
+      <span class="suggestion-icon">≡</span>
+      <span class="suggestion-text">${c}</span>
+      <span class="suggestion-arrow">↗</span>
+    </div>`)
+  ].join('');
 
   const productsHtml = products.map((h, i) => {
     const d = h.document;
@@ -492,15 +501,24 @@ function renderA2(data, q, currency, enhancedInfo) {
       <span class="suggestion-arrow">↗</span>
     </div>`).join('');
 
-  const catsHtml = suggestions.slice(0, 6).map(s => {
-    const url = s.url ? `https://www.med24.dk${s.url}` : '#';
-    return `
-    <a class="suggestion-item" href="${url}" target="_blank" style="text-decoration:none;color:inherit">
+  // Kategorier: prefer category-typed suggestions (har URLs), ellers brug facets fra Typesense
+  const catSuggestions = suggestions.filter(s => s.context === 'category').slice(0, 4);
+  const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 4).map(c => c.value);
+  const productCats = catSuggestions.length > 0 ? [] : facetCats;
+  const catsHtml = [
+    ...catSuggestions.map(s => `
+    <a class="suggestion-item" href="https://www.med24.dk${s.url}" target="_blank" style="text-decoration:none;color:inherit">
       <span class="suggestion-icon">≡</span>
       <span class="suggestion-text">${s.name}</span>
       <span class="suggestion-arrow">↗</span>
-    </a>`;
-  }).join('');
+    </a>`),
+    ...productCats.map(c => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c)})">
+      <span class="suggestion-icon">≡</span>
+      <span class="suggestion-text">${c}</span>
+      <span class="suggestion-arrow">↗</span>
+    </div>`)
+  ].join('');
 
   const productsHtml = products.map((h, i) => {
     const d = h.document;
@@ -628,7 +646,7 @@ async function search() {
   }
 
   const perPage = currentView === 'd' ? 24 : 12;
-  const params = new URLSearchParams({ q, preset, per_page: perPage, highlight_full_fields: 'name,brand' });
+  const params = new URLSearchParams({ q, preset, per_page: perPage, highlight_full_fields: 'name,brand', facet_by: 'categories', max_facet_values: 6 });
 
   // Parallel: products + suggestions (for View A landing page suggestions)
   const suggestionsCollection = suggestionsMap[collection];
@@ -729,7 +747,7 @@ async function searchA2(q, collection, preset, currency) {
 
   // Step 3: Search products with enhanced query (or original if no enhancement)
   const productQ = enhancedWord || q;
-  const productParams = new URLSearchParams({ q: productQ, preset, per_page: 12, highlight_full_fields: 'name,brand' });
+  const productParams = new URLSearchParams({ q: productQ, preset, per_page: 12, highlight_full_fields: 'name,brand', facet_by: 'categories', max_facet_values: 6 });
   const brandsParams = new URLSearchParams({ q: productQ, query_by: 'name', per_page: 6, highlight_fields: 'name' });
   const [productRes, brandsRes] = await Promise.all([
     fetch(`${HOST}/collections/${collection}/documents/search?${productParams}`, { headers }),
