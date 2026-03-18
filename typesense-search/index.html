@@ -126,9 +126,13 @@
     .analytics-link { padding: 6px 18px; font-size: 13px; border: 2px solid #e0004d; border-radius: 20px; background: white; cursor: pointer; color: #e0004d; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: all .15s; }
     .analytics-link:hover { background: #e0004d; color: white; }
 
+    /* ── VIEW A2: Enhanced query badge ── */
+    .enhanced-badge { display: inline-block; font-size: 11px; background: #e6f9ee; color: #1a7a3a; padding: 3px 10px; border-radius: 12px; margin-bottom: 12px; font-weight: 500; }
+    .enhanced-badge .original { color: #999; }
+
     /* Hidden until correct view */
-    .view-a, .view-b, .view-c, .view-d, .view-e { display: none; }
-    .view-a.active, .view-b.active, .view-c.active, .view-d.active, .view-e.active { display: block; }
+    .view-a, .view-a2, .view-b, .view-c, .view-d, .view-e { display: none; }
+    .view-a.active, .view-a2.active, .view-b.active, .view-c.active, .view-d.active, .view-e.active { display: block; }
     .container { margin: 0 auto; }
     /* ── VIEW E: Similar Products ── */
     .view-e .container { max-width: 960px; }
@@ -173,6 +177,7 @@
   <!-- View switcher -->
   <div class="view-switcher">
     <button class="view-btn active" data-view="a">A — Kombineret søgning</button>
+    <button class="view-btn" data-view="a2">A2 — Suggestion-enhanced</button>
     <button class="view-btn" data-view="b">B — Kort</button>
     <button class="view-btn" data-view="c">C — Produktgrid</button>
     <button class="view-btn" data-view="d">D — Andre købte også</button>
@@ -198,6 +203,13 @@
 <div class="view-a active" id="view-a">
   <div class="container">
     <div id="results-a"></div>
+  </div>
+</div>
+
+<!-- VIEW A2: Suggestion-enhanced -->
+<div class="view-a2" id="view-a2">
+  <div class="container" style="max-width:960px;">
+    <div id="results-a2"></div>
   </div>
 </div>
 
@@ -260,15 +272,16 @@ document.querySelectorAll('.view-btn').forEach(btn => {
     document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentView = btn.dataset.view;
-    document.querySelectorAll('.view-a,.view-b,.view-c,.view-d,.view-e').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.view-a,.view-a2,.view-b,.view-c,.view-d,.view-e').forEach(v => v.classList.remove('active'));
     // Hide search input in views D/E (they have their own input), but keep market selector visible
     const hideSearch = currentView === 'd' || currentView === 'e';
     document.querySelector('.search-wrap').style.display = hideSearch ? 'none' : 'block';
     document.getElementById('stats').style.display = hideSearch ? 'none' : 'block';
     document.getElementById('view-' + currentView).classList.add('active');
-    if (lastData) renderAll(lastData, lastQ, currencyMap[lastCollection]);
+    if (lastData && currentView !== 'a2') renderAll(lastData, lastQ, currencyMap[lastCollection]);
+    else if (currentView === 'a2' && document.getElementById('q').value.trim().length >= 2) search();
     else if (!document.getElementById('q').value.trim()) {
-      if (currentView === 'a') showPopular();
+      if (currentView === 'a' || currentView === 'a2') showPopular();
       else showHints();
     }
   });
@@ -452,14 +465,88 @@ function renderC(data, q, currency) {
   }).join('')}</div>`;
 }
 
+// ── Render VIEW A2 (reuses A layout + enhanced badge) ──
+function renderA2(data, q, currency, enhancedInfo) {
+  const el = document.getElementById('results-a2');
+  if (!data.hits || data.hits.length === 0) {
+    el.innerHTML = '<div class="empty">Ingen resultater</div>';
+    return;
+  }
+
+  const brands = extractBrands(data.hits);
+  const suggestions = data._suggestions || [];
+  const products = diverseProducts(data.hits, 5);
+
+  // Enhancement badge
+  let badgeHtml = '';
+  if (enhancedInfo && enhancedInfo.enhanced) {
+    badgeHtml = `<div class="enhanced-badge">✓ Søgte med "<strong>${enhancedInfo.usedQuery}</strong>" <span class="original">← du skrev "${enhancedInfo.originalQuery}" → forslag: "${enhancedInfo.suggestionName}"</span></div>`;
+  } else if (enhancedInfo) {
+    badgeHtml = `<div class="enhanced-badge" style="background:#f5f5f5;color:#999;">Ingen forslag fundet — søger med "${enhancedInfo.originalQuery}" direkte</div>`;
+  }
+
+  const brandsLeftHtml = brands.slice(0, 4).map(b => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
+      <span class="suggestion-icon">◆</span>
+      <span class="suggestion-text">${b}</span>
+      <span class="suggestion-arrow">↗</span>
+    </div>`).join('');
+
+  const catsHtml = suggestions.slice(0, 6).map(s => {
+    const url = s.url ? `https://www.med24.dk${s.url}` : '#';
+    return `
+    <a class="suggestion-item" href="${url}" target="_blank" style="text-decoration:none;color:inherit">
+      <span class="suggestion-icon">≡</span>
+      <span class="suggestion-text">${s.name}</span>
+      <span class="suggestion-arrow">↗</span>
+    </a>`;
+  }).join('');
+
+  const productsHtml = products.map((h, i) => {
+    const d = h.document;
+    const hl = h.highlights || [];
+    const hlMap = Object.fromEntries(hl.map(x => [x.field, x.snippet || x.value || '']));
+    const name = hlMap.name || d.name || '';
+    const img = d.image_url
+      ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="fed-product-img-placeholder" style="display:none"></div>`
+      : `<div class="fed-product-img-placeholder"></div>`;
+    const link = d.product_url || '#';
+    return `
+      <a class="fed-product" href="${link}" target="_blank" data-doc-id="${d.id}" data-pos="${i+1}">
+        ${img}
+        <div class="fed-product-info">
+          <div class="fed-product-name">${name}</div>
+          ${d.brand ? `<div class="fed-product-brand">${d.brand}</div>` : ''}
+        </div>
+        <div class="fed-product-price">${fmtPrice(d.price, currency)}</div>
+      </a>`;
+  }).join('');
+
+  el.innerHTML = `
+    ${badgeHtml}
+    <div class="federated-panel">
+      <div class="fed-left">
+        ${brandsLeftHtml ? `<div class="fed-section-title">Mærker</div>${brandsLeftHtml}` : ''}
+        ${catsHtml ? `<hr class="fed-divider"><div class="fed-section-title">Kategorier</div>${catsHtml}` : ''}
+      </div>
+      <div class="fed-right">
+        <div class="fed-section-title">Produkter</div>
+        <div class="fed-products-grid">${productsHtml}</div>
+        <div class="fed-see-all">Se alle ${(data.found||0).toLocaleString('da')} resultater →</div>
+      </div>
+    </div>`;
+}
+
 function renderAll(data, q, currency) {
   if (currentView === 'a') renderA(data, q, currency);
+  else if (currentView === 'a2') {} // A2 renders in its own search flow
   else if (currentView === 'b') renderB(data, q, currency);
   else if (currentView === 'c') renderC(data, q, currency);
 }
 
 function showHints() {
   document.getElementById('results-a').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
+  document.getElementById('results-a2').innerHTML = '<div class="start-hint">Begynd at skrive for at søge — A2 bruger forslag til at udvide søgeordet</div>';
   document.getElementById('results-b').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
   document.getElementById('results-c').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
   document.getElementById('stats').textContent = '';
@@ -514,6 +601,16 @@ function fillSearch(q) {
   search();
 }
 
+// Extract the complete word from a suggestion that the user's query is a prefix of
+function extractEnhancedWord(userQ, suggestionName) {
+  const words = suggestionName.split(/\s+/);
+  const lowerQ = userQ.toLowerCase();
+  for (const word of words) {
+    if (word.toLowerCase().startsWith(lowerQ) && word.toLowerCase() !== lowerQ) return word;
+  }
+  return null;
+}
+
 async function search() {
   const q = document.getElementById('q').value.trim();
   const collection = document.getElementById('market').value;
@@ -523,6 +620,12 @@ async function search() {
   lastQ = q;
 
   if (!q) { lastData = null; showHints(); return; }
+
+  // ── A2: Suggestion-enhanced search ──
+  if (currentView === 'a2') {
+    await searchA2(q, collection, preset, currency);
+    return;
+  }
 
   const perPage = currentView === 'd' ? 24 : 12;
   const params = new URLSearchParams({ q, preset, per_page: perPage, highlight_full_fields: 'name,brand' });
@@ -566,7 +669,7 @@ document.getElementById('q').addEventListener('input', () => {
   const q = document.getElementById('q').value.trim();
   if (q.length < 2) {
     lastData = null;
-    if (currentView === 'a') showPopular();
+    if (currentView === 'a' || currentView === 'a2') showPopular();
     else showHints();
     return;
   }
@@ -581,7 +684,7 @@ document.getElementById('market').addEventListener('change', () => {
   cachedPopular = null;
   const q = document.getElementById('q').value.trim();
   if (q.length >= 2) search();
-  else if (currentView === 'a') showPopular();
+  else if (currentView === 'a' || currentView === 'a2') showPopular();
   if (currentView === 'd') loadAnalytics();
 });
 
@@ -606,6 +709,61 @@ function attachClickTracking() {
   document.querySelectorAll('[data-doc-id]').forEach(el => {
     el.addEventListener('click', () => trackClick(el.dataset.docId, parseInt(el.dataset.pos)));
   });
+}
+
+// ── A2: Suggestion-enhanced search ──
+async function searchA2(q, collection, preset, currency) {
+  const suggestionsCollection = suggestionsMap[collection];
+  const headers = { 'X-TYPESENSE-API-KEY': API_KEY };
+
+  // Step 1: Search suggestions to find the complete word
+  const sugQ = q.replace(/\s+/g, '-');
+  const sugParams = new URLSearchParams({ q: sugQ, query_by: 'name', per_page: 6, highlight_fields: 'name' });
+  const sugRes = await fetch(`${HOST}/collections/${suggestionsCollection}/documents/search?${sugParams}`, { headers });
+  const sugData = await sugRes.json();
+  const suggestions = (sugData.hits || []).map(h => h.document);
+
+  // Step 2: Try to extract an enhanced (complete) word from top suggestion
+  let enhancedWord = null;
+  let suggestionName = null;
+  for (const sug of suggestions) {
+    enhancedWord = extractEnhancedWord(q, sug.name);
+    if (enhancedWord) { suggestionName = sug.name; break; }
+  }
+
+  // Step 3: Search products with enhanced query (or original if no enhancement)
+  const productQ = enhancedWord || q;
+  const productParams = new URLSearchParams({ q: productQ, preset, per_page: 12, highlight_full_fields: 'name,brand' });
+  const productRes = await fetch(`${HOST}/collections/${collection}/documents/search?${productParams}`, { headers });
+  const raw = await productRes.json();
+  raw._suggestions = suggestions;
+
+  // Brand diversity
+  if (raw.hits && raw.hits.length > 0) {
+    const brandCount = {};
+    raw.hits = raw.hits.filter(h => {
+      const brand = (h.document.brand || '').toLowerCase();
+      brandCount[brand] = (brandCount[brand] || 0) + 1;
+      return brandCount[brand] <= 3;
+    });
+  }
+
+  lastData = raw;
+  const found = raw.found || 0;
+  const ms = raw.search_time_ms || 0;
+  document.getElementById('stats').textContent = found > 0
+    ? `${found.toLocaleString('da')} resultater på ${ms} ms`
+    : `Ingen resultater · ${ms} ms`;
+
+  const enhancedInfo = {
+    enhanced: !!enhancedWord,
+    originalQuery: q,
+    usedQuery: productQ,
+    suggestionName: suggestionName || q,
+  };
+
+  renderA2(raw, productQ, currency, enhancedInfo);
+  setTimeout(attachClickTracking, 0);
 }
 
 // ── Analytics view ──
