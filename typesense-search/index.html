@@ -344,7 +344,7 @@ function renderA(data, q, currency) {
 
   const brands = extractBrands(data.hits);
   const suggestions = data._suggestions || [];
-  const products = diverseProducts(data.hits, 5);
+  const products = data.hits.slice(0, 5); // Respektér Typesense-rækkefølge (ranking_score)
 
   // Left: brands + landing page suggestions as separate sections
   const brandsLeftHtml = brands.slice(0, 4).map(b => `
@@ -475,7 +475,7 @@ function renderA2(data, q, currency, enhancedInfo) {
 
   const brands = extractBrands(data.hits);
   const suggestions = data._suggestions || [];
-  const products = diverseProducts(data.hits, 5);
+  const products = data.hits.slice(0, 5); // Respektér Typesense-rækkefølge (ranking_score)
 
   // Enhancement badge
   let badgeHtml = '';
@@ -642,15 +642,6 @@ async function search() {
   const suggestionsData = await suggestionsRes.json();
   raw._suggestions = (suggestionsData.hits || []).map(h => h.document);
 
-  // Client-side brand diversity: max 3 products per brand
-  if (raw.hits && raw.hits.length > 0) {
-    const brandCount = {};
-    raw.hits = raw.hits.filter(h => {
-      const brand = (h.document.brand || "").toLowerCase();
-      brandCount[brand] = (brandCount[brand] || 0) + 1;
-      return brandCount[brand] <= 3;
-    });
-  }
   const data = raw;
   lastData = data;
 
@@ -738,15 +729,6 @@ async function searchA2(q, collection, preset, currency) {
   const raw = await productRes.json();
   raw._suggestions = suggestions;
 
-  // Brand diversity
-  if (raw.hits && raw.hits.length > 0) {
-    const brandCount = {};
-    raw.hits = raw.hits.filter(h => {
-      const brand = (h.document.brand || '').toLowerCase();
-      brandCount[brand] = (brandCount[brand] || 0) + 1;
-      return brandCount[brand] <= 3;
-    });
-  }
 
   lastData = raw;
   const found = raw.found || 0;
