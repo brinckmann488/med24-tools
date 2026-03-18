@@ -342,7 +342,7 @@ function renderA(data, q, currency) {
     return;
   }
 
-  const brands = extractBrands(data.hits);
+  const brands = data._brands && data._brands.length > 0 ? data._brands.slice(0, 6) : extractBrands(data.hits);
   const suggestions = data._suggestions || [];
   const products = data.hits.slice(0, 5); // Respektér Typesense-rækkefølge (ranking_score)
 
@@ -473,7 +473,7 @@ function renderA2(data, q, currency, enhancedInfo) {
     return;
   }
 
-  const brands = extractBrands(data.hits);
+  const brands = data._brands && data._brands.length > 0 ? data._brands.slice(0, 6) : extractBrands(data.hits);
   const suggestions = data._suggestions || [];
   const products = data.hits.slice(0, 5); // Respektér Typesense-rækkefølge (ranking_score)
 
@@ -634,13 +634,18 @@ async function search() {
   const suggestionsCollection = suggestionsMap[collection];
   const sugQ = q.replace(/\s+/g, '-');  // "b vit" → "b-vit" — landing page names use hyphens
   const suggestionsParams = new URLSearchParams({ q: sugQ, query_by: 'name', per_page: 6, highlight_fields: 'name' });
-  const [productRes, suggestionsRes] = await Promise.all([
+  // Parallel: products + suggestions + brands (federated search)
+  const brandsParams = new URLSearchParams({ q, query_by: 'name', per_page: 6, highlight_fields: 'name' });
+  const [productRes, suggestionsRes, brandsRes] = await Promise.all([
     fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } }),
-    fetch(`${HOST}/collections/${suggestionsCollection}/documents/search?${suggestionsParams}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } })
+    fetch(`${HOST}/collections/${suggestionsCollection}/documents/search?${suggestionsParams}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } }),
+    fetch(`${HOST}/collections/brands/documents/search?${brandsParams}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } }).catch(() => ({ json: () => ({ hits: [] }) }))
   ]);
   const raw = await productRes.json();
   const suggestionsData = await suggestionsRes.json();
+  const brandsData = await brandsRes.json();
   raw._suggestions = (suggestionsData.hits || []).map(h => h.document);
+  raw._brands = (brandsData.hits || []).map(h => h.document.name);
 
   const data = raw;
   lastData = data;
@@ -725,9 +730,15 @@ async function searchA2(q, collection, preset, currency) {
   // Step 3: Search products with enhanced query (or original if no enhancement)
   const productQ = enhancedWord || q;
   const productParams = new URLSearchParams({ q: productQ, preset, per_page: 12, highlight_full_fields: 'name,brand' });
-  const productRes = await fetch(`${HOST}/collections/${collection}/documents/search?${productParams}`, { headers });
+  const brandsParams = new URLSearchParams({ q: productQ, query_by: 'name', per_page: 6, highlight_fields: 'name' });
+  const [productRes, brandsRes] = await Promise.all([
+    fetch(`${HOST}/collections/${collection}/documents/search?${productParams}`, { headers }),
+    fetch(`${HOST}/collections/brands/documents/search?${brandsParams}`, { headers }).catch(() => ({ json: () => ({ hits: [] }) }))
+  ]);
   const raw = await productRes.json();
+  const brandsData = await brandsRes.json();
   raw._suggestions = suggestions;
+  raw._brands = (brandsData.hits || []).map(h => h.document.name);
 
 
   lastData = raw;
