@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medisinsk Utstyr Compliance Checker — Med24 Apotek</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.9/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'med24-blue': '#133C68',
+            'med24-black': '#222222',
+            'med24-bg': '#F9F9F9',
+            'med24-badge': '#F7F7F7',
+            'med24-muted': '#6A6A6A',
+          },
+          fontFamily: {
+            sans: ['Source Sans Pro', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body>
+  <div id="root"><p style="padding:2rem;font-family:sans-serif;color:#999">Laster...</p></div>
+  <script>
+    window.onerror = function(msg, url, line, col, err) {
+      document.getElementById('root').innerHTML =
+        '<pre style="padding:2rem;color:red;font-family:monospace">Feil: ' + msg + '\nLinje: ' + line + '</pre>';
+    };
+  </script>
+  <script type="text/babel" data-presets="env,react">
+
+    const { useState, useRef } = React;
+
+    // --- Severity & status config ---
+
+    const SEVERITY_CONFIG = {
+      CRITICAL: { color: 'bg-red-100 text-red-800 border-red-200', icon: '\u26D4', label: 'Kritisk' },
+      HIGH:     { color: 'bg-orange-100 text-orange-800 border-orange-200', icon: '\u26A0\uFE0F', label: 'H\u00f8y' },
+      MEDIUM:   { color: 'bg-amber-100 text-amber-800 border-amber-200', icon: '\u2139\uFE0F', label: 'Medium' },
+      LOW:      { color: 'bg-gray-100 text-gray-700 border-gray-200', icon: '\uD83D\uDCA1', label: 'Lav' },
+    };
+
+    const STATUS_CONFIG = {
+      COMPLIANT:     { color: 'bg-green-100 text-green-800 border-green-300', icon: '\u2705', label: 'Compliant' },
+      NON_COMPLIANT: { color: 'bg-red-100 text-red-800 border-red-300', icon: '\u274C', label: 'Non-compliant' },
+      NEEDS_REVIEW:  { color: 'bg-amber-100 text-amber-800 border-amber-300', icon: '\uD83D\uDD0D', label: 'Needs Review' },
+    };
+
+    const TYPE_LABELS = {
+      OFF_LABEL_BRUK: 'Off-label bruk',
+      ULOVLIG_PASTAND: 'Ulovlig p\u00e5stand',
+      VILLEDENDE_MARKEDSFORING: 'Villedende markedsf\u00f8ring',
+      MANGLENDE_RISIKOINFO: 'Manglende risikoinfo',
+      MANGLENDE_OBLIGATORISK_INFO: 'Manglende obligatorisk info',
+      UTVIDET_BRUKSOMRADE: 'Utvidet bruksomr\u00e5de',
+      USPESIFISERT_YTELSE: 'Uspesifisert ytelse',
+    };
+
+    // --- Normalize model output ---
+
+    const SEVERITY_NORMALIZE = {
+      'critical': 'CRITICAL', 'kritisk': 'CRITICAL',
+      'high': 'HIGH', 'h\u00f8y': 'HIGH', 'hoy': 'HIGH',
+      'medium': 'MEDIUM', 'moderat': 'MEDIUM',
+      'low': 'LOW', 'lav': 'LOW',
+    };
+
+    const VALID_FINDING_TYPES = new Set(Object.keys(TYPE_LABELS));
+
+    function normalizeFindings(result) {
+      if (!result || !Array.isArray(result.findings)) return result;
+      return {
+        ...result,
+        findings: result.findings.map(f => ({
+          ...f,
+          severity: SEVERITY_NORMALIZE[f.severity?.toLowerCase()] || f.severity?.toUpperCase() || 'MEDIUM',
+          type: f.type?.toUpperCase().replace(/ /g, '_') || 'ULOVLIG_PASTAND',
+        })).filter(f => VALID_FINDING_TYPES.has(f.type)),
+      };
+    }
+
+    // --- Webhook URL ---
+
+    const COMPLIANCE_WEBHOOK_URL = 'https://n8n2.med24intra.dk/webhook/medisinsk-utstyr-compliance';
+
+    // --- Components ---
+
+    function HowItWorksPanel() {
+      const [open, setOpen] = useState(false);
+
+      return (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+          <button
+            onClick={() => setOpen(!open)}
+            className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+          >
+            <span className="font-semibold text-med24-black text-sm">
+              {"Slik fungerer compliance-sjekken"}
+            </span>
+            <span className="text-med24-muted">{open ? '\u25B2' : '\u25BC'}</span>
+          </button>
+          {open && (
+            <div className="px-5 pb-5 border-t border-gray-100 pt-4 text-sm text-med24-muted space-y-4">
+              <p className="text-med24-black font-medium">
+                {"Verkt\u00f8yet sjekker automatisk om produkttekster p\u00e5 med24.no overholder gjeldende regelverk for medisinsk utstyr."}
+              </p>
+
+              <div>
+                <h4 className="font-semibold text-med24-black mb-1">{"Hva sjekkes?"}</h4>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li><strong>{"Tiltenkt bruksomr\u00e5de"}</strong>{" \u2014 Samsvarer teksten med produsentens tiltenkte bruksomr\u00e5de? (MDR Art. 7d)"}</li>
+                  <li><strong>{"Forbudte p\u00e5stander"}</strong>{" \u2014 Tilskrives produktet egenskaper det ikke har? Skapes falskt inntrykk? (MDR Art. 7a-d)"}</li>
+                  <li><strong>{"Ytelsessp\u00e5stander"}</strong>{" \u2014 Kommer alle effektp\u00e5stander fra produsentens dokumentasjon?"}</li>
+                  <li><strong>{"Villedende markedsf\u00f8ring"}</strong>{" \u2014 Superlativer, falsk autoritet, prisfremmende formuleringer (Apotekforskriften \u00a749)"}</li>
+                  <li><strong>{"Risikoinformasjon"}</strong>{" \u2014 Er kjente risikoer og kontraindikasjoner med i teksten?"}</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-med24-black mb-1">{"Hva sjekkes IKKE?"}</h4>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>{"Fysisk merking, CE-sertifikater eller samsvarserklæringer \u2014 dette forutsettes ivaretatt"}</li>
+                  <li>{"CE-merke p\u00e5 nettsiden \u2014 dette vises automatisk i sidebar p\u00e5 alle produktsider"}</li>
+                  <li>{"Bilder og illustrasjoner \u2014 kun tekst analyseres"}</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-med24-black mb-1">{"Regulatorisk grunnlag"}</h4>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li><a href="references/tiltenkt-bruksomrade.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Tiltenkt bruksomr\u00e5de og ytelsessp\u00e5stander"}</a></li>
+                  <li><a href="references/forbudte-paastander.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Forbudte p\u00e5stander (MDR Art. 7)"}</a></li>
+                  <li><a href="references/obligatorisk-produktinfo.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Obligatorisk produktinformasjon"}</a></li>
+                  <li><a href="references/villedende-markedsforing.html" target="_blank" rel="noopener" className="text-med24-black underline hover:opacity-70">{"Villedende markedsf\u00f8ring"}</a></li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function FindingCard({ finding }) {
+      const sev = SEVERITY_CONFIG[finding.severity] || SEVERITY_CONFIG.MEDIUM;
+      const typeLabel = TYPE_LABELS[finding.type] || finding.type;
+
+      return (
+        <div className={`rounded-lg border p-4 ${sev.color}`}>
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{sev.icon}</span>
+              <span className="font-semibold text-sm">{typeLabel}</span>
+            </div>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${sev.color}`}>
+              {sev.label}
+            </span>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div>
+              <span className="font-semibold">Tekst: </span>
+              <span className="italic">&ldquo;{finding.text}&rdquo;</span>
+            </div>
+            <div>
+              <span className="font-semibold">Begrunnelse: </span>
+              {finding.reason}
+            </div>
+            {finding.suggestion && (
+              <div>
+                <span className="font-semibold">Forslag: </span>
+                <span className="text-green-800">{finding.suggestion}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function ResultsPanel({ result, productName, onReset }) {
+      const status = STATUS_CONFIG[result.status] || STATUS_CONFIG.NEEDS_REVIEW;
+
+      const copyJson = () => {
+        navigator.clipboard.writeText(JSON.stringify(result, null, 2));
+      };
+
+      return (
+        <div className="space-y-5">
+          {/* Status badge */}
+          <div className={`rounded-lg border-2 p-5 ${status.color}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">{status.icon}</span>
+                <div>
+                  {productName && <p className="text-xs font-semibold opacity-60 mb-0.5">{productName}</p>}
+                  <h3 className="text-xl font-bold">{status.label}</h3>
+                  <p className="text-sm mt-1">{result.summary}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={copyJson}
+                  className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  {"Kopier JSON"}
+                </button>
+                <button
+                  onClick={onReset}
+                  className="bg-med24-black text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-opacity-90 transition-colors"
+                >
+                  Ny sjekk
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Findings */}
+          {result.findings && result.findings.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-med24-black mb-3">
+                Funn ({result.findings.length})
+              </h3>
+              <div className="space-y-3">
+                {result.findings.map((f, i) => (
+                  <FindingCard key={i} finding={f} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Verified claims */}
+          {result.verified_claims && result.verified_claims.length > 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-green-800 mb-2">
+                {'\u2705'} Verifiserte p&aring;stander ({result.verified_claims.length})
+              </h3>
+              <ul className="space-y-1">
+                {result.verified_claims.map((claim, i) => (
+                  <li key={i} className="text-sm text-green-700">{'\u2022'} {claim}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Recommendations */}
+          {result.recommendations && result.recommendations.length > 0 && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-med24-black mb-2">
+                Anbefalinger
+              </h3>
+              <ul className="space-y-1">
+                {result.recommendations.map((rec, i) => (
+                  <li key={i} className="text-sm text-med24-muted">{'\u2022'} {rec}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- Main App ---
+
+    function App() {
+      const [urlInput, setUrlInput] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [result, setResult] = useState(null);
+      const [productName, setProductName] = useState('');
+      const [error, setError] = useState('');
+      const [statusText, setStatusText] = useState('');
+      const abortRef = useRef(null);
+
+      const isValidUrl = urlInput.trim().match(/med24\.no/i);
+
+      const handleCheck = async () => {
+        if (!isValidUrl) {
+          setError('Lim inn en gyldig URL fra med24.no');
+          return;
+        }
+
+        setLoading(true);
+        setError('');
+        setResult(null);
+        setProductName('');
+        setStatusText('Henter produktdata...');
+
+        try {
+          abortRef.current = new AbortController();
+          const signal = abortRef.current.signal;
+
+          const res = await fetch(COMPLIANCE_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product_url: urlInput.trim() }),
+            signal,
+          });
+
+          setStatusText('Analyserer compliance...');
+
+          if (!res.ok) throw new Error('Webhook svarte med HTTP ' + res.status);
+          const text = await res.text();
+          if (!text) throw new Error('Tomt svar fra webhook \u2014 sjekk at workflow er aktivt i n8n.');
+
+          let data;
+          try { data = JSON.parse(text); } catch(e) { throw new Error('Ugyldig JSON fra webhook: ' + text.slice(0, 200)); }
+
+          if (data.status === 'ERROR' && data.error) {
+            throw new Error(data.errorMessage || data.error);
+          }
+          if (!data.status || !Array.isArray(data.findings)) {
+            throw new Error('Ugyldig svar fra webhook');
+          }
+
+          setProductName(data.product_name || '');
+          setResult(normalizeFindings(data));
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            setError('Feil ved compliance-sjekk: ' + err.message);
+          }
+        } finally {
+          setLoading(false);
+          setStatusText('');
+        }
+      };
+
+      const handleStop = () => {
+        if (abortRef.current) abortRef.current.abort();
+        setLoading(false);
+        setStatusText('');
+      };
+
+      const handleReset = () => {
+        setResult(null);
+        setError('');
+        setUrlInput('');
+        setProductName('');
+      };
+
+      return (
+        <div className="min-h-screen bg-med24-bg font-sans text-med24-black">
+          <header className="bg-med24-black text-white py-4">
+            <div className="max-w-3xl mx-auto px-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-semibold">Medisinsk Utstyr Compliance</h1>
+                  <p className="text-sm opacity-70 mt-0.5">{"Sjekk produkttekster mot MDR 2017/745 og norsk regelverk"}</p>
+                </div>
+                <span className="text-xs bg-white bg-opacity-10 px-3 py-1 rounded-full">NO</span>
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-3xl mx-auto px-8 py-8">
+            <HowItWorksPanel />
+
+            {!result ? (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <label className="block text-sm font-semibold text-med24-black mb-2">
+                  Produkt-URL fra med24.no
+                </label>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={urlInput}
+                    onChange={(e) => { setUrlInput(e.target.value); setError(''); }}
+                    placeholder={"https://www.med24.no/helse-og-livsstil/.../produktnavn"}
+                    className="flex-1 border border-gray-300 rounded-md px-4 py-3 text-sm focus:ring-2 focus:ring-med24-black focus:border-transparent outline-none"
+                    onKeyDown={(e) => e.key === 'Enter' && !loading && handleCheck()}
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={handleCheck}
+                    disabled={loading || !urlInput.trim()}
+                    className="bg-med24-black text-white px-6 py-3 rounded-md font-semibold hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
+                  >
+                    {loading && (
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    )}
+                    {loading ? 'Sjekker...' : 'Sjekk compliance'}
+                  </button>
+                </div>
+                <p className="text-xs text-med24-muted mt-2">
+                  {"Lim inn URL til et medisinsk utstyr-produkt p\u00e5 med24.no"}
+                </p>
+
+                {loading && statusText && (
+                  <div className="mt-4 flex items-center gap-2 text-sm text-med24-muted">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    {statusText}
+                    <button
+                      onClick={handleStop}
+                      className="ml-auto text-red-600 text-xs font-medium hover:text-red-800 transition-colors"
+                    >
+                      Avbryt
+                    </button>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
+                    {error}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <ResultsPanel result={result} productName={productName} onReset={handleReset} />
+            )}
+
+            <footer className="mt-8 text-center text-xs text-med24-muted">
+              <p>Medisinsk Utstyr Compliance Checker v1.0 — Med24 Apotek</p>
+              <p className="mt-1">
+                {"Basert p\u00e5 MDR 2017/745, norsk lov om medisinsk utstyr, DMP-retningslinjer og apotekforskriften."}
+              </p>
+            </footer>
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
