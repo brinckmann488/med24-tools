@@ -360,6 +360,21 @@
           <main className="max-w-3xl mx-auto px-8 py-8">
             <HowItWorksPanel />
 
+            {result && urlInput && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-5 py-3 mb-4 flex items-center justify-between">
+                <div className="text-sm text-med24-muted truncate">
+                  <span className="font-semibold text-med24-black mr-2">Sjekket:</span>
+                  <a href={urlInput} target="_blank" rel="noopener" className="underline hover:opacity-70">{urlInput}</a>
+                </div>
+                <button
+                  onClick={() => { setResult(null); setError(''); setProductName(''); }}
+                  className="text-xs text-med24-muted hover:text-med24-black ml-4 whitespace-nowrap"
+                >
+                  Ny URL
+                </button>
+              </div>
+            )}
+
             {!result ? (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <label className="block text-sm font-semibold text-med24-black mb-2">
