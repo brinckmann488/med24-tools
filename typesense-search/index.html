@@ -342,11 +342,13 @@ function renderA(data, q, currency) {
     return;
   }
 
-  const brands = data._brands && data._brands.length > 0 ? data._brands.slice(0, 6) : extractBrands(data.hits);
+  // MÆRKER: brand facets fra produkt-søgningen (de brands der faktisk sælger matchende produkter)
+  const brandFacets = ((data.facet_counts || []).find(f => f.field_name === 'brand')?.counts || []).slice(0, 6).map(c => c.value);
+  const brands = brandFacets.length > 0 ? brandFacets : (data._brands && data._brands.length > 0 ? data._brands.slice(0, 6) : extractBrands(data.hits));
   const suggestions = data._suggestions || [];
   const products = data.hits.slice(0, 5); // Respektér Typesense-rækkefølge (ranking_score)
 
-  // Left: brands + landing page suggestions as separate sections
+  // Left: brands from facets
   const brandsLeftHtml = brands.slice(0, 4).map(b => `
     <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
       <span class="suggestion-icon">◆</span>
@@ -354,24 +356,22 @@ function renderA(data, q, currency) {
       <span class="suggestion-arrow">↗</span>
     </div>`).join('');
 
-  // Kategorier: prefer category-typed suggestions (har URLs), ellers brug facets fra Typesense
-  const catSuggestions = suggestions.filter(s => s.context === 'category').slice(0, 4);
+  // KATEGORIER: suggestions (kategorier + brand/kategori landing pages), fallback til category facets
+  const allSuggestions = suggestions.slice(0, 6);
   const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 4).map(c => c.value);
-  const productCats = catSuggestions.length > 0 ? [] : facetCats;
-  const catsHtml = [
-    ...catSuggestions.map(s => `
-    <a class="suggestion-item" href="https://www.med24.dk${s.url}" target="_blank" style="text-decoration:none;color:inherit">
-      <span class="suggestion-icon">≡</span>
+  const catsHtml = allSuggestions.length > 0
+    ? allSuggestions.map(s => `
+    <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank" style="text-decoration:none;color:inherit">
+      <span class="suggestion-icon">${s.context === 'brand' ? '◆' : '≡'}</span>
       <span class="suggestion-text">${s.name}</span>
       <span class="suggestion-arrow">↗</span>
-    </a>`),
-    ...productCats.map(c => `
+    </a>`).join('')
+    : facetCats.map(c => `
     <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c)})">
       <span class="suggestion-icon">≡</span>
       <span class="suggestion-text">${c}</span>
       <span class="suggestion-arrow">↗</span>
-    </div>`)
-  ].join('');
+    </div>`).join('');
 
   const productsHtml = products.map((h, i) => {
     const d = h.document;
@@ -482,7 +482,9 @@ function renderA2(data, q, currency, enhancedInfo) {
     return;
   }
 
-  const brands = data._brands && data._brands.length > 0 ? data._brands.slice(0, 6) : extractBrands(data.hits);
+  // MÆRKER: brand facets fra produkt-søgningen
+  const brandFacets = ((data.facet_counts || []).find(f => f.field_name === 'brand')?.counts || []).slice(0, 6).map(c => c.value);
+  const brands = brandFacets.length > 0 ? brandFacets : (data._brands && data._brands.length > 0 ? data._brands.slice(0, 6) : extractBrands(data.hits));
   const suggestions = data._suggestions || [];
   const products = data.hits.slice(0, 5); // Respektér Typesense-rækkefølge (ranking_score)
 
@@ -501,24 +503,22 @@ function renderA2(data, q, currency, enhancedInfo) {
       <span class="suggestion-arrow">↗</span>
     </div>`).join('');
 
-  // Kategorier: prefer category-typed suggestions (har URLs), ellers brug facets fra Typesense
-  const catSuggestions = suggestions.filter(s => s.context === 'category').slice(0, 4);
+  // KATEGORIER: suggestions (kategorier + brand/kategori landing pages), fallback til category facets
+  const allSuggestions = suggestions.slice(0, 6);
   const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 4).map(c => c.value);
-  const productCats = catSuggestions.length > 0 ? [] : facetCats;
-  const catsHtml = [
-    ...catSuggestions.map(s => `
-    <a class="suggestion-item" href="https://www.med24.dk${s.url}" target="_blank" style="text-decoration:none;color:inherit">
-      <span class="suggestion-icon">≡</span>
+  const catsHtml = allSuggestions.length > 0
+    ? allSuggestions.map(s => `
+    <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank" style="text-decoration:none;color:inherit">
+      <span class="suggestion-icon">${s.context === 'brand' ? '◆' : '≡'}</span>
       <span class="suggestion-text">${s.name}</span>
       <span class="suggestion-arrow">↗</span>
-    </a>`),
-    ...productCats.map(c => `
+    </a>`).join('')
+    : facetCats.map(c => `
     <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c)})">
       <span class="suggestion-icon">≡</span>
       <span class="suggestion-text">${c}</span>
       <span class="suggestion-arrow">↗</span>
-    </div>`)
-  ].join('');
+    </div>`).join('');
 
   const productsHtml = products.map((h, i) => {
     const d = h.document;
