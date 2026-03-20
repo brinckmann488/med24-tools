@@ -342,13 +342,12 @@ function renderA(data, q, currency) {
     return;
   }
 
-  // MÆRKER: brand facets fra produkt-søgningen (de brands der faktisk sælger matchende produkter)
-  const brandFacets = ((data.facet_counts || []).find(f => f.field_name === 'brand')?.counts || []).slice(0, 6).map(c => c.value);
-  const brands = brandFacets.length > 0 ? brandFacets : (data._brands && data._brands.length > 0 ? data._brands.slice(0, 6) : extractBrands(data.hits));
+  // MÆRKER: brands fra top-produkterne (afspejler mest relevante brands i resultatet)
+  const brands = extractBrands(data.hits);
   const suggestions = data._suggestions || [];
   const products = data.hits.slice(0, 5); // Respektér Typesense-rækkefølge (ranking_score)
 
-  // Left: brands from facets
+  // Left: brands from top products
   const brandsLeftHtml = brands.slice(0, 4).map(b => `
     <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
       <span class="suggestion-icon">◆</span>
