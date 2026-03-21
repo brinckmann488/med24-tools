@@ -618,75 +618,59 @@ function attachClickTracking() {
 let similarSelectedId = null;
 let similarTimer = null;
 
+// Typeahead: search products by name as user types
 document.getElementById('similar-q').addEventListener('input', () => {
   clearTimeout(similarTimer);
   const q = document.getElementById('similar-q').value.trim();
-  if (q.length < 2) { closePicker('similar-picker'); return; }
-  if (/^\d+$/.test(q)) { closePicker('similar-picker'); similarSelectedId = q; return; }
-  similarTimer = setTimeout(() => searchPicker(q, 'similar-picker', id => { similarSelectedId = id; searchSimilar(); }), 200);
+  if (q.length < 2) { closePicker(); return; }
+  // If input is purely numeric, treat as direct ID
+  if (/^\d+$/.test(q)) { closePicker(); similarSelectedId = q; return; }
+  similarTimer = setTimeout(() => searchPicker(q), 200);
 });
 
 document.getElementById('similar-q').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { closePicker('similar-picker'); searchSimilar(); }
+  if (e.key === 'Enter') { closePicker(); searchSimilar(); }
 });
 
-// ── VIEW D: Co-purchase ──
-let copurchaseSelectedId = null;
-let copurchaseTimer = null;
-
-document.getElementById('copurchase-q').addEventListener('input', () => {
-  clearTimeout(copurchaseTimer);
-  const q = document.getElementById('copurchase-q').value.trim();
-  if (q.length < 2) { closePicker('copurchase-picker'); return; }
-  if (/^\d+$/.test(q)) { closePicker('copurchase-picker'); copurchaseSelectedId = q; return; }
-  copurchaseTimer = setTimeout(() => searchPicker(q, 'copurchase-picker', id => { copurchaseSelectedId = id; searchCoPurchase(); }), 200);
-});
-
-document.getElementById('copurchase-q').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { closePicker('copurchase-picker'); searchCoPurchase(); }
-});
-
+// Close picker when clicking outside
 document.addEventListener('click', e => {
-  if (!e.target.closest('#similar-picker') && !e.target.closest('#similar-q')) closePicker('similar-picker');
-  if (!e.target.closest('#copurchase-picker') && !e.target.closest('#copurchase-q')) closePicker('copurchase-picker');
+  if (!e.target.closest('#similar-picker') && !e.target.closest('#similar-q')) closePicker();
 });
 
-function closePicker(pickerId) {
-  document.getElementById(pickerId).innerHTML = '';
+function closePicker() {
+  document.getElementById('similar-picker').innerHTML = '';
 }
 
-async function searchPicker(q, pickerId, onSelect) {
+async function searchPicker(q) {
   const collection = document.getElementById('market').value;
   const currency = currencyMap[collection];
   const params = new URLSearchParams({ q, query_by: 'name,brand', per_page: 6, exclude_fields: 'embedding', highlight_full_fields: 'name' });
   try {
     const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } });
     const data = await res.json();
-    if (!data.hits || data.hits.length === 0) { closePicker(pickerId); return; }
+    if (!data.hits || data.hits.length === 0) { closePicker(); return; }
     const html = data.hits.map(h => {
       const d = h.document;
-      const hasCo = d.bought_together_ids && d.bought_together_ids.length > 0;
       const img = d.image_url ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">` : '';
       return `<div class="picker-item" data-id="${d.id}">
         ${img}
         <div class="picker-item-info">
           <div class="picker-item-name">${d.name}</div>
-          <div class="picker-item-meta">${d.brand || ''} · ${fmtPrice(d.price, currency)} · ID: ${d.id}${hasCo ? ' · ' + d.bought_together_ids.length + ' co-køb' : ''}</div>
+          <div class="picker-item-meta">${d.brand || ''} · ${fmtPrice(d.price, currency)} · ID: ${d.id}</div>
         </div>
       </div>`;
     }).join('');
-    const picker = document.getElementById(pickerId);
+    const picker = document.getElementById('similar-picker');
     picker.innerHTML = `<div class="picker-dropdown">${html}</div>`;
     picker.querySelectorAll('.picker-item').forEach(el => {
       el.addEventListener('click', () => {
-        const id = el.dataset.id;
-        const inputId = pickerId === 'similar-picker' ? 'similar-q' : 'copurchase-q';
-        document.getElementById(inputId).value = el.querySelector('.picker-item-name').textContent;
-        closePicker(pickerId);
-        onSelect(id);
+        similarSelectedId = el.dataset.id;
+        document.getElementById('similar-q').value = el.querySelector('.picker-item-name').textContent;
+        closePicker();
+        searchSimilar();
       });
     });
-  } catch (e) { closePicker(pickerId); }
+  } catch (e) { closePicker(); }
 }
 
 async function searchSimilar() {
@@ -701,6 +685,8 @@ async function searchSimilar() {
   resEl.innerHTML = '';
 
   const headers = { 'X-TYPESENSE-API-KEY': API_KEY };
+
+  // 1. Fetch source product
   let sourceDoc;
   try {
     const srcRes = await fetch(`${HOST}/collections/${collection}/documents/${productId}`, { headers });
@@ -708,7 +694,9 @@ async function searchSimilar() {
     sourceDoc = await srcRes.json();
   } catch (e) { srcEl.innerHTML = '<div class="empty">Fejl ved hentning af produkt</div>'; return; }
 
-  const srcImg = sourceDoc.image_url ? `<img src="${sourceDoc.image_url}" alt="" onerror="this.style.display='none'">` : '';
+  const srcImg = sourceDoc.image_url
+    ? `<img src="${sourceDoc.image_url}" alt="" onerror="this.style.display='none'">`
+    : '';
   srcEl.innerHTML = `
     <div class="source-product">
       ${srcImg}
@@ -719,6 +707,7 @@ async function searchSimilar() {
       </div>
     </div>`;
 
+  // 2. Vector search for similar products
   resEl.innerHTML = '<div class="start-hint">Søger efter alternativer...</div>';
   try {
     const params = new URLSearchParams({
@@ -763,6 +752,63 @@ async function searchSimilar() {
   }
 }
 
+// ── VIEW D: Andre købte også ──
+let copurchaseSelectedId = null;
+let copurchaseTimer = null;
+
+document.getElementById('copurchase-q').addEventListener('input', () => {
+  clearTimeout(copurchaseTimer);
+  const q = document.getElementById('copurchase-q').value.trim();
+  if (q.length < 2) { closeCopurchasePicker(); return; }
+  if (/^\d+$/.test(q)) { closeCopurchasePicker(); copurchaseSelectedId = q; return; }
+  copurchaseTimer = setTimeout(() => searchCopurchasePicker(q), 200);
+});
+
+document.getElementById('copurchase-q').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { closeCopurchasePicker(); searchCoPurchase(); }
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#copurchase-picker') && !e.target.closest('#copurchase-q')) closeCopurchasePicker();
+});
+
+function closeCopurchasePicker() {
+  document.getElementById('copurchase-picker').innerHTML = '';
+}
+
+async function searchCopurchasePicker(q) {
+  const collection = document.getElementById('market').value;
+  const currency = currencyMap[collection];
+  const params = new URLSearchParams({ q, query_by: 'name,brand', per_page: 6, exclude_fields: 'embedding', highlight_full_fields: 'name' });
+  try {
+    const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } });
+    const data = await res.json();
+    if (!data.hits || data.hits.length === 0) { closeCopurchasePicker(); return; }
+    const html = data.hits.map(h => {
+      const d = h.document;
+      const hasCo = d.bought_together_ids && d.bought_together_ids.length > 0;
+      const img = d.image_url ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">` : '';
+      return `<div class="picker-item" data-id="${d.id}">
+        ${img}
+        <div class="picker-item-info">
+          <div class="picker-item-name">${d.name}</div>
+          <div class="picker-item-meta">${d.brand || ''} · ${fmtPrice(d.price, currency)} · ID: ${d.id}${hasCo ? ' · ' + d.bought_together_ids.length + ' co-køb' : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+    const picker = document.getElementById('copurchase-picker');
+    picker.innerHTML = `<div class="picker-dropdown">${html}</div>`;
+    picker.querySelectorAll('.picker-item').forEach(el => {
+      el.addEventListener('click', () => {
+        copurchaseSelectedId = el.dataset.id;
+        document.getElementById('copurchase-q').value = el.querySelector('.picker-item-name').textContent;
+        closeCopurchasePicker();
+        searchCoPurchase();
+      });
+    });
+  } catch (e) { closeCopurchasePicker(); }
+}
+
 async function searchCoPurchase() {
   const input = document.getElementById('copurchase-q').value.trim();
   const productId = copurchaseSelectedId || (/^\d+$/.test(input) ? input : null);
@@ -775,6 +821,8 @@ async function searchCoPurchase() {
   resEl.innerHTML = '';
 
   const headers = { 'X-TYPESENSE-API-KEY': API_KEY };
+
+  // 1. Fetch source product (including bought_together_ids)
   let sourceDoc;
   try {
     const srcRes = await fetch(`${HOST}/collections/${collection}/documents/${productId}`, { headers });
@@ -782,7 +830,9 @@ async function searchCoPurchase() {
     sourceDoc = await srcRes.json();
   } catch (e) { srcEl.innerHTML = '<div class="empty">Fejl ved hentning af produkt</div>'; return; }
 
-  const srcImg = sourceDoc.image_url ? `<img src="${sourceDoc.image_url}" alt="" onerror="this.style.display='none'">` : '';
+  const srcImg = sourceDoc.image_url
+    ? `<img src="${sourceDoc.image_url}" alt="" onerror="this.style.display='none'">`
+    : '';
   srcEl.innerHTML = `
     <div class="source-product">
       ${srcImg}
@@ -793,11 +843,13 @@ async function searchCoPurchase() {
       </div>
     </div>`;
 
+  // 2. Check bought_together_ids — fallback to vector search if empty
   const coIds = sourceDoc.bought_together_ids || [];
   let hits = [];
   let label = '';
 
   if (coIds.length > 0) {
+    // Primary: co-purchase data from real orders
     resEl.innerHTML = '<div class="start-hint">Henter co-køb...</div>';
     try {
       const idFilter = coIds.map(id => `id:=${id}`).join(' || ');
@@ -819,7 +871,7 @@ async function searchCoPurchase() {
     } catch (e) {}
   }
 
-  // Fallback: vector search
+  // Fallback: vector search (semantic similarity)
   if (hits.length === 0) {
     resEl.innerHTML = '<div class="start-hint">Finder lignende produkter via AI...</div>';
     try {
