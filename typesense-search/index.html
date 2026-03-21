@@ -86,8 +86,8 @@
     .analytics-link:hover { background: #e0004d; color: white; }
 
     /* Hidden until correct view */
-    .view-a, .view-a1, .view-a2, .view-a3, .view-d, .view-e { display: none; }
-    .view-a.active, .view-a1.active, .view-a2.active, .view-a3.active, .view-d.active, .view-e.active { display: block; }
+    .view-a1, .view-a2, .view-a3, .view-d, .view-e { display: none; }
+    .view-a1.active, .view-a2.active, .view-a3.active, .view-d.active, .view-e.active { display: block; }
     .container { margin: 0 auto; }
 
     /* ── VIEW D/E: Similar/CoPurchase (unchanged) ── */
@@ -139,8 +139,7 @@
 <div style="max-width:960px;margin:0 auto;">
   <!-- View switcher -->
   <div class="view-switcher">
-    <button class="view-btn active" data-view="a">A — Nuværende</button>
-    <button class="view-btn" data-view="a1">A1 — Clean Split</button>
+    <button class="view-btn active" data-view="a1">A1 — Clean Split</button>
     <button class="view-btn" data-view="a2">A2 — Med Genveje</button>
     <button class="view-btn" data-view="a3">A3 — Produkt-først</button>
     <button class="view-btn" data-view="d">D — Andre købte også</button>
@@ -162,15 +161,8 @@
   <div class="stats" id="stats"></div>
 </div>
 
-<!-- VIEW A: Nuværende (uændret) -->
-<div class="view-a active" id="view-a">
-  <div class="container" style="max-width:960px;">
-    <div id="results-a"></div>
-  </div>
-</div>
-
 <!-- VIEW A1: Clean Split -->
-<div class="view-a1" id="view-a1">
+<div class="view-a1 active" id="view-a1">
   <div class="container" style="max-width:960px;">
     <div id="results-a1"></div>
   </div>
@@ -224,7 +216,7 @@ const currencyMap = { products_dk: 'kr.', products_se: 'kr.', products_no: 'kr.'
 const suggestionsMap = { products_dk: 'suggestions_dk', products_se: 'suggestions_se', products_no: 'suggestions_no' };
 
 let timer;
-let currentView = 'a';
+let currentView = 'a1';
 let lastData = null;
 let lastQ = '';
 let lastCollection = 'products_dk';
@@ -235,14 +227,14 @@ document.querySelectorAll('.view-btn').forEach(btn => {
     document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentView = btn.dataset.view;
-    document.querySelectorAll('.view-a,.view-a1,.view-a2,.view-a3,.view-d,.view-e').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.view-a1,.view-a2,.view-a3,.view-d,.view-e').forEach(v => v.classList.remove('active'));
     const hideSearch = currentView === 'd' || currentView === 'e';
     document.querySelector('.search-wrap').style.display = hideSearch ? 'none' : 'block';
     document.getElementById('stats').style.display = hideSearch ? 'none' : 'block';
     document.getElementById('view-' + currentView).classList.add('active');
     if (lastData) renderAll(lastData, lastQ, currencyMap[lastCollection]);
     else if (!document.getElementById('q').value.trim()) {
-      if (['a','a1','a2','a3'].includes(currentView)) showPopular();
+      if (['a1','a2','a3'].includes(currentView)) showPopular();
       else showHints();
     }
   });
@@ -283,56 +275,6 @@ function renderProductRow(h, i, currency) {
       </div>
       <div class="fed-product-price">${fmtPrice(d.price, currency)}</div>
     </a>`;
-}
-
-// ── Render VIEW A (Nuværende — uændret) ──
-function renderA(data, q, currency) {
-  const el = document.getElementById('results-a');
-  if (!data.hits || data.hits.length === 0) {
-    el.innerHTML = '<div class="empty">Ingen resultater</div>';
-    return;
-  }
-  const brands = extractBrands(data.hits);
-  const suggestions = data._suggestions || [];
-  const products = data.hits.slice(0, 5);
-
-  const brandsLeftHtml = brands.slice(0, 4).map(b => `
-    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
-      <span class="suggestion-icon">◆</span>
-      <span class="suggestion-text">${b}</span>
-      <span class="suggestion-arrow">↗</span>
-    </div>`).join('');
-
-  const allSuggestions = suggestions.slice(0, 6);
-  const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 4).map(c => c.value);
-  const catsHtml = allSuggestions.length > 0
-    ? allSuggestions.map(s => `
-    <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank">
-      <span class="suggestion-icon">${s.context === 'brand' ? '◆' : '≡'}</span>
-      <span class="suggestion-text">${s.name}</span>
-      <span class="suggestion-arrow">↗</span>
-    </a>`).join('')
-    : facetCats.map(c => `
-    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c)})">
-      <span class="suggestion-icon">≡</span>
-      <span class="suggestion-text">${c}</span>
-      <span class="suggestion-arrow">↗</span>
-    </div>`).join('');
-
-  const productsHtml = products.map((h, i) => renderProductRow(h, i, currency)).join('');
-
-  el.innerHTML = `
-    <div class="federated-panel">
-      <div class="fed-left">
-        ${brandsLeftHtml ? `<div class="fed-section-title">Mærker</div>${brandsLeftHtml}` : ''}
-        ${catsHtml ? `<hr class="fed-divider"><div class="fed-section-title">Kategorier</div>${catsHtml}` : ''}
-      </div>
-      <div class="fed-right">
-        <div class="fed-section-title">Produkter</div>
-        <div class="fed-products-grid">${productsHtml}</div>
-        <div class="fed-see-all">Se alle ${(data.found||0).toLocaleString('da')} resultater →</div>
-      </div>
-    </div>`;
 }
 
 // ── Render VIEW A1 (Clean Split) ──
@@ -511,15 +453,14 @@ function renderA3(data, q, currency) {
 
 // ── Render dispatcher ──
 function renderAll(data, q, currency) {
-  if (currentView === 'a') renderA(data, q, currency);
-  else if (currentView === 'a1') renderA1(data, q, currency);
+  if (currentView === 'a1') renderA1(data, q, currency);
   else if (currentView === 'a2') renderA2(data, q, currency);
   else if (currentView === 'a3') renderA3(data, q, currency);
   setTimeout(attachClickTracking, 0);
 }
 
 function showHints() {
-  ['results-a','results-a1','results-a2','results-a3'].forEach(id => {
+  ['results-a1','results-a2','results-a3'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
   });
@@ -547,7 +488,7 @@ async function loadPopularQueries() {
 async function showPopular() {
   const queries = await loadPopularQueries();
   // Update all A-variant views with popular queries
-  const viewIds = ['results-a','results-a1','results-a2','results-a3'];
+  const viewIds = ['results-a1','results-a2','results-a3'];
   for (const id of viewIds) {
     const el = document.getElementById(id);
     if (!el) continue;
@@ -634,7 +575,7 @@ document.getElementById('q').addEventListener('input', () => {
   const q = document.getElementById('q').value.trim();
   if (q.length < 2) {
     lastData = null;
-    if (['a','a1','a2','a3'].includes(currentView)) showPopular();
+    if (['a1','a2','a3'].includes(currentView)) showPopular();
     else showHints();
     return;
   }
@@ -642,14 +583,14 @@ document.getElementById('q').addEventListener('input', () => {
 });
 
 document.getElementById('q').addEventListener('focus', () => {
-  if (!document.getElementById('q').value.trim() && ['a','a1','a2','a3'].includes(currentView)) showPopular();
+  if (!document.getElementById('q').value.trim() && ['a1','a2','a3'].includes(currentView)) showPopular();
 });
 
 document.getElementById('market').addEventListener('change', () => {
   cachedPopular = null;
   const q = document.getElementById('q').value.trim();
   if (q.length >= 2) search();
-  else if (['a','a1','a2','a3'].includes(currentView)) showPopular();
+  else if (['a1','a2','a3'].includes(currentView)) showPopular();
 });
 
 // ── Click tracking ──
