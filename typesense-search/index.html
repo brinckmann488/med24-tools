@@ -12,7 +12,7 @@
     .subtitle { font-size: 12px; color: #999; }
 
     /* View switcher */
-    .view-switcher { display: flex; gap: 6px; margin-bottom: 18px; }
+    .view-switcher { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
     .view-btn { padding: 6px 14px; font-size: 13px; border: 2px solid #ddd; border-radius: 20px; background: white; cursor: pointer; color: #555; transition: all .15s; font-weight: 500; }
     .view-btn:hover { border-color: #bbb; color: #222; }
     .view-btn.active { border-color: #e0004d; background: #e0004d; color: white; }
@@ -25,38 +25,16 @@
     select { padding: 12px 12px; font-size: 14px; border: 2px solid #ddd; border-radius: 10px; background: white; cursor: pointer; }
     .stats { font-size: 12px; color: #bbb; margin-bottom: 16px; min-height: 18px; }
 
-    /* ── VIEW B: Card list (current) ── */
-    .view-b .container { max-width: 700px; }
-    .results-b { display: flex; flex-direction: column; gap: 10px; }
-    .card { background: white; border-radius: 10px; padding: 14px 16px; display: flex; gap: 14px; align-items: flex-start; box-shadow: 0 1px 4px rgba(0,0,0,.08); transition: box-shadow .15s; }
-    .card:hover { box-shadow: 0 3px 12px rgba(0,0,0,.13); }
-    .card img { width: 64px; height: 64px; object-fit: contain; border-radius: 6px; background: #f9f9f9; flex-shrink: 0; }
-    .card-img-placeholder { width: 64px; height: 64px; background: #f0f0f0; border-radius: 6px; flex-shrink: 0; }
-    .card-body { flex: 1; min-width: 0; }
-    .card-name { font-size: 15px; font-weight: 600; color: #222; margin-bottom: 3px; }
-    .card-brand { font-size: 12px; color: #e0004d; font-weight: 500; margin-bottom: 5px; }
-    .card-cats { font-size: 11px; color: #999; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .card-footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .card-price { font-size: 17px; font-weight: 700; color: #222; }
-    .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
-    .badge-in { background: #e6f9ee; color: #1a7a3a; }
-    .badge-out { background: #fde8e8; color: #c0392b; }
-    .card-score { font-size: 11px; color: #bbb; margin-left: auto; }
-    .card-link { font-size: 11px; color: #aaa; text-decoration: none; }
-    .card-link:hover { color: #e0004d; }
-    mark { background: #fff3c4; border-radius: 2px; padding: 0 2px; font-style: normal; }
-    .brand-mark mark { background: #ffe5ee; }
-
-    /* ── VIEW A: Federated (Matas-style) ── */
-    .view-a .container { max-width: 960px; }
+    /* ── Shared federated panel (used by A, A1, A2) ── */
     .federated-panel { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.12); display: flex; overflow: hidden; }
     .fed-left { width: 260px; flex-shrink: 0; border-right: 1px solid #f0f0f0; padding: 16px 0; }
     .fed-right { flex: 1; padding: 16px 20px; min-width: 0; }
     .fed-section-title { font-size: 11px; font-weight: 700; color: #aaa; letter-spacing: .06em; text-transform: uppercase; padding: 0 16px 10px; }
-    .suggestion-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; cursor: pointer; transition: background .1s; color: #222; font-size: 14px; }
+    .suggestion-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; cursor: pointer; transition: background .1s; color: #222; font-size: 14px; text-decoration: none; }
     .suggestion-item:hover { background: #f9f9f9; }
     .suggestion-icon { font-size: 13px; color: #bbb; flex-shrink: 0; }
     .suggestion-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .suggestion-meta { font-size: 11px; color: #ccc; flex-shrink: 0; }
     .suggestion-arrow { font-size: 11px; color: #ddd; flex-shrink: 0; }
     .fed-products-grid { display: flex; flex-direction: column; gap: 2px; margin-bottom: 16px; }
     .fed-product { display: flex; align-items: center; gap: 12px; padding: 8px 6px; border-radius: 8px; cursor: pointer; transition: background .1s; text-decoration: none; color: inherit; }
@@ -67,48 +45,25 @@
     .fed-product-name { font-size: 13px; font-weight: 500; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .fed-product-brand { font-size: 11px; color: #e0004d; margin-top: 1px; }
     .fed-product-price { font-size: 14px; font-weight: 700; color: #222; flex-shrink: 0; }
-    .fed-brands { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
-    .brand-chip { display: inline-block; padding: 5px 12px; border: 1px solid #eee; border-radius: 20px; font-size: 13px; font-weight: 500; color: #444; cursor: pointer; transition: all .15s; background: #fafafa; }
-    .brand-chip:hover { border-color: #e0004d; color: #e0004d; background: #fff5f8; }
     .fed-divider { border: none; border-top: 1px solid #f0f0f0; margin: 12px 0; }
     .fed-see-all { display: block; text-align: center; padding: 10px; font-size: 13px; color: #e0004d; font-weight: 500; cursor: pointer; border-top: 1px solid #f5f5f5; margin-top: 8px; }
     .fed-see-all:hover { background: #fff5f8; }
+    mark { background: #fff3c4; border-radius: 2px; padding: 0 2px; font-style: normal; }
 
-    /* ── VIEW C: Product grid ── */
+    /* ── Genvej chips (A2) ── */
+    .shortcut-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 16px 4px; }
+    .shortcut-chip { display: inline-flex; align-items: center; gap: 4px; padding: 5px 11px; border: 1px solid #eee; border-radius: 16px; font-size: 12px; font-weight: 500; color: #555; cursor: pointer; transition: all .15s; background: #fafafa; text-decoration: none; }
+    .shortcut-chip:hover { border-color: #e0004d; color: #e0004d; background: #fff5f8; }
+    .shortcut-chip .chip-count { font-size: 10px; color: #ccc; font-weight: 400; }
 
-    /* Shared */
-    .empty { text-align: center; color: #bbb; padding: 48px 20px; font-size: 15px; }
-    .start-hint { text-align: center; color: #ccc; padding: 48px 20px; font-size: 14px; }
-
-    /* ── VIEW D: Analytics ── */
-    .view-d .container { max-width: 900px; }
-    .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-    @media (max-width: 640px) { .analytics-grid { grid-template-columns: 1fr; } }
-    .analytics-card { background: white; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,.08); overflow: hidden; }
-    .analytics-card-header { padding: 14px 18px 12px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
-    .analytics-card-title { font-size: 13px; font-weight: 700; color: #333; }
-    .analytics-card-subtitle { font-size: 11px; color: #bbb; }
-    .analytics-row { display: flex; align-items: center; gap: 10px; padding: 9px 18px; border-bottom: 1px solid #fafafa; }
-    .analytics-row:last-child { border-bottom: none; }
-    .analytics-rank { font-size: 11px; color: #ccc; width: 18px; flex-shrink: 0; text-align: right; }
-    .analytics-query { flex: 1; font-size: 14px; color: #333; }
-    .analytics-count { font-size: 12px; color: #999; background: #f5f5f5; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
-    .analytics-nohit .analytics-count { background: #fde8e8; color: #c0392b; }
-    .analytics-bar-wrap { width: 60px; height: 4px; background: #f0f0f0; border-radius: 2px; flex-shrink: 0; }
-    .analytics-bar { height: 4px; border-radius: 2px; background: #e0004d; }
-    .analytics-empty { padding: 32px 18px; text-align: center; color: #ccc; font-size: 13px; }
-    .analytics-loading { padding: 32px 18px; text-align: center; color: #ccc; font-size: 13px; }
-    .analytics-meta { padding: 10px 18px; font-size: 11px; color: #bbb; background: #fafafa; border-top: 1px solid #f0f0f0; }
-    .analytics-add-synonym { font-size: 11px; color: #e0004d; cursor: pointer; margin-left: 6px; opacity: 0; transition: opacity .15s; }
-    .analytics-row:hover .analytics-add-synonym { opacity: 1; }
-    .stat-boxes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-    .stat-box { background: white; border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
-    .stat-box-label { font-size: 11px; color: #aaa; margin-bottom: 4px; }
-    .stat-box-value { font-size: 24px; font-weight: 700; color: #222; }
-    .stat-box-sub { font-size: 11px; color: #bbb; margin-top: 2px; }
-
-    /* ── VIEW C: Product grid ── */
-    .view-c .container { max-width: 960px; }
+    /* ── VIEW A3: Produkt-først ── */
+    .a3-section { margin-bottom: 14px; }
+    .a3-label { font-size: 11px; font-weight: 700; color: #aaa; letter-spacing: .06em; text-transform: uppercase; margin-right: 8px; }
+    .a3-chips { display: inline-flex; flex-wrap: wrap; gap: 8px; vertical-align: middle; }
+    .a3-chip { display: inline-block; padding: 6px 14px; border: 1px solid #e0e0e0; border-radius: 20px; font-size: 13px; font-weight: 500; color: #444; cursor: pointer; transition: all .15s; background: white; text-decoration: none; }
+    .a3-chip:hover { border-color: #e0004d; color: #e0004d; background: #fff5f8; }
+    .a3-chip.combo { border-style: dashed; color: #888; }
+    .a3-chip.combo:hover { border-color: #e0004d; color: #e0004d; border-style: solid; }
     .grid-panel { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
     .grid-card { background: white; border-radius: 10px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.08); display: flex; flex-direction: column; gap: 8px; transition: box-shadow .15s; text-decoration: none; color: inherit; }
     .grid-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.13); }
@@ -122,20 +77,20 @@
     .grid-card-stock.in { background: #2ecc71; }
     .grid-card-stock.out { background: #e74c3c; }
 
-    /* Analytics link button — distinct style */
+    /* Shared */
+    .empty { text-align: center; color: #bbb; padding: 48px 20px; font-size: 15px; }
+    .start-hint { text-align: center; color: #ccc; padding: 48px 20px; font-size: 14px; }
+
+    /* Analytics link button */
     .analytics-link { padding: 6px 18px; font-size: 13px; border: 2px solid #e0004d; border-radius: 20px; background: white; cursor: pointer; color: #e0004d; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: all .15s; }
     .analytics-link:hover { background: #e0004d; color: white; }
 
-    /* ── VIEW A2: Enhanced query badge ── */
-    .enhanced-badge { display: inline-block; font-size: 11px; background: #e6f9ee; color: #1a7a3a; padding: 3px 10px; border-radius: 12px; margin-bottom: 12px; font-weight: 500; }
-    .enhanced-badge .original { color: #999; }
-
     /* Hidden until correct view */
-    .view-a, .view-a2, .view-b, .view-c, .view-d, .view-e { display: none; }
-    .view-a.active, .view-a2.active, .view-b.active, .view-c.active, .view-d.active, .view-e.active { display: block; }
+    .view-a, .view-a1, .view-a2, .view-a3, .view-d, .view-e { display: none; }
+    .view-a.active, .view-a1.active, .view-a2.active, .view-a3.active, .view-d.active, .view-e.active { display: block; }
     .container { margin: 0 auto; }
-    /* ── VIEW E: Similar Products ── */
-    .view-e .container { max-width: 960px; }
+
+    /* ── VIEW D/E: Similar/CoPurchase (unchanged) ── */
     .similar-input-bar { display: flex; gap: 10px; margin-bottom: 16px; }
     .similar-input-bar input { flex: 1; padding: 12px 16px; font-size: 15px; border: 2px solid #ddd; border-radius: 10px; outline: none; }
     .similar-input-bar input:focus { border-color: #e0004d; }
@@ -165,6 +120,14 @@
     .picker-item-info { flex: 1; min-width: 0; }
     .picker-item-name { font-size: 13px; font-weight: 500; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .picker-item-meta { font-size: 11px; color: #999; }
+
+    /* ── Mobile responsive ── */
+    @media (max-width: 640px) {
+      .federated-panel { flex-direction: column; }
+      .fed-left { width: 100%; border-right: none; border-bottom: 1px solid #f0f0f0; padding: 12px 0; }
+      .fed-right { padding: 12px 16px; }
+      .grid-panel { grid-template-columns: repeat(2, 1fr); }
+    }
   </style>
 </head>
 <body>
@@ -176,13 +139,13 @@
 <div style="max-width:960px;margin:0 auto;">
   <!-- View switcher -->
   <div class="view-switcher">
-    <button class="view-btn active" data-view="a">A — Kombineret søgning</button>
-    <button class="view-btn" data-view="a2">A2 — Suggestion-enhanced (forståelse til test - ikke tænkt vist til kunde)</button>
-    <button class="view-btn" data-view="b">B — Kort</button>
-    <button class="view-btn" data-view="c">C — Produktgrid</button>
+    <button class="view-btn active" data-view="a">A — Nuværende</button>
+    <button class="view-btn" data-view="a1">A1 — Clean Split</button>
+    <button class="view-btn" data-view="a2">A2 — Med Genveje</button>
+    <button class="view-btn" data-view="a3">A3 — Produkt-først</button>
     <button class="view-btn" data-view="d">D — Andre købte også</button>
     <button class="view-btn" data-view="e">E — Alternative Produkter</button>
-    <a href="analytics.html" class="analytics-link" style="margin-left:auto">📊 Analytics</a>
+    <a href="analytics.html" class="analytics-link" style="margin-left:auto">Analytics</a>
   </div>
 
   <!-- Search bar (shared) -->
@@ -199,31 +162,31 @@
   <div class="stats" id="stats"></div>
 </div>
 
-<!-- VIEW A: Federated -->
+<!-- VIEW A: Nuværende (uændret) -->
 <div class="view-a active" id="view-a">
-  <div class="container">
+  <div class="container" style="max-width:960px;">
     <div id="results-a"></div>
   </div>
 </div>
 
-<!-- VIEW A2: Suggestion-enhanced -->
+<!-- VIEW A1: Clean Split -->
+<div class="view-a1" id="view-a1">
+  <div class="container" style="max-width:960px;">
+    <div id="results-a1"></div>
+  </div>
+</div>
+
+<!-- VIEW A2: Med Genveje -->
 <div class="view-a2" id="view-a2">
   <div class="container" style="max-width:960px;">
     <div id="results-a2"></div>
   </div>
 </div>
 
-<!-- VIEW B: Card list -->
-<div class="view-b" id="view-b">
-  <div class="container" style="max-width:700px;">
-    <div class="results-b" id="results-b"></div>
-  </div>
-</div>
-
-<!-- VIEW C: Product grid -->
-<div class="view-c" id="view-c">
+<!-- VIEW A3: Produkt-først -->
+<div class="view-a3" id="view-a3">
   <div class="container" style="max-width:960px;">
-    <div id="results-c"></div>
+    <div id="results-a3"></div>
   </div>
 </div>
 
@@ -266,27 +229,26 @@ let lastData = null;
 let lastQ = '';
 let lastCollection = 'products_dk';
 
-// View switcher
+// ── View switcher ──
 document.querySelectorAll('.view-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentView = btn.dataset.view;
-    document.querySelectorAll('.view-a,.view-a2,.view-b,.view-c,.view-d,.view-e').forEach(v => v.classList.remove('active'));
-    // Hide search input in views D/E (they have their own input), but keep market selector visible
+    document.querySelectorAll('.view-a,.view-a1,.view-a2,.view-a3,.view-d,.view-e').forEach(v => v.classList.remove('active'));
     const hideSearch = currentView === 'd' || currentView === 'e';
     document.querySelector('.search-wrap').style.display = hideSearch ? 'none' : 'block';
     document.getElementById('stats').style.display = hideSearch ? 'none' : 'block';
     document.getElementById('view-' + currentView).classList.add('active');
-    if (lastData && currentView !== 'a2') renderAll(lastData, lastQ, currencyMap[lastCollection]);
-    else if (currentView === 'a2' && document.getElementById('q').value.trim().length >= 2) search();
+    if (lastData) renderAll(lastData, lastQ, currencyMap[lastCollection]);
     else if (!document.getElementById('q').value.trim()) {
-      if (currentView === 'a' || currentView === 'a2') showPopular();
+      if (['a','a1','a2','a3'].includes(currentView)) showPopular();
       else showHints();
     }
   });
 });
 
+// ── Helpers ──
 function fmtPrice(p, currency) {
   if (!p) return '–';
   return Number(p).toLocaleString('da', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + currency;
@@ -303,51 +265,37 @@ function extractBrands(hits) {
   return brands;
 }
 
-function extractCategories(hits, maxCats = 4) {
-  const seenCats = new Set();
-  const cats = [];
-  for (const h of hits.slice(0, 10)) {
-    for (const cat of (h.document.categories || []).slice(0, 3)) {
-      if (!seenCats.has(cat)) {
-        seenCats.add(cat);
-        cats.push(cat);
-      }
-      if (cats.length >= maxCats) return cats;
-    }
-  }
-  return cats;
+function renderProductRow(h, i, currency) {
+  const d = h.document;
+  const hl = h.highlights || [];
+  const hlMap = Object.fromEntries(hl.map(x => [x.field, x.snippet || x.value || '']));
+  const name = hlMap.name || d.name || '';
+  const img = d.image_url
+    ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="fed-product-img-placeholder" style="display:none"></div>`
+    : `<div class="fed-product-img-placeholder"></div>`;
+  const link = d.product_url || '#';
+  return `
+    <a class="fed-product" href="${link}" target="_blank" data-doc-id="${d.id}" data-pos="${i+1}">
+      ${img}
+      <div class="fed-product-info">
+        <div class="fed-product-name">${name}</div>
+        ${d.brand ? `<div class="fed-product-brand">${d.brand}</div>` : ''}
+      </div>
+      <div class="fed-product-price">${fmtPrice(d.price, currency)}</div>
+    </a>`;
 }
 
-// Return top 5 diverse products (max 2 per brand)
-function diverseProducts(hits, max = 5) {
-  const brandCount = new Map();
-  const result = [];
-  for (const h of hits) {
-    const brand = h.document.brand || '';
-    const count = brandCount.get(brand) || 0;
-    if (count < 2) {
-      result.push(h);
-      brandCount.set(brand, count + 1);
-    }
-    if (result.length >= max) break;
-  }
-  return result;
-}
-
-// ── Render VIEW A ──
+// ── Render VIEW A (Nuværende — uændret) ──
 function renderA(data, q, currency) {
   const el = document.getElementById('results-a');
   if (!data.hits || data.hits.length === 0) {
     el.innerHTML = '<div class="empty">Ingen resultater</div>';
     return;
   }
-
-  // MÆRKER: brands fra top-produkterne (afspejler mest relevante brands i resultatet)
   const brands = extractBrands(data.hits);
   const suggestions = data._suggestions || [];
-  const products = data.hits.slice(0, 5); // Respektér Typesense-rækkefølge (ranking_score)
+  const products = data.hits.slice(0, 5);
 
-  // Left: brands from top products
   const brandsLeftHtml = brands.slice(0, 4).map(b => `
     <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
       <span class="suggestion-icon">◆</span>
@@ -355,12 +303,11 @@ function renderA(data, q, currency) {
       <span class="suggestion-arrow">↗</span>
     </div>`).join('');
 
-  // KATEGORIER: suggestions (kategorier + brand/kategori landing pages), fallback til category facets
   const allSuggestions = suggestions.slice(0, 6);
   const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 4).map(c => c.value);
   const catsHtml = allSuggestions.length > 0
     ? allSuggestions.map(s => `
-    <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank" style="text-decoration:none;color:inherit">
+    <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank">
       <span class="suggestion-icon">${s.context === 'brand' ? '◆' : '≡'}</span>
       <span class="suggestion-text">${s.name}</span>
       <span class="suggestion-arrow">↗</span>
@@ -372,25 +319,7 @@ function renderA(data, q, currency) {
       <span class="suggestion-arrow">↗</span>
     </div>`).join('');
 
-  const productsHtml = products.map((h, i) => {
-    const d = h.document;
-    const hl = h.highlights || [];
-    const hlMap = Object.fromEntries(hl.map(x => [x.field, x.snippet || x.value || '']));
-    const name = hlMap.name || d.name || '';
-    const img = d.image_url
-      ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="fed-product-img-placeholder" style="display:none"></div>`
-      : `<div class="fed-product-img-placeholder"></div>`;
-    const link = d.product_url || '#';
-    return `
-      <a class="fed-product" href="${link}" target="_blank" data-doc-id="${d.id}" data-pos="${i+1}">
-        ${img}
-        <div class="fed-product-info">
-          <div class="fed-product-name">${name}</div>
-          ${d.brand ? `<div class="fed-product-brand">${d.brand}</div>` : ''}
-        </div>
-        <div class="fed-product-price">${fmtPrice(d.price, currency)}</div>
-      </a>`;
-  }).join('');
+  const productsHtml = products.map((h, i) => renderProductRow(h, i, currency)).join('');
 
   el.innerHTML = `
     <div class="federated-panel">
@@ -406,53 +335,153 @@ function renderA(data, q, currency) {
     </div>`;
 }
 
-// ── Render VIEW B ──
-function renderB(data, q, currency) {
-  const el = document.getElementById('results-b');
-  if (!data.hits || data.hits.length === 0) {
-    el.innerHTML = '<div class="empty">Ingen resultater — prøv et andet søgeord</div>';
-    return;
-  }
-  el.innerHTML = data.hits.map(hit => {
-    const d = hit.document;
-    const hl = hit.highlights || [];
-    const hlMap = Object.fromEntries(hl.map(h => [h.field, h.snippet || h.value || '']));
-    const name = hlMap.name || d.name || '(intet navn)';
-    const brand = hlMap.brand || d.brand || '';
-    const cats = (d.categories || []).slice(0, 3).join(' › ');
-    const price = fmtPrice(d.price, currency);
-    const score = d.ranking_score ? `Score: ${d.ranking_score}` : '';
-    const img = d.image_url
-      ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">`
-      : `<div class="card-img-placeholder"></div>`;
-    const pos = data.hits.indexOf(hit) + 1;
-    const link = d.product_url ? `<a class="card-link" href="${d.product_url}" target="_blank" data-doc-id="${d.id}" data-pos="${pos}">Åbn produkt ↗</a>` : '';
-    return `
-      <div class="card">
-        ${img}
-        <div class="card-body">
-          <div class="card-name">${name}</div>
-          ${brand ? `<div class="card-brand brand-mark">${brand}</div>` : ''}
-          ${cats ? `<div class="card-cats">${cats}</div>` : ''}
-          <div class="card-footer">
-            <span class="card-price">${price}</span>
-            <span class="badge ${d.in_stock ? 'badge-in' : 'badge-out'}">${d.in_stock ? 'På lager' : 'Udsolgt'}</span>
-            ${link}
-            <span class="card-score">${score}</span>
-          </div>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-// ── Render VIEW C (Product grid) ──
-function renderC(data, q, currency) {
-  const el = document.getElementById('results-c');
+// ── Render VIEW A1 (Clean Split) ──
+// Mærker: rene brand-navne fra top-produkter
+// Kategorier: KUN context="category" fra suggestions (ingen brand-combos)
+function renderA1(data, q, currency) {
+  const el = document.getElementById('results-a1');
   if (!data.hits || data.hits.length === 0) {
     el.innerHTML = '<div class="empty">Ingen resultater</div>';
     return;
   }
-  el.innerHTML = `<div class="grid-panel">${data.hits.map((h, i) => {
+
+  // MÆRKER: pure brand names extracted from top product hits
+  const brands = extractBrands(data.hits);
+
+  // Split suggestions by context
+  const suggestions = data._suggestions || [];
+  const categories = suggestions.filter(s => s.context === 'category');
+  // brand combos intentionally excluded
+
+  const products = data.hits.slice(0, 5);
+
+  const brandsHtml = brands.slice(0, 5).map(b => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
+      <span class="suggestion-icon">◆</span>
+      <span class="suggestion-text">${b}</span>
+      <span class="suggestion-arrow">↗</span>
+    </div>`).join('');
+
+  const catsHtml = categories.slice(0, 5).map(s => `
+    <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank">
+      <span class="suggestion-icon">≡</span>
+      <span class="suggestion-text">${s.name}</span>
+      <span class="suggestion-meta">${s.product_count || ''}</span>
+      <span class="suggestion-arrow">↗</span>
+    </a>`).join('');
+
+  const productsHtml = products.map((h, i) => renderProductRow(h, i, currency)).join('');
+
+  el.innerHTML = `
+    <div class="federated-panel">
+      <div class="fed-left">
+        ${brandsHtml ? `<div class="fed-section-title">Mærker</div>${brandsHtml}` : ''}
+        ${catsHtml ? `<hr class="fed-divider"><div class="fed-section-title">Kategorier</div>${catsHtml}` : ''}
+      </div>
+      <div class="fed-right">
+        <div class="fed-section-title">Produkter</div>
+        <div class="fed-products-grid">${productsHtml}</div>
+        <div class="fed-see-all">Se alle ${(data.found||0).toLocaleString('da')} resultater →</div>
+      </div>
+    </div>`;
+}
+
+// ── Render VIEW A2 (Med Genveje) ──
+// Som A1, men med ekstra "Genveje"-sektion: brand+kategori combos som chips
+function renderA2(data, q, currency) {
+  const el = document.getElementById('results-a2');
+  if (!data.hits || data.hits.length === 0) {
+    el.innerHTML = '<div class="empty">Ingen resultater</div>';
+    return;
+  }
+
+  const brands = extractBrands(data.hits);
+  const suggestions = data._suggestions || [];
+  const categories = suggestions.filter(s => s.context === 'category');
+  const combos = suggestions.filter(s => s.context === 'brand')
+    .sort((a, b) => (b.product_count || 0) - (a.product_count || 0));
+
+  const products = data.hits.slice(0, 5);
+
+  const brandsHtml = brands.slice(0, 5).map(b => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
+      <span class="suggestion-icon">◆</span>
+      <span class="suggestion-text">${b}</span>
+      <span class="suggestion-arrow">↗</span>
+    </div>`).join('');
+
+  const catsHtml = categories.slice(0, 4).map(s => `
+    <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank">
+      <span class="suggestion-icon">≡</span>
+      <span class="suggestion-text">${s.name}</span>
+      <span class="suggestion-meta">${s.product_count || ''}</span>
+      <span class="suggestion-arrow">↗</span>
+    </a>`).join('');
+
+  // Genveje: brand+kategori combos as clickable chips
+  const combosHtml = combos.length >= 2
+    ? `<hr class="fed-divider">
+       <div class="fed-section-title">Genveje</div>
+       <div class="shortcut-chips">
+         ${combos.slice(0, 6).map(s => `
+           <a class="shortcut-chip" href="https://www.med24.dk${s.url || ''}" target="_blank">
+             ${s.name}
+             ${s.product_count ? `<span class="chip-count">${s.product_count}</span>` : ''}
+           </a>`).join('')}
+       </div>`
+    : '';
+
+  const productsHtml = products.map((h, i) => renderProductRow(h, i, currency)).join('');
+
+  el.innerHTML = `
+    <div class="federated-panel">
+      <div class="fed-left">
+        ${brandsHtml ? `<div class="fed-section-title">Mærker</div>${brandsHtml}` : ''}
+        ${catsHtml ? `<hr class="fed-divider"><div class="fed-section-title">Kategorier</div>${catsHtml}` : ''}
+        ${combosHtml}
+      </div>
+      <div class="fed-right">
+        <div class="fed-section-title">Produkter</div>
+        <div class="fed-products-grid">${productsHtml}</div>
+        <div class="fed-see-all">Se alle ${(data.found||0).toLocaleString('da')} resultater →</div>
+      </div>
+    </div>`;
+}
+
+// ── Render VIEW A3 (Produkt-først) ──
+// Ingen sidepanel — chips over fuld-bredde produktgrid
+function renderA3(data, q, currency) {
+  const el = document.getElementById('results-a3');
+  if (!data.hits || data.hits.length === 0) {
+    el.innerHTML = '<div class="empty">Ingen resultater</div>';
+    return;
+  }
+
+  const brands = extractBrands(data.hits);
+  const suggestions = data._suggestions || [];
+  const categories = suggestions.filter(s => s.context === 'category');
+  const combos = suggestions.filter(s => s.context === 'brand')
+    .sort((a, b) => (b.product_count || 0) - (a.product_count || 0));
+
+  const products = data.hits.slice(0, 8);
+
+  // Brand chips
+  const brandChips = brands.slice(0, 6).map(b =>
+    `<span class="a3-chip" onclick="fillSearch(${JSON.stringify(b)})">${b}</span>`
+  ).join('');
+
+  // Category chips
+  const catChips = categories.slice(0, 4).map(s =>
+    `<a class="a3-chip" href="https://www.med24.dk${s.url || ''}" target="_blank">${s.name}</a>`
+  ).join('');
+
+  // Combo chips (dashed border to distinguish)
+  const comboChips = combos.slice(0, 4).map(s =>
+    `<a class="a3-chip combo" href="https://www.med24.dk${s.url || ''}" target="_blank">${s.name}</a>`
+  ).join('');
+
+  // Product grid
+  const gridHtml = products.map((h, i) => {
     const d = h.document;
     const hl = h.highlights || [];
     const hlMap = Object.fromEntries(hl.map(x => [x.field, x.snippet || x.value || '']));
@@ -470,106 +499,34 @@ function renderC(data, q, currency) {
         <span class="grid-card-stock ${d.in_stock ? 'in' : 'out'}"></span>
       </div>
     </a>`;
-  }).join('')}</div>`;
-}
-
-// ── Render VIEW A2 (reuses A layout + enhanced badge) ──
-function renderA2(data, q, currency, enhancedInfo) {
-  const el = document.getElementById('results-a2');
-  if (!data.hits || data.hits.length === 0) {
-    el.innerHTML = '<div class="empty">Ingen resultater</div>';
-    return;
-  }
-
-  // MÆRKER: brand facets fra produkt-søgningen
-  const brandFacets = ((data.facet_counts || []).find(f => f.field_name === 'brand')?.counts || []).slice(0, 6).map(c => c.value);
-  const brands = brandFacets.length > 0 ? brandFacets : (data._brands && data._brands.length > 0 ? data._brands.slice(0, 6) : extractBrands(data.hits));
-  const suggestions = data._suggestions || [];
-  const products = data.hits.slice(0, 5); // Respektér Typesense-rækkefølge (ranking_score)
-
-  // Enhancement badge
-  let badgeHtml = '';
-  if (enhancedInfo && enhancedInfo.enhanced) {
-    badgeHtml = `<div class="enhanced-badge">✓ Søgte med "<strong>${enhancedInfo.usedQuery}</strong>" <span class="original">← du skrev "${enhancedInfo.originalQuery}" → forslag: "${enhancedInfo.suggestionName}"</span></div>`;
-  } else if (enhancedInfo) {
-    badgeHtml = `<div class="enhanced-badge" style="background:#f5f5f5;color:#999;">Ingen forslag fundet — søger med "${enhancedInfo.originalQuery}" direkte</div>`;
-  }
-
-  const brandsLeftHtml = brands.slice(0, 4).map(b => `
-    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
-      <span class="suggestion-icon">◆</span>
-      <span class="suggestion-text">${b}</span>
-      <span class="suggestion-arrow">↗</span>
-    </div>`).join('');
-
-  // KATEGORIER: suggestions (kategorier + brand/kategori landing pages), fallback til category facets
-  const allSuggestions = suggestions.slice(0, 6);
-  const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 4).map(c => c.value);
-  const catsHtml = allSuggestions.length > 0
-    ? allSuggestions.map(s => `
-    <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank" style="text-decoration:none;color:inherit">
-      <span class="suggestion-icon">${s.context === 'brand' ? '◆' : '≡'}</span>
-      <span class="suggestion-text">${s.name}</span>
-      <span class="suggestion-arrow">↗</span>
-    </a>`).join('')
-    : facetCats.map(c => `
-    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c)})">
-      <span class="suggestion-icon">≡</span>
-      <span class="suggestion-text">${c}</span>
-      <span class="suggestion-arrow">↗</span>
-    </div>`).join('');
-
-  const productsHtml = products.map((h, i) => {
-    const d = h.document;
-    const hl = h.highlights || [];
-    const hlMap = Object.fromEntries(hl.map(x => [x.field, x.snippet || x.value || '']));
-    const name = hlMap.name || d.name || '';
-    const img = d.image_url
-      ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="fed-product-img-placeholder" style="display:none"></div>`
-      : `<div class="fed-product-img-placeholder"></div>`;
-    const link = d.product_url || '#';
-    return `
-      <a class="fed-product" href="${link}" target="_blank" data-doc-id="${d.id}" data-pos="${i+1}">
-        ${img}
-        <div class="fed-product-info">
-          <div class="fed-product-name">${name}</div>
-          ${d.brand ? `<div class="fed-product-brand">${d.brand}</div>` : ''}
-        </div>
-        <div class="fed-product-price">${fmtPrice(d.price, currency)}</div>
-      </a>`;
   }).join('');
 
   el.innerHTML = `
-    ${badgeHtml}
-    <div class="federated-panel">
-      <div class="fed-left">
-        ${brandsLeftHtml ? `<div class="fed-section-title">Mærker</div>${brandsLeftHtml}` : ''}
-        ${catsHtml ? `<hr class="fed-divider"><div class="fed-section-title">Kategorier</div>${catsHtml}` : ''}
-      </div>
-      <div class="fed-right">
-        <div class="fed-section-title">Produkter</div>
-        <div class="fed-products-grid">${productsHtml}</div>
-        <div class="fed-see-all">Se alle ${(data.found||0).toLocaleString('da')} resultater →</div>
-      </div>
-    </div>`;
+    ${brandChips ? `<div class="a3-section"><span class="a3-label">Mærker</span><div class="a3-chips">${brandChips}</div></div>` : ''}
+    ${catChips ? `<div class="a3-section"><span class="a3-label">Kategorier</span><div class="a3-chips">${catChips}</div></div>` : ''}
+    ${comboChips ? `<div class="a3-section"><span class="a3-label">Genveje</span><div class="a3-chips">${comboChips}</div></div>` : ''}
+    <div class="grid-panel">${gridHtml}</div>
+    <div class="fed-see-all" style="background:white;border-radius:0 0 10px 10px;margin-top:0;border-top:1px solid #f0f0f0;">Se alle ${(data.found||0).toLocaleString('da')} resultater →</div>`;
 }
 
+// ── Render dispatcher ──
 function renderAll(data, q, currency) {
   if (currentView === 'a') renderA(data, q, currency);
-  else if (currentView === 'a2') {} // A2 renders in its own search flow
-  else if (currentView === 'b') renderB(data, q, currency);
-  else if (currentView === 'c') renderC(data, q, currency);
+  else if (currentView === 'a1') renderA1(data, q, currency);
+  else if (currentView === 'a2') renderA2(data, q, currency);
+  else if (currentView === 'a3') renderA3(data, q, currency);
+  setTimeout(attachClickTracking, 0);
 }
 
 function showHints() {
-  document.getElementById('results-a').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
-  document.getElementById('results-a2').innerHTML = '<div class="start-hint">Begynd at skrive for at søge — A2 bruger forslag til at udvide søgeordet</div>';
-  document.getElementById('results-b').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
-  document.getElementById('results-c').innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
+  ['results-a','results-a1','results-a2','results-a3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
+  });
   document.getElementById('stats').textContent = '';
 }
 
-// ── Popular on focus (Matas-style) ──
+// ── Popular on focus ──
 let cachedPopular = null;
 
 async function loadPopularQueries() {
@@ -589,28 +546,39 @@ async function loadPopularQueries() {
 
 async function showPopular() {
   const queries = await loadPopularQueries();
-  const el = document.getElementById('results-a');
-  if (!el) return;
-  if (!queries.length) {
-    el.innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
-    return;
+  // Update all A-variant views with popular queries
+  const viewIds = ['results-a','results-a1','results-a2','results-a3'];
+  for (const id of viewIds) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (!queries.length) {
+      el.innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
+      continue;
+    }
+    const itemsHtml = queries.map(q => `
+      <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(q)})">
+        <span class="suggestion-icon" style="color:#e0004d">↑</span>
+        <span class="suggestion-text">${q}</span>
+        <span class="suggestion-arrow">↗</span>
+      </div>`).join('');
+
+    if (id === 'results-a3') {
+      // A3: show as chips instead of panel
+      const chipsHtml = queries.map(q => `<span class="a3-chip" onclick="fillSearch(${JSON.stringify(q)})">${q}</span>`).join('');
+      el.innerHTML = `<div class="a3-section"><span class="a3-label">Populære søgninger</span><div class="a3-chips">${chipsHtml}</div></div>`;
+    } else {
+      el.innerHTML = `
+        <div class="federated-panel">
+          <div class="fed-left">
+            <div class="fed-section-title">Populære søgninger</div>
+            ${itemsHtml}
+          </div>
+          <div class="fed-right" style="display:flex;align-items:center;justify-content:center;">
+            <div style="color:#ccc;font-size:14px;text-align:center;padding:24px;">Klik på en søgning<br>eller begynd at skrive</div>
+          </div>
+        </div>`;
+    }
   }
-  const itemsHtml = queries.map(q => `
-    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(q)})">
-      <span class="suggestion-icon" style="color:#e0004d">↑</span>
-      <span class="suggestion-text">${q}</span>
-      <span class="suggestion-arrow">↗</span>
-    </div>`).join('');
-  el.innerHTML = `
-    <div class="federated-panel">
-      <div class="fed-left">
-        <div class="fed-section-title">Populære søgninger</div>
-        ${itemsHtml}
-      </div>
-      <div class="fed-right" style="display:flex;align-items:center;justify-content:center;">
-        <div style="color:#ccc;font-size:14px;text-align:center;padding:24px;">Klik på en søgning<br>eller begynd at skrive</div>
-      </div>
-    </div>`;
 }
 
 function fillSearch(q) {
@@ -618,16 +586,7 @@ function fillSearch(q) {
   search();
 }
 
-// Extract the complete word from a suggestion that the user's query is a prefix of
-function extractEnhancedWord(userQ, suggestionName) {
-  const words = suggestionName.split(/\s+/);
-  const lowerQ = userQ.toLowerCase();
-  for (const word of words) {
-    if (word.toLowerCase().startsWith(lowerQ) && word.toLowerCase() !== lowerQ) return word;
-  }
-  return null;
-}
-
+// ── Search ──
 async function search() {
   const q = document.getElementById('q').value.trim();
   const collection = document.getElementById('market').value;
@@ -638,31 +597,25 @@ async function search() {
 
   if (!q) { lastData = null; showHints(); return; }
 
-  // ── A2: Suggestion-enhanced search ──
-  if (currentView === 'a2') {
-    await searchA2(q, collection, preset, currency);
-    return;
-  }
+  const perPage = 12;
+  const params = new URLSearchParams({ q, preset, per_page: perPage, highlight_full_fields: 'name,brand', facet_by: 'categories,brand', max_facet_values: 10 });
 
-  const perPage = currentView === 'd' ? 24 : 12;
-  const params = new URLSearchParams({ q, preset, per_page: perPage, highlight_full_fields: 'name,brand', facet_by: 'categories', max_facet_values: 6 });
-
-  // Parallel: products + suggestions (for View A landing page suggestions)
-  const suggestionsCollection = suggestionsMap[collection];
-  const sugQ = q.replace(/\s+/g, '-');  // "b vit" → "b-vit" — landing page names use hyphens
-  const suggestionsParams = new URLSearchParams({ q: sugQ, query_by: 'name', per_page: 6, highlight_fields: 'name' });
   // Parallel: products + suggestions + brands (federated search)
+  const suggestionsCollection = suggestionsMap[collection];
+  const suggestionsParams = new URLSearchParams({ q, query_by: 'name', per_page: 10, highlight_fields: 'name' });
   const brandsParams = new URLSearchParams({ q, query_by: 'name', per_page: 6, highlight_fields: 'name' });
+
   const [productRes, suggestionsRes, brandsRes] = await Promise.all([
     fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } }),
     fetch(`${HOST}/collections/${suggestionsCollection}/documents/search?${suggestionsParams}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } }),
     fetch(`${HOST}/collections/brands/documents/search?${brandsParams}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } }).catch(() => ({ json: () => ({ hits: [] }) }))
   ]);
+
   const raw = await productRes.json();
   const suggestionsData = await suggestionsRes.json();
   const brandsData = await brandsRes.json();
   raw._suggestions = (suggestionsData.hits || []).map(h => h.document);
-  raw._brands = (brandsData.hits || []).map(h => h.document.name);
+  raw._brands = (brandsData.hits || []).map(h => h.document);
 
   const data = raw;
   lastData = data;
@@ -674,7 +627,6 @@ async function search() {
     : `Ingen resultater · ${ms} ms`;
 
   renderAll(data, q, currency);
-  setTimeout(attachClickTracking, 0);
 }
 
 document.getElementById('q').addEventListener('input', () => {
@@ -682,7 +634,7 @@ document.getElementById('q').addEventListener('input', () => {
   const q = document.getElementById('q').value.trim();
   if (q.length < 2) {
     lastData = null;
-    if (currentView === 'a' || currentView === 'a2') showPopular();
+    if (['a','a1','a2','a3'].includes(currentView)) showPopular();
     else showHints();
     return;
   }
@@ -690,19 +642,17 @@ document.getElementById('q').addEventListener('input', () => {
 });
 
 document.getElementById('q').addEventListener('focus', () => {
-  if (!document.getElementById('q').value.trim() && currentView === 'a') showPopular();
+  if (!document.getElementById('q').value.trim() && ['a','a1','a2','a3'].includes(currentView)) showPopular();
 });
 
 document.getElementById('market').addEventListener('change', () => {
   cachedPopular = null;
   const q = document.getElementById('q').value.trim();
   if (q.length >= 2) search();
-  else if (currentView === 'a' || currentView === 'a2') showPopular();
-  if (currentView === 'd') loadAnalytics();
+  else if (['a','a1','a2','a3'].includes(currentView)) showPopular();
 });
 
 // ── Click tracking ──
-// Fires a search_click event to Typesense analytics when user opens a product
 function trackClick(docId, position) {
   if (!lastQ) return;
   const userId = localStorage.getItem('ts_uid') || (() => {
@@ -717,185 +667,85 @@ function trackClick(docId, position) {
   }).catch(() => {});
 }
 
-// Attach click tracking to result links (called after each render)
 function attachClickTracking() {
   document.querySelectorAll('[data-doc-id]').forEach(el => {
     el.addEventListener('click', () => trackClick(el.dataset.docId, parseInt(el.dataset.pos)));
   });
 }
 
-// ── A2: Suggestion-enhanced search ──
-async function searchA2(q, collection, preset, currency) {
-  const suggestionsCollection = suggestionsMap[collection];
-  const headers = { 'X-TYPESENSE-API-KEY': API_KEY };
-
-  // Step 1: Search suggestions to find the complete word
-  const sugQ = q.replace(/\s+/g, '-');
-  const sugParams = new URLSearchParams({ q: sugQ, query_by: 'name', per_page: 6, highlight_fields: 'name' });
-  const sugRes = await fetch(`${HOST}/collections/${suggestionsCollection}/documents/search?${sugParams}`, { headers });
-  const sugData = await sugRes.json();
-  const suggestions = (sugData.hits || []).map(h => h.document);
-
-  // Step 2: Try to extract an enhanced (complete) word from top suggestion
-  let enhancedWord = null;
-  let suggestionName = null;
-  for (const sug of suggestions) {
-    enhancedWord = extractEnhancedWord(q, sug.name);
-    if (enhancedWord) { suggestionName = sug.name; break; }
-  }
-
-  // Step 3: Search products with enhanced query (or original if no enhancement)
-  const productQ = enhancedWord || q;
-  const productParams = new URLSearchParams({ q: productQ, preset, per_page: 12, highlight_full_fields: 'name,brand', facet_by: 'categories', max_facet_values: 6 });
-  const brandsParams = new URLSearchParams({ q: productQ, query_by: 'name', per_page: 6, highlight_fields: 'name' });
-  const [productRes, brandsRes] = await Promise.all([
-    fetch(`${HOST}/collections/${collection}/documents/search?${productParams}`, { headers }),
-    fetch(`${HOST}/collections/brands/documents/search?${brandsParams}`, { headers }).catch(() => ({ json: () => ({ hits: [] }) }))
-  ]);
-  const raw = await productRes.json();
-  const brandsData = await brandsRes.json();
-  raw._suggestions = suggestions;
-  raw._brands = (brandsData.hits || []).map(h => h.document.name);
-
-
-  lastData = raw;
-  const found = raw.found || 0;
-  const ms = raw.search_time_ms || 0;
-  document.getElementById('stats').textContent = found > 0
-    ? `${found.toLocaleString('da')} resultater på ${ms} ms`
-    : `Ingen resultater · ${ms} ms`;
-
-  const enhancedInfo = {
-    enhanced: !!enhancedWord,
-    originalQuery: q,
-    usedQuery: productQ,
-    suggestionName: suggestionName || q,
-  };
-
-  renderA2(raw, productQ, currency, enhancedInfo);
-  setTimeout(attachClickTracking, 0);
-}
-
-// ── Analytics view ──
-async function loadAnalytics() {
-  const collection = document.getElementById('market').value;
-  const market = collection.split('_')[1].toUpperCase();
-  const marketCode = collection.split('_')[1];
-
-  document.getElementById('nohits-market').textContent = market;
-  document.getElementById('popular-market').textContent = market;
-  document.getElementById('nohits-list').innerHTML = '<div class="analytics-loading">Henter...</div>';
-  document.getElementById('popular-list').innerHTML = '<div class="analytics-loading">Henter...</div>';
-
-  const headers = { 'X-TYPESENSE-API-KEY': API_KEY };
-
-  async function fetchAnalytics(collectionName) {
-    const params = new URLSearchParams({ q: '*', sort_by: 'count:desc', per_page: 20 });
-    const res = await fetch(`${HOST}/collections/${collectionName}/documents/search?${params}`, { headers });
-    const data = await res.json();
-    return data.hits || [];
-  }
-
-  const [nohitsHits, popularHits] = await Promise.all([
-    fetchAnalytics(`analytics_nohits_${marketCode}`),
-    fetchAnalytics(`analytics_popular_${marketCode}`)
-  ]);
-
-  // Update stat boxes
-  document.getElementById('stat-nohits').textContent = nohitsHits.length;
-  document.getElementById('stat-popular').textContent = popularHits.length;
-
-  // Render no-hits list
-  const maxNohits = nohitsHits[0]?.document?.count || 1;
-  document.getElementById('nohits-list').innerHTML = nohitsHits.length === 0
-    ? '<div class="analytics-empty">Ingen zero-results endnu — data samles løbende</div>'
-    : nohitsHits.map((h, i) => {
-        const d = h.document;
-        const pct = Math.round((d.count / maxNohits) * 100);
-        return `<div class="analytics-row analytics-nohit">
-          <span class="analytics-rank">${i + 1}</span>
-          <span class="analytics-query">${d.q}<span class="analytics-add-synonym" title="Tilføj synonym">+ synonym</span></span>
-          <div class="analytics-bar-wrap"><div class="analytics-bar" style="width:${pct}%"></div></div>
-          <span class="analytics-count">${d.count}×</span>
-        </div>`;
-      }).join('');
-
-  // Render popular list
-  const maxPop = popularHits[0]?.document?.count || 1;
-  document.getElementById('popular-list').innerHTML = popularHits.length === 0
-    ? '<div class="analytics-empty">Ingen søgninger registreret endnu</div>'
-    : popularHits.map((h, i) => {
-        const d = h.document;
-        const pct = Math.round((d.count / maxPop) * 100);
-        return `<div class="analytics-row">
-          <span class="analytics-rank">${i + 1}</span>
-          <span class="analytics-query">${d.q}</span>
-          <div class="analytics-bar-wrap"><div class="analytics-bar" style="width:${pct}%;background:#4a90d9"></div></div>
-          <span class="analytics-count">${d.count}×</span>
-        </div>`;
-      }).join('');
-}
-
-showHints();
-showPopular(); // pre-load popular queries for view A
-
 // ── VIEW E: Alternative Produkter (vector search) ──
 let similarSelectedId = null;
 let similarTimer = null;
 
-// Typeahead: search products by name as user types
 document.getElementById('similar-q').addEventListener('input', () => {
   clearTimeout(similarTimer);
   const q = document.getElementById('similar-q').value.trim();
-  if (q.length < 2) { closePicker(); return; }
-  // If input is purely numeric, treat as direct ID
-  if (/^\d+$/.test(q)) { closePicker(); similarSelectedId = q; return; }
-  similarTimer = setTimeout(() => searchPicker(q), 200);
+  if (q.length < 2) { closePicker('similar-picker'); return; }
+  if (/^\d+$/.test(q)) { closePicker('similar-picker'); similarSelectedId = q; return; }
+  similarTimer = setTimeout(() => searchPicker(q, 'similar-picker', id => { similarSelectedId = id; searchSimilar(); }), 200);
 });
 
 document.getElementById('similar-q').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { closePicker(); searchSimilar(); }
+  if (e.key === 'Enter') { closePicker('similar-picker'); searchSimilar(); }
 });
 
-// Close picker when clicking outside
+// ── VIEW D: Co-purchase ──
+let copurchaseSelectedId = null;
+let copurchaseTimer = null;
+
+document.getElementById('copurchase-q').addEventListener('input', () => {
+  clearTimeout(copurchaseTimer);
+  const q = document.getElementById('copurchase-q').value.trim();
+  if (q.length < 2) { closePicker('copurchase-picker'); return; }
+  if (/^\d+$/.test(q)) { closePicker('copurchase-picker'); copurchaseSelectedId = q; return; }
+  copurchaseTimer = setTimeout(() => searchPicker(q, 'copurchase-picker', id => { copurchaseSelectedId = id; searchCoPurchase(); }), 200);
+});
+
+document.getElementById('copurchase-q').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { closePicker('copurchase-picker'); searchCoPurchase(); }
+});
+
 document.addEventListener('click', e => {
-  if (!e.target.closest('#similar-picker') && !e.target.closest('#similar-q')) closePicker();
+  if (!e.target.closest('#similar-picker') && !e.target.closest('#similar-q')) closePicker('similar-picker');
+  if (!e.target.closest('#copurchase-picker') && !e.target.closest('#copurchase-q')) closePicker('copurchase-picker');
 });
 
-function closePicker() {
-  document.getElementById('similar-picker').innerHTML = '';
+function closePicker(pickerId) {
+  document.getElementById(pickerId).innerHTML = '';
 }
 
-async function searchPicker(q) {
+async function searchPicker(q, pickerId, onSelect) {
   const collection = document.getElementById('market').value;
   const currency = currencyMap[collection];
   const params = new URLSearchParams({ q, query_by: 'name,brand', per_page: 6, exclude_fields: 'embedding', highlight_full_fields: 'name' });
   try {
     const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } });
     const data = await res.json();
-    if (!data.hits || data.hits.length === 0) { closePicker(); return; }
+    if (!data.hits || data.hits.length === 0) { closePicker(pickerId); return; }
     const html = data.hits.map(h => {
       const d = h.document;
+      const hasCo = d.bought_together_ids && d.bought_together_ids.length > 0;
       const img = d.image_url ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">` : '';
       return `<div class="picker-item" data-id="${d.id}">
         ${img}
         <div class="picker-item-info">
           <div class="picker-item-name">${d.name}</div>
-          <div class="picker-item-meta">${d.brand || ''} · ${fmtPrice(d.price, currency)} · ID: ${d.id}</div>
+          <div class="picker-item-meta">${d.brand || ''} · ${fmtPrice(d.price, currency)} · ID: ${d.id}${hasCo ? ' · ' + d.bought_together_ids.length + ' co-køb' : ''}</div>
         </div>
       </div>`;
     }).join('');
-    const picker = document.getElementById('similar-picker');
+    const picker = document.getElementById(pickerId);
     picker.innerHTML = `<div class="picker-dropdown">${html}</div>`;
     picker.querySelectorAll('.picker-item').forEach(el => {
       el.addEventListener('click', () => {
-        similarSelectedId = el.dataset.id;
-        document.getElementById('similar-q').value = el.querySelector('.picker-item-name').textContent;
-        closePicker();
-        searchSimilar();
+        const id = el.dataset.id;
+        const inputId = pickerId === 'similar-picker' ? 'similar-q' : 'copurchase-q';
+        document.getElementById(inputId).value = el.querySelector('.picker-item-name').textContent;
+        closePicker(pickerId);
+        onSelect(id);
       });
     });
-  } catch (e) { closePicker(); }
+  } catch (e) { closePicker(pickerId); }
 }
 
 async function searchSimilar() {
@@ -910,8 +760,6 @@ async function searchSimilar() {
   resEl.innerHTML = '';
 
   const headers = { 'X-TYPESENSE-API-KEY': API_KEY };
-
-  // 1. Fetch source product
   let sourceDoc;
   try {
     const srcRes = await fetch(`${HOST}/collections/${collection}/documents/${productId}`, { headers });
@@ -919,9 +767,7 @@ async function searchSimilar() {
     sourceDoc = await srcRes.json();
   } catch (e) { srcEl.innerHTML = '<div class="empty">Fejl ved hentning af produkt</div>'; return; }
 
-  const srcImg = sourceDoc.image_url
-    ? `<img src="${sourceDoc.image_url}" alt="" onerror="this.style.display='none'">`
-    : '';
+  const srcImg = sourceDoc.image_url ? `<img src="${sourceDoc.image_url}" alt="" onerror="this.style.display='none'">` : '';
   srcEl.innerHTML = `
     <div class="source-product">
       ${srcImg}
@@ -932,7 +778,6 @@ async function searchSimilar() {
       </div>
     </div>`;
 
-  // 2. Vector search for similar products
   resEl.innerHTML = '<div class="start-hint">Søger efter alternativer...</div>';
   try {
     const params = new URLSearchParams({
@@ -977,63 +822,6 @@ async function searchSimilar() {
   }
 }
 
-// ── VIEW C: Andre købte også ──
-let copurchaseSelectedId = null;
-let copurchaseTimer = null;
-
-document.getElementById('copurchase-q').addEventListener('input', () => {
-  clearTimeout(copurchaseTimer);
-  const q = document.getElementById('copurchase-q').value.trim();
-  if (q.length < 2) { closeCopurchasePicker(); return; }
-  if (/^\d+$/.test(q)) { closeCopurchasePicker(); copurchaseSelectedId = q; return; }
-  copurchaseTimer = setTimeout(() => searchCopurchasePicker(q), 200);
-});
-
-document.getElementById('copurchase-q').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { closeCopurchasePicker(); searchCoPurchase(); }
-});
-
-document.addEventListener('click', e => {
-  if (!e.target.closest('#copurchase-picker') && !e.target.closest('#copurchase-q')) closeCopurchasePicker();
-});
-
-function closeCopurchasePicker() {
-  document.getElementById('copurchase-picker').innerHTML = '';
-}
-
-async function searchCopurchasePicker(q) {
-  const collection = document.getElementById('market').value;
-  const currency = currencyMap[collection];
-  const params = new URLSearchParams({ q, query_by: 'name,brand', per_page: 6, exclude_fields: 'embedding', highlight_full_fields: 'name' });
-  try {
-    const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } });
-    const data = await res.json();
-    if (!data.hits || data.hits.length === 0) { closeCopurchasePicker(); return; }
-    const html = data.hits.map(h => {
-      const d = h.document;
-      const hasCo = d.bought_together_ids && d.bought_together_ids.length > 0;
-      const img = d.image_url ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">` : '';
-      return `<div class="picker-item" data-id="${d.id}">
-        ${img}
-        <div class="picker-item-info">
-          <div class="picker-item-name">${d.name}</div>
-          <div class="picker-item-meta">${d.brand || ''} · ${fmtPrice(d.price, currency)} · ID: ${d.id}${hasCo ? ' · ' + d.bought_together_ids.length + ' co-køb' : ''}</div>
-        </div>
-      </div>`;
-    }).join('');
-    const picker = document.getElementById('copurchase-picker');
-    picker.innerHTML = `<div class="picker-dropdown">${html}</div>`;
-    picker.querySelectorAll('.picker-item').forEach(el => {
-      el.addEventListener('click', () => {
-        copurchaseSelectedId = el.dataset.id;
-        document.getElementById('copurchase-q').value = el.querySelector('.picker-item-name').textContent;
-        closeCopurchasePicker();
-        searchCoPurchase();
-      });
-    });
-  } catch (e) { closeCopurchasePicker(); }
-}
-
 async function searchCoPurchase() {
   const input = document.getElementById('copurchase-q').value.trim();
   const productId = copurchaseSelectedId || (/^\d+$/.test(input) ? input : null);
@@ -1046,8 +834,6 @@ async function searchCoPurchase() {
   resEl.innerHTML = '';
 
   const headers = { 'X-TYPESENSE-API-KEY': API_KEY };
-
-  // 1. Fetch source product (including bought_together_ids)
   let sourceDoc;
   try {
     const srcRes = await fetch(`${HOST}/collections/${collection}/documents/${productId}`, { headers });
@@ -1055,9 +841,7 @@ async function searchCoPurchase() {
     sourceDoc = await srcRes.json();
   } catch (e) { srcEl.innerHTML = '<div class="empty">Fejl ved hentning af produkt</div>'; return; }
 
-  const srcImg = sourceDoc.image_url
-    ? `<img src="${sourceDoc.image_url}" alt="" onerror="this.style.display='none'">`
-    : '';
+  const srcImg = sourceDoc.image_url ? `<img src="${sourceDoc.image_url}" alt="" onerror="this.style.display='none'">` : '';
   srcEl.innerHTML = `
     <div class="source-product">
       ${srcImg}
@@ -1068,13 +852,11 @@ async function searchCoPurchase() {
       </div>
     </div>`;
 
-  // 2. Check bought_together_ids — fallback to vector search if empty
   const coIds = sourceDoc.bought_together_ids || [];
   let hits = [];
   let label = '';
 
   if (coIds.length > 0) {
-    // Primary: co-purchase data from real orders
     resEl.innerHTML = '<div class="start-hint">Henter co-køb...</div>';
     try {
       const idFilter = coIds.map(id => `id:=${id}`).join(' || ');
@@ -1096,7 +878,7 @@ async function searchCoPurchase() {
     } catch (e) {}
   }
 
-  // Fallback: vector search (semantic similarity)
+  // Fallback: vector search
   if (hits.length === 0) {
     resEl.innerHTML = '<div class="start-hint">Finder lignende produkter via AI...</div>';
     try {
@@ -1144,6 +926,9 @@ async function searchCoPurchase() {
     <div class="similar-label">${label}</div>
     <div class="similar-grid">${cardsHtml}</div>`;
 }
+
+showHints();
+showPopular();
 </script>
 </body>
 </html>
