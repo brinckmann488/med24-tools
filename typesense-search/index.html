@@ -295,6 +295,9 @@ function renderA1(data, q, currency) {
   const categories = suggestions.filter(s => s.context === 'category');
   // brand combos intentionally excluded
 
+  // Fallback: category facets from product search when no suggestion categories
+  const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 5);
+
   const products = data.hits.slice(0, 5);
 
   const brandsHtml = brands.slice(0, 5).map(b => `
@@ -304,13 +307,21 @@ function renderA1(data, q, currency) {
       <span class="suggestion-arrow">↗</span>
     </div>`).join('');
 
-  const catsHtml = categories.slice(0, 5).map(s => `
+  const catsHtml = categories.length > 0
+    ? categories.slice(0, 5).map(s => `
     <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank">
       <span class="suggestion-icon">≡</span>
       <span class="suggestion-text">${s.name}</span>
       <span class="suggestion-meta">${s.product_count || ''}</span>
       <span class="suggestion-arrow">↗</span>
-    </a>`).join('');
+    </a>`).join('')
+    : facetCats.map(c => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c.value)})">
+      <span class="suggestion-icon">≡</span>
+      <span class="suggestion-text">${c.value}</span>
+      <span class="suggestion-meta">${c.count}</span>
+      <span class="suggestion-arrow">↗</span>
+    </div>`).join('');
 
   const productsHtml = products.map((h, i) => renderProductRow(h, i, currency)).join('');
 
@@ -342,6 +353,7 @@ function renderA2(data, q, currency) {
   const categories = suggestions.filter(s => s.context === 'category');
   const combos = suggestions.filter(s => s.context === 'brand')
     .sort((a, b) => (b.product_count || 0) - (a.product_count || 0));
+  const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 5);
 
   const products = data.hits.slice(0, 5);
 
@@ -352,13 +364,21 @@ function renderA2(data, q, currency) {
       <span class="suggestion-arrow">↗</span>
     </div>`).join('');
 
-  const catsHtml = categories.slice(0, 4).map(s => `
+  const catsHtml = categories.length > 0
+    ? categories.slice(0, 4).map(s => `
     <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank">
       <span class="suggestion-icon">≡</span>
       <span class="suggestion-text">${s.name}</span>
       <span class="suggestion-meta">${s.product_count || ''}</span>
       <span class="suggestion-arrow">↗</span>
-    </a>`).join('');
+    </a>`).join('')
+    : facetCats.map(c => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c.value)})">
+      <span class="suggestion-icon">≡</span>
+      <span class="suggestion-text">${c.value}</span>
+      <span class="suggestion-meta">${c.count}</span>
+      <span class="suggestion-arrow">↗</span>
+    </div>`).join('');
 
   // Genveje: brand+kategori combos as clickable chips
   const combosHtml = combos.length >= 2
@@ -404,6 +424,7 @@ function renderA3(data, q, currency) {
   const categories = suggestions.filter(s => s.context === 'category');
   const combos = suggestions.filter(s => s.context === 'brand')
     .sort((a, b) => (b.product_count || 0) - (a.product_count || 0));
+  const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 5);
 
   const products = data.hits.slice(0, 8);
 
@@ -412,10 +433,14 @@ function renderA3(data, q, currency) {
     `<span class="a3-chip" onclick="fillSearch(${JSON.stringify(b)})">${b}</span>`
   ).join('');
 
-  // Category chips
-  const catChips = categories.slice(0, 4).map(s =>
-    `<a class="a3-chip" href="https://www.med24.dk${s.url || ''}" target="_blank">${s.name}</a>`
-  ).join('');
+  // Category chips — fallback to facets when no suggestion categories
+  const catChips = categories.length > 0
+    ? categories.slice(0, 4).map(s =>
+        `<a class="a3-chip" href="https://www.med24.dk${s.url || ''}" target="_blank">${s.name}</a>`
+      ).join('')
+    : facetCats.map(c =>
+        `<span class="a3-chip" onclick="fillSearch(${JSON.stringify(c.value)})">${c.value}</span>`
+      ).join('');
 
   // Combo chips (dashed border to distinguish)
   const comboChips = combos.slice(0, 4).map(s =>
