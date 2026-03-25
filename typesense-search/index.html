@@ -370,14 +370,12 @@ function renderA1(data, q, currency) {
     <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank">
       <span class="suggestion-icon">≡</span>
       <span class="suggestion-text">${s.name}</span>
-      <span class="suggestion-meta">${s.product_count || ''}</span>
       <span class="suggestion-arrow">↗</span>
     </a>`).join('')
     : facetCats.map(c => `
     <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c.value)})">
       <span class="suggestion-icon">≡</span>
       <span class="suggestion-text">${c.value}</span>
-      <span class="suggestion-meta">${c.count}</span>
       <span class="suggestion-arrow">↗</span>
     </div>`).join('');
 
@@ -420,14 +418,12 @@ function renderA2(data, q, currency) {
     <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank">
       <span class="suggestion-icon">≡</span>
       <span class="suggestion-text">${s.name}</span>
-      <span class="suggestion-meta">${s.product_count || ''}</span>
       <span class="suggestion-arrow">↗</span>
     </a>`).join('')
     : facetCats.map(c => `
     <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c.value)})">
       <span class="suggestion-icon">≡</span>
       <span class="suggestion-text">${c.value}</span>
-      <span class="suggestion-meta">${c.count}</span>
       <span class="suggestion-arrow">↗</span>
     </div>`).join('');
 
@@ -439,7 +435,6 @@ function renderA2(data, q, currency) {
          ${combos.slice(0, 6).map(s => `
            <a class="shortcut-chip" href="https://www.med24.dk${s.url || ''}" target="_blank">
              ${s.name}
-             ${s.product_count ? `<span class="chip-count">${s.product_count}</span>` : ''}
            </a>`).join('')}
        </div>`
     : '';
