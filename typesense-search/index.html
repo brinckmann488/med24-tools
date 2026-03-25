@@ -356,18 +356,17 @@ function renderA1(data, q, currency) {
   // MÆRKER: from brands collection, grouped by parent_brand
   const brandsHtml = renderBrandSuggestions(data);
 
-  // Split suggestions by context
+  // Suggestions: alle undtagen brand-combos (kategorier + landing pages)
   const suggestions = data._suggestions || [];
-  const categories = suggestions.filter(s => s.context === 'category');
-  // brand combos intentionally excluded
+  const navSuggestions = suggestions.filter(s => s.context !== 'brand');
 
-  // Fallback: category facets from product search when no suggestion categories
+  // Fallback: category facets from product search when no suggestions
   const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 5);
 
   const products = data.hits.slice(0, 5);
 
-  const catsHtml = categories.length > 0
-    ? categories.slice(0, 5).map(s => `
+  const catsHtml = navSuggestions.length > 0
+    ? navSuggestions.slice(0, 8).map(s => `
     <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank">
       <span class="suggestion-icon">≡</span>
       <span class="suggestion-text">${s.name}</span>
@@ -388,7 +387,7 @@ function renderA1(data, q, currency) {
     <div class="federated-panel">
       <div class="fed-left">
         ${brandsHtml ? `<div class="fed-section-title">Mærker</div>${brandsHtml}` : ''}
-        ${catsHtml ? `<hr class="fed-divider"><div class="fed-section-title">Kategorier</div>${catsHtml}` : ''}
+        ${catsHtml ? `<hr class="fed-divider"><div class="fed-section-title">Forslag</div>${catsHtml}` : ''}
       </div>
       <div class="fed-right">
         <div class="fed-section-title">Produkter</div>
@@ -409,15 +408,15 @@ function renderA2(data, q, currency) {
 
   const brandsHtml = renderBrandSuggestions(data);
   const suggestions = data._suggestions || [];
-  const categories = suggestions.filter(s => s.context === 'category');
+  const navSuggestions = suggestions.filter(s => s.context !== 'brand');
   const combos = suggestions.filter(s => s.context === 'brand')
     .sort((a, b) => (b.product_count || 0) - (a.product_count || 0));
   const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 5);
 
   const products = data.hits.slice(0, 5);
 
-  const catsHtml = categories.length > 0
-    ? categories.slice(0, 4).map(s => `
+  const catsHtml = navSuggestions.length > 0
+    ? navSuggestions.slice(0, 6).map(s => `
     <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank">
       <span class="suggestion-icon">≡</span>
       <span class="suggestion-text">${s.name}</span>
@@ -473,7 +472,7 @@ function renderA3(data, q, currency) {
 
   const brandDocs = data._brands || [];
   const suggestions = data._suggestions || [];
-  const categories = suggestions.filter(s => s.context === 'category');
+  const navSuggestions = suggestions.filter(s => s.context !== 'brand');
   const combos = suggestions.filter(s => s.context === 'brand')
     .sort((a, b) => (b.product_count || 0) - (a.product_count || 0));
   const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 5);
@@ -489,9 +488,9 @@ function renderA3(data, q, currency) {
           : `<span class="a3-chip" onclick="fillSearch(${JSON.stringify(b.name)})">${b.name}</span>`
   ).join('');
 
-  // Category chips — fallback to facets when no suggestion categories
-  const catChips = categories.length > 0
-    ? categories.slice(0, 4).map(s =>
+  // Category/suggestion chips — fallback to facets when no suggestions
+  const catChips = navSuggestions.length > 0
+    ? navSuggestions.slice(0, 6).map(s =>
         `<a class="a3-chip" href="https://www.med24.dk${s.url || ''}" target="_blank">${s.name}</a>`
       ).join('')
     : facetCats.map(c =>
