@@ -207,7 +207,7 @@
         <div id="tsResults"></div>
       </div>
       <div class="search-col">
-        <div class="search-col-header m24-h">Med24 nuv&aelig;rende s&oslash;gning</div>
+        <div class="search-col-header m24-h">Med24 nuv&aelig;rende (Clerk) &mdash; <span id="m24Count">0</span> resultater</div>
         <div id="m24Results"><div class="search-empty">Skriv en query for at sammenligne</div></div>
       </div>
     </div>
@@ -445,9 +445,22 @@ async function doSearch(q) {
     document.getElementById('tsResults').innerHTML = '<div class="search-empty">Fejl: ' + e.message + '</div>';
   }
 
-  // Med24 — open in popup window for side-by-side comparison
-  const m24Url = 'https://www.med24.dk/soeg?query=' + encodeURIComponent(q);
-  document.getElementById('m24Results').innerHTML = '<div style="padding:16px;text-align:center"><a href="' + m24Url + '" target="med24search" style="display:inline-block;padding:10px 20px;background:var(--blue);color:white;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px" onclick="window.open(\'' + m24Url + '\',\'med24search\',\'width=800,height=700,left=\'+((screen.width/2)+50)+\',top=100\');return false;">Sammenlign p&aring; med24.dk &rarr;</a><p style="margin-top:8px;font-size:11px;color:var(--muted)">&Aring;bner i eget vindue (med24.dk blokerer iframe)</p></div>';
+  // Med24 via n8n proxy
+  try {
+    const m24res = await fetch('https://n8n2.med24intra.dk/webhook/med24-search?q=' + encodeURIComponent(q));
+    const m24data = await m24res.json();
+    const m24container = document.getElementById('m24Results');
+    document.getElementById('m24Count').textContent = m24data.count || 0;
+    if (!m24data.products || m24data.products.length === 0) {
+      m24container.innerHTML = '<div class="search-empty">Ingen resultater</div>';
+    } else {
+      m24container.innerHTML = m24data.products.map((p, i) =>
+        '<div class="search-item"><span class="rank">' + (i+1) + '</span><span class="name">' + esc(p.name) + '</span><span class="price" style="color:var(--muted);font-size:10px">' + esc(p.brand || '') + '</span></div>'
+      ).join('');
+    }
+  } catch(e) {
+    document.getElementById('m24Results').innerHTML = '<div class="search-empty">Kunne ikke hente fra med24.dk</div>';
+  }
 }
 
 function esc(s) { return s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
