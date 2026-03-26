@@ -156,7 +156,8 @@
   <div class="tab active" onclick="showTab('live')">Live S&oslash;gning</div>
   <div class="tab" onclick="showTab('benchmark')">Benchmark 200</div>
   <div class="tab" onclick="showTab('buckets')">Bucket-analyse</div>
-  <div class="tab" onclick="showTab('problems')">Problemomr&aring;der</div>
+  <!-- Problemområder fjernet 26. marts - forældet data -->
+
   <div class="tab" onclick="showTab('method')">Metode</div>
 </div>
 
@@ -289,27 +290,7 @@
 </div>
 
 <!-- TAB: Problems -->
-<div id="tab-problems" class="tab-content">
-  <div class="card">
-    <h2 style="color:var(--red)">Typesense RED/ZERO-queries fra struktureret test</h2>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:4px">25 queries hvor Typesense scorer RED eller ZERO (re-judged). Disse er fokusomr&aring;der for synonym-, preset- og pipeline-forbedringer.</p>
-    <div class="legend" style="margin-bottom:12px">
-      <span><div class="dot" style="background:var(--red-bg)"></div> RED = returnerer irrelevant resultat</span>
-      <span><div class="dot" style="background:var(--zero-bg)"></div> ZERO = 0 resultater</span>
-    </div>
-    <div class="scroll-table">
-      <table>
-        <thead><tr><th>Query</th><th>Bucket</th><th>TS Rating</th><th>TS Top-1</th><th>M24 Top-1</th><th>M24 Rating</th></tr></thead>
-        <tbody id="problemBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Fordeling af problemer pr. bucket</h2>
-    <div id="problemBucketBars"></div>
-  </div>
-</div>
+<!-- Problemområder-tab fjernet - forældet data efter synonym+curation fixes -->
 
 <!-- TAB: Method -->
 <div id="tab-method" class="tab-content">
@@ -323,13 +304,13 @@
         <tr><td><span class="badge badge-mt">Matas</span></td><td>Autocomplete API (quicksearch, top 3)</td><td>Samme som brugeren ser i s&oslash;ge-dropdown mens de skriver</td></tr>
       </tbody>
     </table>
-    <p style="font-size:12px;color:var(--amber-t);margin-top:12px">* Matas-resultater er fra autocomplete API (quicksearch) &mdash; det brugeren ser i dropdown. marts 2026).</p>
+    <p style="font-size:12px;color:var(--amber-t);margin-top:12px">* Matas-resultater er fra autocomplete API (quicksearch) &mdash; det brugeren ser i dropdown mens de skriver.</p>
   </div>
 
   <div class="card">
     <h2>Bedømmelsesmetode</h2>
     <ul style="font-size:13px;line-height:2;padding-left:20px;color:var(--muted)">
-      <li><strong>200-query benchmark:</strong> Algolias top-200 queries + GSC-queries. Top-1 resultat bed&oslash;mt af LLM (Claude Sonnet).</li>
+      <li><strong>200-query benchmark:</strong> Algolias top-200 queries + GSC-queries. Top-1 resultat bed&oslash;mt af heuristisk judge (brand/kategori/ordmatch + manuelle overrides).</li>
       <li><strong>Struktureret test:</strong> 182 h&aring;ndplukkede queries i 7 buckets (symptomer, stavefejl, lange s&aelig;tninger, ingredienser, brands, niche, koncepter).</li>
       <li><strong>Farvekodning:</strong> GREEN = perfekt match, YELLOW = relateret men ikke perfekt, RED = irrelevant, ZERO = ingen resultater.</li>
       <li><strong>Live s&oslash;gning:</strong> Kalder Typesense API direkte (search-only key) + Med24.dk s&oslash;geside for sammenligning.</li>
@@ -622,7 +603,7 @@ function buildProblemTable() {
 buildBenchmarkTable();
 buildBucketCards();
 buildBucketDetailTable();
-buildProblemTable();
+// buildProblemTable(); // removed - tab fjernet
 </script>
 </body>
 </html>
