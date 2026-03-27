@@ -287,6 +287,13 @@ function extractBrands(hits) {
     if (b && !seen.has(b)) { seen.add(b); brands.push(b); }
     if (brands.length >= 6) break;
   }
+  // Sort: brand matching query text comes first (e.g. "Lavera" before "Lavera Men")
+  const ql = (lastQ || '').toLowerCase();
+  if (ql) brands.sort((a, b) => {
+    const aExact = a.toLowerCase() === ql ? -1 : 0;
+    const bExact = b.toLowerCase() === ql ? -1 : 0;
+    return aExact - bExact;
+  });
   return brands;
 }
 
