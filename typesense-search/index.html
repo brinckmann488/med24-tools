@@ -311,40 +311,20 @@ function renderProductRow(h, i, currency) {
 }
 
 // ── Render brand suggestions HTML (shared by A1/A2/A3) ──
-// Hybrid approach (restored from 4e88b9b, 25. marts 2026):
-// 1. Brands collection hits with parent/child grouping (best for brand queries)
-// 2. Fallback to extractBrands from top product hits (best for category queries)
-// This gives: Panodil→Panodil Junior for brand queries, Puori/ESKIO-3 for "fiskeolie"
+// MÆRKER sidebar uses facet_counts from product search (brand field).
+// Facets count ALL matching products across all pages — correct for filters.
+// Decision: 25. marts 2026 (c83f612). extractBrands from hits is NOT used
+// here — it only reflects top-N hits and breaks pagination/filtering.
 function renderBrandSuggestions(data) {
-  const brandDocs = data._brands || [];
-  if (brandDocs.length === 0) {
-    // Fallback to extractBrands from product hits
-    return extractBrands(data.hits).slice(0, 5).map(b => `
-      <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
-        <span class="suggestion-icon">◆</span>
-        <span class="suggestion-text">${b}</span>
-        <span class="suggestion-arrow">↗</span>
-      </div>`).join('');
-  }
-  const grouped = groupBrands(brandDocs);
-  return grouped.slice(0, 8).map(b => {
-    const cls = b.isChild ? ' sub-brand' : '';
-    const textCls = b.isParent ? ' parent' : '';
-    const icon = b.isChild ? '›' : '◆';
-    const url = b.url ? `https://www.med24.dk${b.url}` : null;
-    if (url && !b.inferred) {
-      return `<a class="suggestion-item${cls}" href="${url}" target="_blank">
-        <span class="suggestion-icon">${icon}</span>
-        <span class="suggestion-text${textCls}">${b.name}</span>
-        <span class="suggestion-arrow">↗</span>
-      </a>`;
-    }
-    return `<div class="suggestion-item${cls}" onclick="fillSearch(${JSON.stringify(b.name)})">
-      <span class="suggestion-icon">${icon}</span>
-      <span class="suggestion-text${textCls}">${b.name}</span>
-      <span class="suggestion-arrow">↗</span>
-    </div>`;
-  }).join('');
+  const brandFacets = ((data.facet_counts || []).find(f => f.field_name === 'brand')?.counts
+    || []).slice(0, 8);
+  if (brandFacets.length === 0) return '';
+  return brandFacets.map(f => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(f.value)})">
+      <span class="suggestion-icon">◆</span>
+      <span class="suggestion-text">${f.value}</span>
+      <span class="suggestion-meta">${f.count}</span>
+    </div>`).join('');
 }
 
 // ── Render VIEW A1 (Clean Split) ──
