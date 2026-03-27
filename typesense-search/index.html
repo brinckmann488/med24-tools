@@ -312,15 +312,22 @@ function renderProductRow(h, i, currency) {
 
 // ── Render brand suggestions HTML (shared by A1/A2/A3) ──
 // Brands from product facet_counts (sorted by count desc by Typesense)
+// FIX 27. marts 2026: Use brands from top-ranked product hits instead of facet_counts.
+// Facets count ALL matched products (e.g. "magnesium" → 1395 hits → Essie, NYX).
+// Top-hit brands reflect what the user actually sees (Biosym, Solaray).
 function renderBrandSuggestions(data) {
-  const brandFacets = ((data.facet_counts || []).find(f => f.field_name === 'brand')?.counts
-    || []).slice(0, 8);
-  if (brandFacets.length === 0) return '';
-  return brandFacets.map(f => `
-    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(f.value)})">
+  const seen = new Set();
+  const brands = [];
+  for (const h of (data.hits || []).slice(0, 16)) {
+    const b = h.document.brand;
+    if (b && !seen.has(b)) { seen.add(b); brands.push(b); }
+    if (brands.length >= 6) break;
+  }
+  if (brands.length === 0) return '';
+  return brands.map(b => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
       <span class="suggestion-icon">◆</span>
-      <span class="suggestion-text">${f.value}</span>
-      <span class="suggestion-meta">${f.count}</span>
+      <span class="suggestion-text">${b}</span>
     </div>`).join('');
 }
 
