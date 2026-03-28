@@ -188,6 +188,13 @@
 <!-- TAB: Buckets -->
 <div id="tab-buckets" class="tab-content">
   <div class="card">
+    <h2>Overall &mdash; alle buckets samlet</h2>
+    <div class="kpi-row" id="bucketOverallKpis"></div>
+    <div style="margin-top:8px">
+      <div id="bucketOverallBars"></div>
+    </div>
+  </div>
+  <div class="card">
     <h2>Strukturerede tests &mdash; 181 queries i 7 buckets</h2>
     <div class="bucket-grid" id="bucketGrid"></div>
   </div>
@@ -297,8 +304,26 @@ function filterBucketDetail(){const bkt=document.getElementById('bucketSelect').
 let qaF='all';function qaMode(b,m){qaF=m;document.querySelectorAll('#tab-qa .filter-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');filterQA();}
 function filterQA(){const s=(document.getElementById('qaFilter')?.value||'').toLowerCase();let r=QA;if(s)r=r.filter(x=>x.q.toLowerCase().includes(s));if(qaF==='problems')r=r.filter(x=>x.flags.length>0);if(qaF==='no-forslag')r=r.filter(x=>x.flags.includes('no-forslag'));if(qaF==='top200')r=r.filter(x=>x.src==='top200'||x.src==='both');if(qaF==='structured')r=r.filter(x=>x.src==='structured'||x.src==='both');document.getElementById('qaCount').textContent='Viser '+r.length+' af '+QA.length;document.getElementById('qaGrid').innerHTML=r.map(x=>{const fc=x.flags.includes('zero')?' flag-zero':x.flags.includes('no-forslag')?' flag-no-forslag':'';const fl=x.flags.map(f=>'<span class="qa-flag '+f+'">'+({zero:'0 res','no-forslag':'ingen forslag','no-maerker':'ingen mærker'}[f]||f)+'</span>').join('');const m=x.maerker.length>0?x.maerker.map(b=>esc(b)).join(', '):'<span class="empty">-</span>';const f=x.forslag.length>0?x.forslag.map(s=>esc(s)).join(', '):(x.brandCombos?.length>0?x.brandCombos.map(s=>esc(s)).join(', '):'<span class="empty">-</span>');const p=x.top3.length>0?x.top3.map(n=>'<div>'+esc(n)+'</div>').join(''):'<span class="empty">-</span>';return'<div class="qa-card'+fc+'"><div class="qa-card-header"><span class="query">'+esc(x.q)+fl+'</span><span class="meta">'+x.found+' hits &middot; '+x.ms+'ms</span></div><div class="qa-card-body"><div class="qa-section"><div class="qa-section-title">M&aelig;rker</div><div class="qa-section-items">'+m+'</div></div><div class="qa-section"><div class="qa-section-title">Forslag ('+x.forslagTotal+')</div><div class="qa-section-items">'+f+'</div></div><div class="qa-section"><div class="qa-section-title">Top 3</div><div class="qa-section-items">'+p+'</div></div></div></div>';}).join('');}
 
+// Overall bucket summary
+function buildBucketOverall(){
+  let tot={ts:{G:0,Y:0,R:0,Z:0},m24:{G:0,Y:0,R:0,Z:0},mt:{G:0,Y:0,R:0,Z:0},n:0};
+  Object.values(BUCKETS).forEach(s=>{
+    ['ts','m24','mt'].forEach(e=>{['G','Y','R','Z'].forEach(k=>{tot[e][k]+=s[e][k];});});
+    tot.n+=s.n;
+  });
+  const pcts=[{l:'Typesense',e:'ts',c:'badge-ts',clr:'var(--green)'},{l:'Med24 nuv.',e:'m24',c:'badge-m24',clr:'var(--blue)'},{l:'Matas',e:'mt',c:'badge-mt',clr:'var(--amber-t)'}];
+  document.getElementById('bucketOverallKpis').innerHTML=pcts.map(x=>{
+    const p=Math.round(tot[x.e].G/tot.n*100);
+    return '<div class="kpi"><div class="label"><span class="badge '+x.c+'">'+x.l+'</span></div><div class="value" style="color:'+pctC(p)+'">'+p+'%</div><div class="sub">'+tot[x.e].G+'G / '+tot[x.e].R+'R / '+tot[x.e].Z+'Z af '+tot.n+'</div></div>';
+  }).join('')+'<div class="kpi"><div class="label">Queries</div><div class="value" style="color:var(--blue)">'+tot.n+'</div><div class="sub">i '+Object.keys(BUCKETS).length+' buckets</div></div>';
+  document.getElementById('bucketOverallBars').innerHTML=pcts.map(x=>{
+    const g=Math.round(tot[x.e].G/tot.n*100),y=Math.round(tot[x.e].Y/tot.n*100),r=Math.round(tot[x.e].R/tot.n*100),z=Math.round(tot[x.e].Z/tot.n*100);
+    return '<div style="margin-bottom:6px"><div style="font-size:12px;font-weight:600;margin-bottom:3px">'+x.l+'</div><div class="bar" style="height:18px"><div class="bar-g" style="width:'+g+'%">'+tot[x.e].G+'</div><div class="bar-y" style="width:'+y+'%">'+(tot[x.e].Y||'')+'</div><div class="bar-r" style="width:'+r+'%">'+tot[x.e].R+'</div><div class="bar-z" style="width:'+z+'%">'+(tot[x.e].Z||'')+'</div></div></div>';
+  }).join('');
+}
+
 // INIT
-filterBM();buildBuckets();filterQA();
+filterBM();buildBuckets();buildBucketOverall();filterQA();
 </script>
 </body>
 </html>
