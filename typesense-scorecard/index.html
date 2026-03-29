@@ -101,6 +101,30 @@
   .qa-flag.zero { background:var(--red-bg); color:var(--red-t); }
   .qa-flag.no-forslag { background:var(--yellow-bg); color:var(--yellow-t); }
   .qa-count { font-size:11px; color:var(--muted); margin-top:6px; }
+
+  .cmp-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px; }
+  .cmp-panel { border:2px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .cmp-panel.m24 { border-color:var(--blue); }
+  .cmp-panel.ts { border-color:var(--green); }
+  .cmp-header { padding:12px 16px; font-weight:700; font-size:14px; display:flex; justify-content:space-between; align-items:center; }
+  .cmp-header.m24 { background:var(--blue-bg); color:var(--blue-t); }
+  .cmp-header.ts { background:var(--green-bg); color:var(--green-t); }
+  .cmp-header .status { font-size:11px; font-weight:400; opacity:.7; }
+  .cmp-body { padding:16px; }
+  .cmp-section { margin-bottom:16px; }
+  .cmp-section:last-child { margin-bottom:0; }
+  .cmp-label { font-size:10px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); font-weight:700; margin-bottom:8px; }
+  .cmp-brand-tag { display:inline-block; padding:4px 12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:16px; font-size:12px; font-weight:500; margin:2px; }
+  .cmp-sug-item { padding:4px 0; border-bottom:1px solid #f5f5f5; font-size:13px; }
+  .cmp-sug-type { color:var(--muted); font-size:10px; margin-right:6px; font-weight:600; }
+  .cmp-prod-item { display:flex; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid #f5f5f5; }
+  .cmp-prod-img { width:44px; height:44px; object-fit:contain; border-radius:4px; background:#f9fafb; flex-shrink:0; }
+  .cmp-prod-name { font-weight:500; font-size:13px; }
+  .cmp-prod-brand { font-size:11px; color:var(--muted); }
+  .cmp-prod-price { font-weight:700; font-size:13px; white-space:nowrap; }
+  .cmp-none { color:var(--muted); font-size:12px; }
+  .cmp-note { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; font-size:12px; color:#92400e; margin-bottom:12px; }
+  @media (max-width:900px) { .cmp-grid { grid-template-columns:1fr; } }
   @media (max-width:900px) { .kpi-row { grid-template-columns:repeat(2,1fr); } .search-results { grid-template-columns:1fr; } .bucket-grid { grid-template-columns:1fr; } .qa-grid { grid-template-columns:1fr; } }
 
   .bucket-detail { margin-top:12px; }
@@ -138,7 +162,8 @@
 </div>
 
 <div class="tabs">
-  <div class="tab active" onclick="showTab('live')">Live S&oslash;gning</div>
+  <div class="tab active" onclick="showTab('live')">Live Produkter</div>
+  <div class="tab" onclick="showTab('compare')">Sammenlign Fuldt</div>
   <div class="tab" onclick="showTab('benchmark')">Benchmark 200</div>
   <div class="tab" onclick="showTab('buckets')">Bucket-analyse</div>
   <div class="tab" onclick="showTab('qa')">Forslag &amp; M&aelig;rker</div>
@@ -161,6 +186,39 @@
     <div id="searchResults" class="search-results" style="display:none">
       <div class="search-col"><div class="search-col-header ts-h">Typesense &mdash; <span id="tsCount">0</span> res &middot; <span id="tsTime">0</span> ms</div><div id="tsResults"></div></div>
       <div class="search-col"><div class="search-col-header m24-h">Med24 nuv. &mdash; <span id="m24Count">0</span> res</div><div id="m24Results"></div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- TAB: Compare Full -->
+<div id="tab-compare" class="tab-content">
+  <div class="card">
+    <h2>Sammenlign: Med24 nu vs Typesense</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Det fulde s&oslash;ge-resultat side om side &mdash; pr&aelig;cis som brugeren vil opleve det.</p>
+    <div class="cmp-note">Typesense leverer M&AElig;RKER + FORSLAG + PRODUKTER i &eacute;t multi_search kald. Med24 (Algolia) leverer kun forslag + produkter via /searchSuggestions.</div>
+    <div class="search-box"><span class="search-icon">&#x1F50D;</span><input type="text" id="compareSearch" placeholder="Pr&oslash;v: solcreme, magnesium, d vitamin, ondt i halsen..." autocomplete="off"></div>
+    <div id="compareHint" class="search-hint">Begynd at skrive for at se den fulde sammenligning</div>
+    <div id="compareResults" style="display:none">
+      <div class="cmp-grid">
+        <!-- LEFT: Med24 current -->
+        <div class="cmp-panel m24">
+          <div class="cmp-header m24"><span>Med24.dk (Algolia)</span><span class="status" id="cmpM24Status"></span></div>
+          <div class="cmp-body">
+            <div class="cmp-section"><div class="cmp-label">Forslag (kategorier)</div><div id="cmpM24Suggestions"></div></div>
+            <div class="cmp-section"><div class="cmp-label">Produkter</div><div id="cmpM24Products"></div></div>
+          </div>
+        </div>
+        <!-- RIGHT: Typesense new -->
+        <div class="cmp-panel ts">
+          <div class="cmp-header ts"><span>Typesense (Nyt)</span><span class="status" id="cmpTsStatus"></span></div>
+          <div class="cmp-body">
+            <div class="cmp-section"><div class="cmp-label">M&aelig;rker</div><div id="cmpTsBrands"></div></div>
+            <div class="cmp-section"><div class="cmp-label">Forslag (kategorier + landing pages)</div><div id="cmpTsSuggestions"></div></div>
+            <div class="cmp-section"><div class="cmp-label">Produkter (top 6, brand-diversificeret)</div><div id="cmpTsProducts"></div></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -304,6 +362,79 @@ function filterBucketDetail(){const bkt=document.getElementById('bucketSelect').
 // QA
 let qaF='all';function qaMode(b,m){qaF=m;document.querySelectorAll('#tab-qa .filter-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');filterQA();}
 function filterQA(){const s=(document.getElementById('qaFilter')?.value||'').toLowerCase();let r=QA;if(s)r=r.filter(x=>x.q.toLowerCase().includes(s));if(qaF==='problems')r=r.filter(x=>x.flags.length>0);if(qaF==='no-forslag')r=r.filter(x=>x.flags.includes('no-forslag'));if(qaF==='top200')r=r.filter(x=>x.src==='top200'||x.src==='both');if(qaF==='structured')r=r.filter(x=>x.src==='structured'||x.src==='both');document.getElementById('qaCount').textContent='Viser '+r.length+' af '+QA.length;document.getElementById('qaGrid').innerHTML=r.map(x=>{const fc=x.flags.includes('zero')?' flag-zero':x.flags.includes('no-forslag')?' flag-no-forslag':'';const fl=x.flags.map(f=>'<span class="qa-flag '+f+'">'+({zero:'0 res','no-forslag':'ingen forslag','no-maerker':'ingen mærker'}[f]||f)+'</span>').join('');const m=x.maerker.length>0?x.maerker.map(b=>esc(b)).join(', '):'<span class="empty">-</span>';const f=x.forslag.length>0?x.forslag.map(s=>esc(s)).join(', '):(x.brandCombos?.length>0?x.brandCombos.map(s=>esc(s)).join(', '):'<span class="empty">-</span>');const p=x.top3.length>0?x.top3.map(n=>'<div>'+esc(n)+'</div>').join(''):'<span class="empty">-</span>';return'<div class="qa-card'+fc+'"><div class="qa-card-header"><span class="query">'+esc(x.q)+fl+'</span><span class="meta">'+x.found+' hits &middot; '+x.ms+'ms</span></div><div class="qa-card-body"><div class="qa-section"><div class="qa-section-title">M&aelig;rker</div><div class="qa-section-items">'+m+'</div></div><div class="qa-section"><div class="qa-section-title">Forslag ('+x.forslagTotal+')</div><div class="qa-section-items">'+f+'</div></div><div class="qa-section"><div class="qa-section-title">Top 3</div><div class="qa-section-items">'+p+'</div></div></div></div>';}).join('');}
+
+
+// Compare Full
+let cmpT;document.getElementById('compareSearch').addEventListener('input',e=>{clearTimeout(cmpT);const q=e.target.value.trim();if(q.length<2){document.getElementById('compareHint').style.display='block';document.getElementById('compareResults').style.display='none';return;}cmpT=setTimeout(()=>doCompare(q),200);});
+
+async function doCompare(q){
+  document.getElementById('compareHint').style.display='none';
+  document.getElementById('compareResults').style.display='block';
+  const loading='<span class="cmp-none">Henter...</span>';
+  ['cmpM24Status','cmpTsStatus'].forEach(id=>{document.getElementById(id).textContent='Henter...';});
+  ['cmpM24Suggestions','cmpM24Products','cmpTsBrands','cmpTsSuggestions','cmpTsProducts'].forEach(id=>{document.getElementById(id).innerHTML=loading;});
+
+  // === TYPESENSE (full multi_search) ===
+  try{
+    const t0=performance.now();
+    const r=await fetch(TS_HOST+'/multi_search',{method:'POST',headers:{'X-TYPESENSE-API-KEY':TS_KEY,'Content-Type':'application/json'},body:JSON.stringify({searches:[
+      {collection:'products_dk',q,preset:'product-search-dk',highlight_full_fields:'name,brand',facet_by:'categories,brand_parent',max_facet_values:10},
+      {collection:'suggestions_dk',q,query_by:'name',per_page:15,highlight_fields:'name'},
+      {collection:'brands',q,query_by:'name',per_page:10,highlight_fields:'name'}
+    ]})});
+    const d=await r.json();
+    const ms=Math.round(performance.now()-t0);
+    const prodRes=d.results?.[0]||{};const sugRes=d.results?.[1]||{};
+    const hits=prodRes.hits||[];const found=prodRes.found||0;
+    document.getElementById('cmpTsStatus').textContent=found+' produkter \u00b7 '+ms+' ms';
+
+    // BRANDS
+    const brandsSeen={};const brands=[];
+    for(const h of hits.slice(0,30)){const bp=(h.document.brand_parent||h.document.brand||'').trim();if(bp&&!brandsSeen[bp.toLowerCase()]){brandsSeen[bp.toLowerCase()]=1;brands.push(bp);if(brands.length>=6)break;}}
+    document.getElementById('cmpTsBrands').innerHTML=brands.length?brands.map(b=>'<span class="cmp-brand-tag">'+esc(b)+'</span>').join(''):'<span class="cmp-none">Ingen</span>';
+
+    // SUGGESTIONS
+    const sugs=(sugRes.hits||[]).filter(h=>(h.document.context||'')!=='brand').slice(0,8);
+    document.getElementById('cmpTsSuggestions').innerHTML=sugs.length?sugs.map(h=>'<div class="cmp-sug-item"><span class="cmp-sug-type">'+(h.document.context==='landing_page'?'LP':'CAT')+'</span>'+(h.highlights?.find(hl=>hl.field==='name')?.snippet||esc(h.document.name))+'</div>').join(''):'<span class="cmp-none">Ingen</span>';
+
+    // PRODUCTS (diversified)
+    const brandCount={};const diverse=[];const overflow=[];const ql=q.toLowerCase();
+    const topBrands=[...new Set(hits.slice(0,10).map(h=>(h.document.brand_parent||h.document.brand||'')).filter(Boolean))];
+    const hasBrandIntent=topBrands.some(b=>ql.includes(b.toLowerCase())||b.toLowerCase().includes(ql));
+    if(hasBrandIntent){diverse.push(...hits.slice(0,6));}else{for(const h of hits){const bp=(h.document.brand_parent||h.document.brand||'').toLowerCase();brandCount[bp]=(brandCount[bp]||0)+1;if(brandCount[bp]<=2)diverse.push(h);else overflow.push(h);}}
+    const shown=[...diverse,...overflow].slice(0,6);
+    document.getElementById('cmpTsProducts').innerHTML=shown.length?shown.map(h=>{
+      const dd=h.document;const name=h.highlights?.find(hl=>hl.field==='name')?.snippet||esc(dd.name);
+      const brand=dd.brand||'';const price=dd.price?dd.price.toFixed(2).replace('.',',')+' kr.':'';
+      const img=dd.image_url?'<img class="cmp-prod-img" src="'+dd.image_url+'" onerror="this.style.display=\'none\'">':'';
+      return '<div class="cmp-prod-item">'+img+'<div style="flex:1;min-width:0;"><div class="cmp-prod-name">'+name+'</div><div class="cmp-prod-brand">'+esc(brand)+'</div></div><div class="cmp-prod-price">'+price+'</div></div>';
+    }).join(''):'<span class="cmp-none">Ingen</span>';
+  }catch(e){document.getElementById('cmpTsStatus').textContent='Fejl';document.getElementById('cmpTsBrands').innerHTML='<span style="color:var(--red)">'+esc(e.message)+'</span>';}
+
+  // === MED24 (try direct, fallback to n8n proxy) ===
+  try{
+    const m=await fetch('https://www.med24.dk/searchSuggestions',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'term='+encodeURIComponent(q)});
+    const items=await m.json();
+    const pages=items.filter(x=>x.class==='page');const products=items.filter(x=>x.class==='product');
+    document.getElementById('cmpM24Status').textContent=products.length+' produkter \u00b7 '+pages.length+' forslag';
+    document.getElementById('cmpM24Suggestions').innerHTML=pages.length?pages.map(p=>'<div class="cmp-sug-item">'+esc(p.value)+'</div>').join(''):'<span class="cmp-none">Ingen</span>';
+    document.getElementById('cmpM24Products').innerHTML=products.length?products.map(p=>{
+      return '<div class="cmp-prod-item"><div style="flex:1;"><div class="cmp-prod-name">'+esc(p.value)+'</div></div></div>';
+    }).join(''):'<span class="cmp-none">Ingen</span>';
+  }catch(e){
+    // CORS fallback via n8n proxy
+    try{
+      const m=await fetch('https://n8n2.med24intra.dk/webhook/med24-search?q='+encodeURIComponent(q));
+      const d=await m.json();
+      document.getElementById('cmpM24Status').textContent=(d.count||0)+' produkter (via proxy)';
+      document.getElementById('cmpM24Suggestions').innerHTML='<span class="cmp-none">Ikke tilg\u00e6ngelig via proxy</span>';
+      document.getElementById('cmpM24Products').innerHTML=d.products?.length?d.products.map(p=>'<div class="cmp-prod-item"><div style="flex:1;"><div class="cmp-prod-name">'+esc(p.name)+'</div></div></div>').join(''):'<span class="cmp-none">Ingen</span>';
+    }catch(e2){
+      document.getElementById('cmpM24Status').textContent='Fejl';
+      document.getElementById('cmpM24Products').innerHTML='<span style="color:var(--red)">Kan ikke hente Med24-data (CORS)</span>';
+    }
+  }
+}
 
 // INIT
 filterBM();buildBuckets();filterQA();
