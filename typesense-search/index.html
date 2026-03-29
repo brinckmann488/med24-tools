@@ -285,7 +285,7 @@ function extractBrands(hits) {
   for (const h of hits) {
     const b = h.document.brand;
     if (b && !seen.has(b)) { seen.add(b); brands.push(b); }
-    if (brands.length >= 6) break;
+    if (brands.length >= 8) break;
   }
   // Sort: brand matching query text comes first (e.g. "Lavera" before "Lavera Men")
   const ql = (lastQ || '').toLowerCase();
