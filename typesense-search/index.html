@@ -335,6 +335,28 @@ function renderBrandSuggestions(data) {
     </div>`).join('');
 }
 
+// ── Brand diversity: pick diverse products from top hits ──
+// Broad queries: max 2 per brand_parent in first N shown
+// Brand intent: if query contains a top brand name, skip diversity
+function diversifyHits(hits, q, limit) {
+  if (!hits || hits.length <= limit) return hits.slice(0, limit);
+  const ql = (q || '').toLowerCase();
+  // Brand intent check: does query contain a known brand from top hits?
+  const topBrands = [...new Set(hits.slice(0, 10).map(h => h.document.brand_parent || h.document.brand).filter(Boolean))];
+  const hasBrandIntent = topBrands.some(b => ql.includes(b.toLowerCase()) || b.toLowerCase().includes(ql));
+  if (hasBrandIntent) return hits.slice(0, limit);
+  // Diversity: max 2 per brand_parent
+  const brandCount = {};
+  const diverse = [];
+  const overflow = [];
+  for (const h of hits) {
+    const bp = (h.document.brand_parent || h.document.brand || '').toLowerCase();
+    brandCount[bp] = (brandCount[bp] || 0) + 1;
+    if (brandCount[bp] <= 2) { diverse.push(h); } else { overflow.push(h); }
+  }
+  return [...diverse, ...overflow].slice(0, limit);
+}
+
 // ── Render VIEW A1 (Clean Split) ──
 // Mærker: fra brands collection med parent/child gruppering
 // Kategorier: KUN context="category" fra suggestions (ingen brand-combos)
@@ -355,7 +377,7 @@ function renderA1(data, q, currency) {
   // Fallback: category facets from product search when no suggestions
   const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 5);
 
-  const products = data.hits.slice(0, 5);
+  const products = diversifyHits(data.hits, q, 5);
 
   const catsHtml = navSuggestions.length > 0
     ? navSuggestions.slice(0, 8).map(s => `
