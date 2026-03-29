@@ -603,7 +603,7 @@ async function search() {
       method: 'POST',
       headers: { 'X-TYPESENSE-API-KEY': API_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({ searches: [
-        { collection, q, preset, per_page: 12, highlight_full_fields: 'name,brand', facet_by: 'categories,brand_parent', max_facet_values: 10 },
+        { collection, q, preset, highlight_full_fields: 'name,brand', facet_by: 'categories,brand_parent', max_facet_values: 10 },
         { collection: suggestionsCollection, q, query_by: 'name', per_page: 30, highlight_fields: 'name' },
         { collection: 'brands', q, query_by: 'name', per_page: 10, highlight_fields: 'name' }
       ]})
