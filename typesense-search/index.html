@@ -278,14 +278,19 @@ function groupBrands(brandDocs) {
   return result;
 }
 
-// Fallback: extract brands from product hits (when brands collection returns nothing)
+// Extract unique parent brands from product hits (deduped by brand_parent)
 function extractBrands(hits) {
-  const seen = new Set();
+  const seenParent = new Set();
   const brands = [];
   for (const h of hits) {
     const b = h.document.brand;
-    if (b && !seen.has(b)) { seen.add(b); brands.push(b); }
-    if (brands.length >= 8) break;
+    const bp = h.document.brand_parent || b;
+    if (!b || !bp) continue;
+    const bpLower = bp.toLowerCase();
+    if (seenParent.has(bpLower)) continue;
+    seenParent.add(bpLower);
+    brands.push(bp);
+    if (brands.length >= 6) break;
   }
   // Sort: brand matching query text comes first (e.g. "Lavera" before "Lavera Men")
   const ql = (lastQ || '').toLowerCase();
