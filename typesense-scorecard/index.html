@@ -229,8 +229,10 @@
   <div class="card">
     <h2>Visuelt QA-dashboard</h2>
     <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Hvad brugeren ser: M&AElig;RKER + FORSLAG + top-3 produkter.</p>
+    <div style="margin-bottom:12px">
+      <input type="text" id="qaFilter" placeholder="S&oslash;g i queries... fx magnesium, solcreme, ondt i halsen" oninput="filterQA()" style="width:100%;padding:14px 20px;border:2px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;transition:border .2s;background:var(--card);box-sizing:border-box;" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'">
+    </div>
     <div class="filter-bar">
-      <input type="text" id="qaFilter" placeholder="S&oslash;g..." oninput="filterQA()">
       <button class="filter-btn active" onclick="qaMode(this,'all')">Alle</button>
       <button class="filter-btn" onclick="qaMode(this,'problems')">Problemer</button>
       <button class="filter-btn" onclick="qaMode(this,'no-forslag')">Mangler forslag</button>
