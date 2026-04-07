@@ -62,6 +62,7 @@ code{font-family:'SF Mono',Consolas,'Courier New',monospace}
     <li><a href="#response">Svaret: 3 sektioner fra 1 kald</a></li>
     <li><a href="#brands">MAERKER — extractBrands()</a></li>
     <li><a href="#suggestions">FORSLAG — suggestions collection</a></li>
+    <li><a href="#shortcuts">GENVEJE — brand+kategori chips</a></li>
     <li><a href="#products">PRODUKTER — diversifyHits()</a></li>
     <li><a href="#donts">Frontend skal IKKE</a></li>
     <li><a href="#backend">Hvad backend allerede leverer</a></li>
@@ -95,7 +96,7 @@ code{font-family:'SF Mono',Consolas,'Courier New',monospace}
     </div>
   </div>
   <div class="info-box">
-    <strong>Visuelt layout (A1 — Clean Split):</strong> Venstre sidebar med MAERKER (top) + FORSLAG (bund). Hoejre side med PRODUKTER (top 5, brand-diversificeret). Se <a href="#reference">reference-implementation</a>.
+    <strong>Visuelt layout (A2 — Med Genveje):</strong> Venstre sidebar med MAERKER (top) + FORSLAG (midt) + GENVEJE (bund). Hoejre side med PRODUKTER (top 5, brand-diversificeret). Genveje er brand+kategori kombinationer som klikbare chips (fx "Derma solcreme", "CeraVe solcreme"). Se <a href="#reference">reference-implementation</a>.
   </div>
 </div>
 
@@ -139,7 +140,7 @@ X-TYPESENSE-API-KEY: vg9DFhFXwCNxujx9U18CtGFF4bQpthgu</code></pre>
     <thead><tr><th>Index</th><th>Indhold</th><th>Bruges til</th></tr></thead>
     <tbody>
       <tr><td><span class="inline-code">results[0]</span></td><td>Produkter (30 hits + facets)</td><td>MAERKER + PRODUKTER</td></tr>
-      <tr><td><span class="inline-code">results[1]</span></td><td>Suggestions (kategorier + landing pages)</td><td>FORSLAG</td></tr>
+      <tr><td><span class="inline-code">results[1]</span></td><td>Suggestions (kategorier + landing pages)</td><td>FORSLAG + GENVEJE</td></tr>
     </tbody>
   </table>
   <p style="margin-top:8px">Hvert produkt-hit har denne struktur:</p>
@@ -204,6 +205,30 @@ X-TYPESENSE-API-KEY: vg9DFhFXwCNxujx9U18CtGFF4bQpthgu</code></pre>
     <li>Fallback hvis 0 suggestions: brug <span class="inline-code">results[0].facet_counts</span> for categories</li>
     <li>Ved klik: link direkte til <span class="inline-code">url</span> (kategori/landing page paa med24.dk/se/no)</li>
   </ul>
+</div>
+
+<!-- 5b. Shortcuts -->
+<div class="card" id="shortcuts">
+  <h2><span class="section-num">5b</span>GENVEJE — brand+kategori chips</h2>
+  <p>Klikbare genveje der kombinerer brand + kategori. Vises som chips/pills under FORSLAG i sidebar.</p>
+<pre><code>const shortcuts = results[1].hits
+  .filter(h =&gt; h.document.context === 'brand')
+  .sort((a, b) =&gt; (b.document.product_count || 0) - (a.document.product_count || 0))
+  .slice(0, 6)
+  .map(h =&gt; ({
+    name: h.document.name,
+    url: h.document.url
+  }));</code></pre>
+  <ul>
+    <li>Datakilde: <span class="inline-code">results[1].hits</span> — samme som FORSLAG, men filtreret paa <span class="inline-code">context === 'brand'</span></li>
+    <li>Sorteret efter <span class="inline-code">product_count</span> (flest produkter foerst)</li>
+    <li>Max 6 chips. Vis kun hvis 2+ genveje findes</li>
+    <li>Eksempler: "Derma solcreme", "CeraVe solcreme", "Rudolph Care solcreme"</li>
+    <li>Ved klik: link direkte til <span class="inline-code">url</span> (brand landing page paa med24.dk)</li>
+  </ul>
+  <div class="info-box">
+    <strong>Forskellen:</strong> FORSLAG viser rene kategorier ("Solcreme", "Solcreme til ansigtet"). GENVEJE viser brand+kategori kombinationer ("Derma solcreme", "CeraVe solcreme"). Begge kommer fra suggestions collection — filtreret paa <span class="inline-code">context</span>.
+  </div>
 </div>
 
 <!-- 6. Products -->
