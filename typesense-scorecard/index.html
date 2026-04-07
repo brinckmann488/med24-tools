@@ -155,7 +155,6 @@
   <div class="tab" onclick="showTab('benchmark')">Benchmark 200</div>
   <div class="tab" onclick="showTab('buckets')">Bucket-analyse</div>
   <div class="tab" onclick="showTab('qa')">Forslag &amp; M&aelig;rker</div>
-  <div class="tab" onclick="showTab('method')">Metode</div>
 </div>
 
 <!-- TAB: Live Search (with KPIs) -->
@@ -256,26 +255,6 @@
   </div>
 </div>
 
-<!-- TAB: Method -->
-<div id="tab-method" class="tab-content">
-  <div class="card" style="background:var(--amber-bg);border-left:3px solid #f59e0b">
-    <h2 style="color:var(--amber-t)">Metode</h2>
-    <table style="font-size:12px;width:100%"><thead><tr><th>Engine</th><th>Datakilde</th><th>Hvad testes</th></tr></thead><tbody>
-      <tr><td><span class="badge badge-ts">Typesense</span></td><td>multi_search API (preset product-search-dk)</td><td>Produkter + suggestions + brands</td></tr>
-      <tr><td><span class="badge badge-m24">Med24 nuv.</span></td><td>n8n webhook proxy (Algolia)</td><td>Produktresultater</td></tr>
-      <tr><td><span class="badge badge-mt">Matas</span></td><td>Fuld s&oslash;geside (/startsoeg)</td><td>Produktresultater</td></tr>
-    </tbody></table>
-  </div>
-  <div class="card">
-    <h2>Bed&oslash;mmelse</h2>
-    <ul style="font-size:13px;line-height:2;padding-left:20px;color:var(--muted)">
-      <li><strong>Heuristisk relevans-judge</strong> &mdash; Top-1 resultat bed&oslash;mt automatisk via token-matching, synonym-equivalenser og brand-genkendelse.</li>
-      <li><strong>GREEN:</strong> &ge;50% af query-tokens matcher. <strong>YELLOW:</strong> 25-50%. <strong>RED:</strong> &lt;25%. <strong>ZERO:</strong> Ingen resultater.</li>
-      <li><strong>359 queries:</strong> 200 top-trafik + 181 strukturerede i 7 buckets.</li>
-      <li><strong>Forslag QA:</strong> Kun Typesense (TS har MÆRKER + FORSLAG + PRODUKTER separat).</li>
-    </ul>
-  </div>
-</div>
 
 </div>
 <div style="text-align:center;color:var(--muted);font-size:11px;padding:16px 0 32px">Genereret af Claude Code &middot; Heuristisk relevans-judge &middot; 28. marts 2026</div>
