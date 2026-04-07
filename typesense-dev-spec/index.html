@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typesense A/B Test — Developer Spec</title>
+<style>
+:root{--bg:#f8fafc;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--blue:#2563eb;--blue-bg:#eff6ff;--green:#16a34a;--green-bg:#f0fdf4;--red:#dc2626;--red-bg:#fef2f2;--amber:#d97706;--amber-bg:#fffbeb;--radius:10px;--ts:#16a34a;--ts-bg:#f0fdf4;--m24:#2563eb;--m24-bg:#eff6ff}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:960px;margin:0 auto;padding:24px 20px}
+.header{background:linear-gradient(135deg,#1e293b,#334155);color:#fff;padding:32px;border-radius:var(--radius);margin-bottom:24px}
+.header h1{font-size:24px;margin-bottom:4px}
+.header .sub{color:#94a3b8;font-size:13px}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase}
+.badge-ts{background:var(--ts-bg);color:var(--ts)}
+.badge-m24{background:var(--m24-bg);color:var(--m24)}
+.badge-warn{background:var(--red-bg);color:var(--red)}
+.badge-info{background:var(--blue-bg);color:var(--blue)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:16px}
+.card h2{font-size:16px;margin-bottom:12px;color:var(--text)}
+.card h3{font-size:14px;margin:16px 0 8px;color:var(--text)}
+.card p,.card li{font-size:13px;color:var(--muted)}
+.card ul{padding-left:20px}
+.card li{margin-bottom:4px}
+table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}
+th{text-align:left;padding:8px 10px;background:#f1f5f9;font-weight:600;border-bottom:2px solid var(--border)}
+td{padding:8px 10px;border-bottom:1px solid var(--border)}
+pre{background:#1e293b;color:#e2e8f0;padding:16px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.5;margin:8px 0}
+code{font-family:'SF Mono',Consolas,'Courier New',monospace}
+.inline-code{background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:12px;font-family:'SF Mono',Consolas,monospace;color:var(--text)}
+.warn-box{background:var(--red-bg);border-left:3px solid var(--red);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:12px;color:#991b1b}
+.info-box{background:var(--blue-bg);border-left:3px solid var(--blue);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:12px;color:#1e40af}
+.green-box{background:var(--green-bg);border-left:3px solid var(--green);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:12px;color:#166534}
+.toc{list-style:none;padding:0}
+.toc li{margin-bottom:6px}
+.toc a{color:var(--blue);text-decoration:none;font-size:13px;font-weight:500}
+.toc a:hover{text-decoration:underline}
+.section-num{display:inline-block;width:24px;height:24px;background:var(--blue);color:#fff;border-radius:50%;text-align:center;line-height:24px;font-size:11px;font-weight:700;margin-right:8px}
+.compare-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.compare-col{border:1px solid var(--border);border-radius:8px;padding:12px}
+.compare-col h4{font-size:12px;font-weight:700;margin-bottom:8px}
+.compare-col.old{border-color:#fca5a5;background:#fff5f5}
+.compare-col.new{border-color:#86efac;background:#f0fdf4}
+@media(max-width:700px){.compare-row{grid-template-columns:1fr}.container{padding:12px}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>Typesense A/B Test — Developer Spec</h1>
+  <div class="sub">Alt frontend-udviklere skal vide for at implementere splittesten. Opdateret 7. april 2026.</div>
+</div>
+
+<!-- TOC -->
+<div class="card">
+  <h2>Indhold</h2>
+  <ol class="toc">
+    <li><a href="#overview">Overblik: Hvad er A/B testen?</a></li>
+    <li><a href="#api">API-kald (erstatter Algolia)</a></li>
+    <li><a href="#response">Svaret: 3 sektioner fra 1 kald</a></li>
+    <li><a href="#brands">MAERKER — extractBrands()</a></li>
+    <li><a href="#suggestions">FORSLAG — suggestions collection</a></li>
+    <li><a href="#products">PRODUKTER — diversifyHits()</a></li>
+    <li><a href="#donts">Frontend skal IKKE</a></li>
+    <li><a href="#backend">Hvad backend allerede leverer</a></li>
+    <li><a href="#markets">Markeder: DK / SE / NO</a></li>
+    <li><a href="#ab">A/B test implementation</a></li>
+    <li><a href="#reference">Reference-implementation</a></li>
+  </ol>
+</div>
+
+<!-- 1. Overview -->
+<div class="card" id="overview">
+  <h2><span class="section-num">1</span>Overblik</h2>
+  <div class="compare-row">
+    <div class="compare-col old">
+      <h4>Variant A — Nuvaerende (Algolia)</h4>
+      <ul>
+        <li>Endpoint: <span class="inline-code">POST /searchSuggestions</span></li>
+        <li>Svartid: 200-300 ms</li>
+        <li>Returnerer: flat liste (forslag + produkter blandet)</li>
+        <li>Kvalitet: 89% GREEN (200 benchmark queries)</li>
+      </ul>
+    </div>
+    <div class="compare-col new">
+      <h4>Variant B — Ny (Typesense)</h4>
+      <ul>
+        <li>Endpoint: <span class="inline-code">POST /multi_search</span></li>
+        <li>Svartid: 4 ms (50-100x hurtigere)</li>
+        <li>Returnerer: 3 strukturerede sektioner</li>
+        <li>Kvalitet: 91% GREEN (200 benchmark queries)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="info-box">
+    <strong>Visuelt layout (A1 — Clean Split):</strong> Venstre sidebar med MAERKER (top) + FORSLAG (bund). Hoejre side med PRODUKTER (top 5, brand-diversificeret). Se <a href="#reference">reference-implementation</a>.
+  </div>
+</div>
+
+<!-- 2. API -->
+<div class="card" id="api">
+  <h2><span class="section-num">2</span>API-kald</h2>
+  <p>Et enkelt <span class="inline-code">POST</span> kald erstatter det nuvaerende Algolia-kald:</p>
+<pre><code>POST https://hw3ea2fxs7vnzd61p-1.a2.typesense.net/multi_search
+Content-Type: application/json
+X-TYPESENSE-API-KEY: vg9DFhFXwCNxujx9U18CtGFF4bQpthgu</code></pre>
+<pre><code>{
+  "searches": [
+    {
+      "collection": "products_dk",
+      "q": "&lt;brugerens soegetekst&gt;",
+      "preset": "product-search-dk",
+      "highlight_full_fields": "name,brand",
+      "facet_by": "categories,brand_parent",
+      "max_facet_values": 10
+    },
+    {
+      "collection": "suggestions_dk",
+      "q": "&lt;brugerens soegetekst&gt;",
+      "query_by": "name",
+      "per_page": 30,
+      "highlight_fields": "name"
+    }
+  ]
+}</code></pre>
+  <div class="warn-box">
+    <strong>VIGTIGT:</strong> Overstyr IKKE <span class="inline-code">per_page</span> i produktsoegningen. Presetet saetter 30. Alle 30 hits bruges til brand-extraction — kun 5 vises som produkter.
+  </div>
+  <p style="margin-top:8px"><strong>API-key er search-only</strong> — sikker at bruge i frontend. Kan ikke aendre data.</p>
+</div>
+
+<!-- 3. Response -->
+<div class="card" id="response">
+  <h2><span class="section-num">3</span>Svaret: 3 sektioner fra 1 kald</h2>
+  <p>Svaret indeholder <span class="inline-code">results[]</span> med et entry per search:</p>
+  <table>
+    <thead><tr><th>Index</th><th>Indhold</th><th>Bruges til</th></tr></thead>
+    <tbody>
+      <tr><td><span class="inline-code">results[0]</span></td><td>Produkter (30 hits + facets)</td><td>MAERKER + PRODUKTER</td></tr>
+      <tr><td><span class="inline-code">results[1]</span></td><td>Suggestions (kategorier + landing pages)</td><td>FORSLAG</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:8px">Hvert produkt-hit har denne struktur:</p>
+<pre><code>{
+  "document": {
+    "name": "Derma Sollotion SPF30 - 200 ml.",
+    "brand": "Derma Sun",
+    "brand_parent": "Derma",
+    "price": 79.95,
+    "image": "https://...",
+    "url": "/derma-sollotion-spf30-200ml",
+    "in_stock": true,
+    "ranking_score": 64.39
+  },
+  "highlights": [
+    { "field": "name", "snippet": "Derma &lt;mark&gt;Sollotion&lt;/mark&gt; SPF30..." }
+  ]
+}</code></pre>
+</div>
+
+<!-- 4. Brands -->
+<div class="card" id="brands">
+  <h2><span class="section-num">4</span>MAERKER — extractBrands()</h2>
+  <p>Unikke parent-brands fra top-30 produkthits. Max 6. Query-match sorteres oeverst.</p>
+<pre><code>function extractBrands(hits, q, limit = 6) {
+  const seen = new Set();
+  const brands = [];
+  for (const h of hits) {
+    const bp = h.document.brand_parent || h.document.brand;
+    if (!bp || seen.has(bp.toLowerCase())) continue;
+    seen.add(bp.toLowerCase());
+    brands.push(bp);
+  }
+  const ql = (q || '').toLowerCase();
+  brands.sort((a, b) =&gt; {
+    const aMatch = a.toLowerCase().includes(ql) || ql.includes(a.toLowerCase());
+    const bMatch = b.toLowerCase().includes(ql) || ql.includes(b.toLowerCase());
+    return bMatch - aMatch;
+  });
+  return brands.slice(0, limit);
+}</code></pre>
+  <ul>
+    <li>Datakilde: <span class="inline-code">results[0].hits</span></li>
+    <li>Dedup via <span class="inline-code">brand_parent</span> ("Solaray Magnesium Citrat" og "Solaray" = en brand)</li>
+    <li>Ved klik: fyld soegefeltet med brandnavnet</li>
+  </ul>
+</div>
+
+<!-- 5. Suggestions -->
+<div class="card" id="suggestions">
+  <h2><span class="section-num">5</span>FORSLAG — suggestions collection</h2>
+<pre><code>const suggestions = results[1].hits
+  .filter(h =&gt; h.document.context !== 'brand')
+  .map(h =&gt; ({
+    name: h.document.name,
+    url: h.document.url,
+    highlight: h.highlights?.[0]?.snippet || h.document.name
+  }));</code></pre>
+  <ul>
+    <li>Datakilde: <span class="inline-code">results[1].hits</span> (suggestions collection)</li>
+    <li>Filtrer <span class="inline-code">context !== 'brand'</span> (brand-landing pages filtreres fra)</li>
+    <li>Fallback hvis 0 suggestions: brug <span class="inline-code">results[0].facet_counts</span> for categories</li>
+    <li>Ved klik: link direkte til <span class="inline-code">url</span> (kategori/landing page paa med24.dk/se/no)</li>
+  </ul>
+</div>
+
+<!-- 6. Products -->
+<div class="card" id="products">
+  <h2><span class="section-num">6</span>PRODUKTER — diversifyHits()</h2>
+  <p>Vis 5 produkter fra de 30 hits, med brand-diversitet:</p>
+<pre><code>function diversifyHits(hits, q, limit = 5) {
+  if (!hits || hits.length &lt;= limit) return hits.slice(0, limit);
+
+  // Brand intent check: if query contains a brand name, skip diversity
+  const ql = (q || '').toLowerCase();
+  const topBrands = [...new Set(hits.slice(0, 10).map(h =&gt;
+    h.document.brand_parent || h.document.brand).filter(Boolean))];
+  const hasBrandIntent = topBrands.some(b =&gt;
+    ql.includes(b.toLowerCase()) || b.toLowerCase().includes(ql));
+  if (hasBrandIntent) return hits.slice(0, limit);
+
+  // Broad search: max 2 products per brand_parent
+  const brandCount = {};
+  const diverse = [], overflow = [];
+  for (const h of hits) {
+    const bp = (h.document.brand_parent || h.document.brand || '').toLowerCase();
+    brandCount[bp] = (brandCount[bp] || 0) + 1;
+    (brandCount[bp] &lt;= 2 ? diverse : overflow).push(h);
+  }
+  return [...diverse, ...overflow].slice(0, limit);
+}</code></pre>
+  <div class="info-box">
+    <strong>Brand intent:</strong> Naar brugeren soeger "derma solcreme" vises kun Derma-produkter (ingen diversitet). Naar brugeren soeger "solcreme" vises max 2 produkter per brand.
+  </div>
+  <p style="margin-top:8px">Vis per produkt:</p>
+  <table>
+    <thead><tr><th>Felt</th><th>Kilde</th></tr></thead>
+    <tbody>
+      <tr><td>Navn (highlighted)</td><td><span class="inline-code">h.highlights[0].snippet</span> eller <span class="inline-code">h.document.name</span></td></tr>
+      <tr><td>Brand</td><td><span class="inline-code">h.document.brand</span></td></tr>
+      <tr><td>Pris</td><td><span class="inline-code">h.document.price</span></td></tr>
+      <tr><td>Billede</td><td><span class="inline-code">h.document.image</span></td></tr>
+      <tr><td>Link</td><td><span class="inline-code">h.document.url</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 7. Don'ts -->
+<div class="card" id="donts">
+  <h2><span class="section-num">7</span>Frontend skal IKKE</h2>
+  <table>
+    <thead><tr><th>Don't</th><th>Hvorfor</th></tr></thead>
+    <tbody>
+      <tr><td>Overstyre <span class="inline-code">per_page</span> i produktsoegning</td><td>Preset saetter 30 — bruges til brand-extraction</td></tr>
+      <tr><td>Bruge <span class="inline-code">facet_counts</span> til MAERKER</td><td>Giver irrelevante brands (magnesium &rarr; Essie neglelak)</td></tr>
+      <tr><td>Bruge <span class="inline-code">group_by</span></td><td>Bryder vector-soegninger, inkompatibelt med fremtidige embeddings</td></tr>
+      <tr><td>Implementere ranking/sortering</td><td>Alt haandteres i preset (7 felter, vaegt, typo-tolerans)</td></tr>
+      <tr><td>Deduplicere suggestions</td><td>Pipeline renser data automatisk</td></tr>
+      <tr><td>Tilfoeje stavekontrol</td><td>Preset har <span class="inline-code">num_typos</span> per felt</td></tr>
+      <tr><td>Cache resultater aggressivt</td><td>Pris/lager opdateres hvert 15. min</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 8. Backend -->
+<div class="card" id="backend">
+  <h2><span class="section-num">8</span>Hvad backend allerede leverer</h2>
+  <div class="green-box">Alt nedenstaaende virker automatisk. Frontend skal bare kalde API'en og vise resultatet.</div>
+  <table>
+    <thead><tr><th>Feature</th><th>Konfigureret i</th></tr></thead>
+    <tbody>
+      <tr><td>Soegerelevans (7 felter, vaegtning, typo-tolerans)</td><td>Typesense presets</td></tr>
+      <tr><td>Ranking (salg &times; margin &times; GA views, per marked)</td><td><span class="inline-code">ranking_score</span> felt via Nightly Sync</td></tr>
+      <tr><td>90 synonym-saet (panodil&harr;paracetamol, fiskeolie&harr;omega-3)</td><td>Typesense Cloud Synonym Sets</td></tr>
+      <tr><td>Stopwords (bedst, bedste, baest, basta, best, beste)</td><td>Typesense Stopwords</td></tr>
+      <tr><td>Stavekontrol (pharma-sikker: 2 typos paa navn, 0 paa ingredienser)</td><td><span class="inline-code">num_typos</span> per felt i preset</td></tr>
+      <tr><td>Brand-navne inkl. sub-brands</td><td><span class="inline-code">brand</span> + <span class="inline-code">brand_parent</span> felter</td></tr>
+      <tr><td>Kategorier + landing pages (suggestions)</td><td><span class="inline-code">suggestions_dk/se/no</span> collections</td></tr>
+      <tr><td>Concept tags (oekologisk, vegansk, parfumefri)</td><td><span class="inline-code">concept_tags</span> felt (certifications + tekst-mining)</td></tr>
+      <tr><td>26.875 produkter per marked</td><td>Nightly Full Sync (01:00)</td></tr>
+      <tr><td>Pris + lager</td><td>Price/Stock Sync (hvert 15. min)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 9. Markets -->
+<div class="card" id="markets">
+  <h2><span class="section-num">9</span>Markeder: DK / SE / NO</h2>
+  <p>Alle 3 markeder har identisk struktur. Byt collection og preset:</p>
+  <table>
+    <thead><tr><th>Marked</th><th>Produkter collection</th><th>Suggestions collection</th><th>Preset</th></tr></thead>
+    <tbody>
+      <tr><td>Danmark</td><td><span class="inline-code">products_dk</span></td><td><span class="inline-code">suggestions_dk</span></td><td><span class="inline-code">product-search-dk</span></td></tr>
+      <tr><td>Sverige</td><td><span class="inline-code">products_se</span></td><td><span class="inline-code">suggestions_se</span></td><td><span class="inline-code">product-search-se</span></td></tr>
+      <tr><td>Norge</td><td><span class="inline-code">products_no</span></td><td><span class="inline-code">suggestions_no</span></td><td><span class="inline-code">product-search-no</span></td></tr>
+    </tbody>
+  </table>
+  <div class="info-box">Ranking signals (popularity, margin, GA views) er nu per-marked. Svenske soegeresultater bruger svenske salgstal, ikke danske.</div>
+</div>
+
+<!-- 10. A/B Test -->
+<div class="card" id="ab">
+  <h2><span class="section-num">10</span>A/B test implementation</h2>
+  <p>Cookie-baseret split, sticky per bruger i 30 dage:</p>
+<pre><code>// Assign variant (once per user)
+function getSearchVariant() {
+  const match = document.cookie.match(/search_ab=(ts|algolia)/);
+  if (match) return match[1];
+  const variant = Math.random() &lt; 0.5 ? 'ts' : 'algolia';
+  document.cookie = `search_ab=${variant};path=/;max-age=${30 * 86400}`;
+  return variant;
+}
+
+const variant = getSearchVariant();
+
+// Route search based on variant
+async function search(query) {
+  if (variant === 'ts') {
+    return searchTypesense(query);  // POST /multi_search
+  } else {
+    return searchAlgolia(query);    // POST /searchSuggestions (existing)
+  }
+}</code></pre>
+  <h3>Maaling</h3>
+  <ul>
+    <li><strong>Primary metric:</strong> Klik-through rate paa soegeresultater</li>
+    <li><strong>Secondary:</strong> Soeg-til-koeb konvertering, bounce rate, tid til foerste klik</li>
+    <li>Send <span class="inline-code">search_ab</span> variant som GA4 user property for analyse</li>
+  </ul>
+</div>
+
+<!-- 11. Reference -->
+<div class="card" id="reference">
+  <h2><span class="section-num">11</span>Reference-implementation</h2>
+  <p>Fuld fungerende A1-view med live Typesense-soegning:</p>
+  <p style="margin:12px 0"><a href="https://brinckmann488.github.io/med24-tools/typesense-search/" target="_blank" style="color:var(--blue);font-weight:600;font-size:14px">brinckmann488.github.io/med24-tools/typesense-search/ &rarr;</a></p>
+  <p>Kvalitetsoversigt og benchmark-resultater:</p>
+  <p style="margin:12px 0"><a href="https://brinckmann488.github.io/med24-tools/typesense-scorecard/" target="_blank" style="color:var(--blue);font-weight:600;font-size:14px">brinckmann488.github.io/med24-tools/typesense-scorecard/ &rarr;</a></p>
+  <div class="green-box">
+    <strong>Kildekode:</strong> Al JavaScript i reference-implementationen kan kopieres direkte — <span class="inline-code">extractBrands()</span>, <span class="inline-code">diversifyHits()</span>, og <span class="inline-code">multi_search</span> kaldet er production-ready.
+  </div>
+</div>
+
+<div style="text-align:center;color:var(--muted);font-size:11px;padding:24px 0">
+  Genereret 7. april 2026 &middot; Kontakt: Kristian (kbr)
+</div>
+
+</div>
+</body>
+</html>
