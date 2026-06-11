@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEO Sprint Dashboard — Med24</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #161820;
+    --card: #1a1d27;
+    --card-hover: #1f2231;
+    --card-selected: #1e2240;
+    --border: #2a2d3a;
+    --text: #e4e4e7;
+    --text-muted: #71737e;
+    --accent: #6366f1;
+    --accent-light: #818cf8;
+    --green: #22c55e;
+    --green-bg: rgba(34,197,94,0.08);
+    --green-border: rgba(34,197,94,0.25);
+    --red: #ef4444;
+    --red-bg: rgba(239,68,68,0.08);
+    --yellow: #eab308;
+    --yellow-bg: rgba(234,179,8,0.08);
+    --blue: #3b82f6;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Header ── */
+  .header { padding: 20px 32px 16px; display: flex; align-items: baseline; gap: 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .header h1 { font-size: 18px; font-weight: 600; }
+  .header .subtitle { color: var(--text-muted); font-size: 13px; }
+
+  /* ── Stats bar ── */
+  .stats { display: flex; gap: 32px; padding: 12px 32px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--surface); }
+  .stat { display: flex; align-items: baseline; gap: 6px; }
+  .stat-value { font-size: 20px; font-weight: 700; }
+  .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+  .s-green { color: var(--green); }
+  .s-red { color: var(--red); }
+  .s-yellow { color: var(--yellow); }
+  .s-blue { color: var(--blue); }
+
+  /* ── Toolbar ── */
+  .toolbar { display: flex; gap: 8px; padding: 10px 32px; border-bottom: 1px solid var(--border); align-items: center; flex-shrink: 0; }
+  .btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; font-size: 12px; transition: all 0.15s; white-space: nowrap; }
+  .btn:hover { border-color: var(--accent); }
+  .btn-green { background: var(--green); border-color: var(--green); color: #000; font-weight: 600; }
+  .btn-green:hover { opacity: 0.9; }
+  .spacer { flex: 1; }
+  .pill { padding: 4px 12px; border-radius: 12px; font-size: 11px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text-muted); transition: all 0.15s; }
+  .pill.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* ── Main split ── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── List ── */
+  .list-container { flex-shrink: 0; max-height: 35vh; overflow-y: auto; border-bottom: 2px solid var(--border); }
+  .list-container.collapsed { max-height: 20vh; }
+  .list-table { width: 100%; border-collapse: collapse; }
+  .list-table th { position: sticky; top: 0; background: var(--surface); text-align: left; padding: 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 500; border-bottom: 1px solid var(--border); z-index: 2; }
+  .list-table th:first-child { padding-left: 32px; }
+  .list-table td { padding: 10px 12px; border-bottom: 1px solid rgba(42,45,58,0.4); font-size: 13px; cursor: pointer; transition: background 0.1s; }
+  .list-table td:first-child { padding-left: 32px; }
+  .list-table tr:hover td { background: var(--card-hover); }
+  .list-table tr.selected td { background: var(--card-selected); }
+  .list-table tr.approved td:first-child { box-shadow: inset 3px 0 0 var(--green); }
+  .list-table tr.rejected td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+  .list-table tr.pending td:first-child { box-shadow: inset 3px 0 0 var(--border); }
+
+  .td-title { font-weight: 500; }
+  .td-title a { color: var(--text); text-decoration: none; }
+  .td-title a:hover { color: var(--accent-light); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 8px; font-size: 10px; font-weight: 500; }
+  .b-market { background: rgba(59,130,246,0.12); color: var(--blue); }
+  .b-score { background: rgba(99,102,241,0.12); color: var(--accent-light); }
+  .b-bucket { background: rgba(34,197,94,0.1); color: var(--green); }
+  .b-season { background: rgba(234,179,8,0.1); color: var(--yellow); }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+  .dot-approved { background: var(--green); }
+  .dot-rejected { background: var(--red); }
+  .dot-pending { background: var(--border); }
+
+  /* ── Detail panel ── */
+  .detail { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); }
+  .detail-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 14px; }
+  .detail-header { display: flex; align-items: center; padding: 12px 32px; gap: 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .detail-title { font-size: 16px; font-weight: 600; flex: 1; }
+  .detail-title a { color: var(--text); text-decoration: none; }
+  .detail-title a:hover { color: var(--accent-light); text-decoration: underline; }
+  .detail-actions { display: flex; gap: 6px; align-items: center; }
+  .detail-actions .btn { padding: 6px 16px; }
+  .detail-actions .comment-input { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; color: var(--text); font-size: 12px; width: 200px; }
+  .detail-actions .comment-input::placeholder { color: var(--text-muted); }
+
+  /* ── Detail tabs ── */
+  .detail-tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 32px; flex-shrink: 0; }
+  .dtab { padding: 10px 20px; font-size: 13px; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; }
+  .dtab:hover { color: var(--text); }
+  .dtab.active { color: var(--accent-light); border-bottom-color: var(--accent); }
+  .dtab .tab-count { font-size: 11px; opacity: 0.6; margin-left: 4px; }
+
+  /* ── Detail content ── */
+  .detail-body { flex: 1; overflow-y: auto; }
+  .dpanel { display: none; padding: 24px 32px; }
+  .dpanel.active { display: block; }
+
+  /* Oversigt panel */
+  .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .overview-card { background: var(--card); border-radius: 8px; padding: 16px 20px; }
+  .overview-card h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); margin-bottom: 10px; }
+  .meta-preview { background: var(--bg); border-radius: 6px; padding: 14px; }
+  .meta-title-preview { color: #8ab4f8; font-size: 17px; margin-bottom: 2px; }
+  .meta-url-preview { color: var(--green); font-size: 12px; margin-bottom: 4px; }
+  .meta-desc-preview { color: #bdc1c6; font-size: 13px; }
+  .changes-list { list-style: none; }
+  .changes-list li { padding: 5px 0; font-size: 13px; color: var(--text-muted); display: flex; align-items: flex-start; gap: 8px; }
+  .changes-list li::before { content: '\2022'; color: var(--accent); font-size: 18px; line-height: 1; }
+  .kw-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .kw { padding: 3px 10px; border-radius: 12px; font-size: 12px; background: rgba(99,102,241,0.08); color: var(--accent-light); border: 1px solid rgba(99,102,241,0.15); }
+  .kw-primary { background: rgba(99,102,241,0.18); border-color: rgba(99,102,241,0.3); font-weight: 600; }
+  .kw-vol { color: var(--text-muted); font-size: 10px; margin-left: 4px; }
+  .data-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(42,45,58,0.3); font-size: 13px; }
+  .data-row:last-child { border-bottom: none; }
+  .data-label { color: var(--text-muted); }
+  .data-value { font-weight: 500; }
+
+  /* Tekst panel */
+  .content-preview { background: var(--bg); border-radius: 8px; padding: 32px 40px; max-width: 800px; font-size: 15px; line-height: 1.9; }
+  .content-preview h2 { font-size: 20px; margin: 28px 0 10px; color: var(--text); font-weight: 600; }
+  .content-preview h2:first-child { margin-top: 0; }
+  .content-preview h3 { font-size: 16px; margin: 20px 0 6px; color: var(--text); font-weight: 600; }
+  .content-preview p { margin-bottom: 12px; color: #c4c4c8; }
+  .content-preview ul, .content-preview ol { margin: 8px 0 14px 24px; color: #c4c4c8; }
+  .content-preview li { margin-bottom: 4px; }
+  .content-preview a { color: var(--accent-light); }
+  .content-preview hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .content-preview em { color: var(--yellow); font-style: normal; font-size: 12px; background: var(--yellow-bg); padding: 1px 6px; border-radius: 4px; }
+
+  /* Links panel */
+  .link-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .link-table th { text-align: left; padding: 10px 16px; color: var(--text-muted); font-weight: 500; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; }
+  .link-table td { padding: 10px 16px; border-bottom: 1px solid rgba(42,45,58,0.3); }
+  .link-table td a { color: var(--accent-light); text-decoration: none; }
+  .link-table td a:hover { text-decoration: underline; }
+  .lhf { color: var(--green); }
+  .star { color: var(--yellow); }
+
+  /* Nav arrows */
+  .nav-arrow { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--text-muted); cursor: pointer; font-size: 14px; }
+  .nav-arrow:hover { border-color: var(--accent); color: var(--text); }
+
+  /* Loading */
+  .loading { text-align: center; padding: 60px; color: var(--text-muted); }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; max-width: 540px; width: 90%; }
+  .modal h2 { margin-bottom: 12px; font-size: 16px; }
+  .modal p { color: var(--text-muted); font-size: 13px; margin-bottom: 12px; }
+  .modal pre { background: var(--bg); padding: 12px; border-radius: 6px; font-size: 12px; overflow-x: auto; margin-bottom: 14px; color: var(--green); max-height: 300px; overflow-y: auto; }
+  .modal .btn-row { display: flex; gap: 8px; justify-content: flex-end; }
+
+  @media (max-width: 1024px) {
+    .overview-grid { grid-template-columns: 1fr; }
+    .header, .stats, .toolbar { padding-left: 16px; padding-right: 16px; }
+    .list-table th:first-child, .list-table td:first-child { padding-left: 16px; }
+    .detail-header, .detail-tabs, .dpanel { padding-left: 16px; padding-right: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1 id="sprint-title">SEO Sprint Dashboard</h1>
+  <span class="subtitle" id="sprint-subtitle"></span>
+</div>
+
+<div class="stats" id="stats-bar"></div>
+
+<div class="toolbar">
+  <button class="btn" onclick="approveAll()">Godkend alle</button>
+  <button class="btn" onclick="resetAll()">Nulstil</button>
+  <button class="btn btn-green" onclick="showPublishModal()" id="publish-btn">Publicer godkendte (0)</button>
+  <span class="spacer"></span>
+  <span class="pill active" onclick="filterRows('all', this)">Alle</span>
+  <span class="pill" onclick="filterRows('pending', this)">Afventer</span>
+  <span class="pill" onclick="filterRows('approved', this)">Godkendt</span>
+  <span class="pill" onclick="filterRows('rejected', this)">Afvist</span>
+</div>
+
+<div class="main">
+  <!-- List -->
+  <div class="list-container" id="list-container">
+    <table class="list-table" id="list-table">
+      <thead>
+        <tr>
+          <th style="width:30px">#</th>
+          <th>Side</th>
+          <th style="width:50px">Marked</th>
+          <th style="width:50px">Type</th>
+          <th style="width:60px">Score</th>
+          <th style="width:50px">Pos</th>
+          <th style="width:70px">Imp</th>
+          <th style="width:90px">Ord</th>
+          <th style="width:60px">Links</th>
+          <th style="width:60px">Status</th>
+        </tr>
+      </thead>
+      <tbody id="list-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Detail -->
+  <div class="detail" id="detail">
+    <div class="detail-empty" id="detail-empty">
+      Klik pa en side ovenfor for at se detaljer
+    </div>
+    <div id="detail-content" style="display:none; flex:1; display:none; flex-direction:column; overflow:hidden;">
+      <div class="detail-header">
+        <button class="nav-arrow" onclick="navPage(-1)" title="Forrige">&#9664;</button>
+        <button class="nav-arrow" onclick="navPage(1)" title="Naeste">&#9654;</button>
+        <span class="detail-title" id="detail-title"></span>
+        <div class="detail-actions">
+          <button class="btn" style="border-color:var(--green);color:var(--green)" onclick="decideCurrent('approved')">Godkend</button>
+          <button class="btn" style="border-color:var(--red);color:var(--red)" onclick="decideCurrent('rejected')">Afvis</button>
+          <input class="comment-input" placeholder="Kommentar..." id="detail-comment" onchange="saveCurrentComment(this.value)" />
+        </div>
+      </div>
+      <div class="detail-tabs" id="detail-tabs">
+        <div class="dtab active" onclick="switchDetailTab('overview', this)">Oversigt</div>
+        <div class="dtab" onclick="switchDetailTab('text', this)">Tekst</div>
+        <div class="dtab" onclick="switchDetailTab('links', this)">Links <span class="tab-count" id="tab-links-count"></span></div>
+        <div class="dtab" onclick="switchDetailTab('keywords', this)">Keywords</div>
+      </div>
+      <div class="detail-body">
+        <div class="dpanel active" id="panel-overview"></div>
+        <div class="dpanel" id="panel-text"></div>
+        <div class="dpanel" id="panel-links"></div>
+        <div class="dpanel" id="panel-keywords"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="publish-modal">
+  <div class="modal">
+    <h2>Publicer godkendte tekster</h2>
+    <p id="publish-summary"></p>
+    <pre id="publish-instructions"></pre>
+    <div class="btn-row">
+      <button class="btn" onclick="closeModal()">Luk</button>
+      <button class="btn btn-green" onclick="copyInstructions()">Kopier til Claude</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let sprintData = null;
+let decisions = {};
+let selectedIndex = -1;
+let currentFilter = 'all';
+
+async function loadSprint() {
+  try {
+    const resp = await fetch('sprint-data.json');
+    if (!resp.ok) throw new Error('No data');
+    sprintData = await resp.json();
+    decisions = JSON.parse(localStorage.getItem('seo-sprint-' + sprintData.sprintId) || '{}');
+    render();
+    if (sprintData.pages.length > 0) selectPage(0);
+  } catch (e) {
+    document.getElementById('list-body').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted)">Ingen sprint-data fundet. Placer sprint-data.json i samme mappe.</td></tr>';
+  }
+}
+
+function render() {
+  document.getElementById('sprint-title').textContent = sprintData.title || 'SEO Sprint';
+  document.getElementById('sprint-subtitle').textContent =
+    `${sprintData.week || ''} \u2022 ${sprintData.pages.length} tekster \u2022 ${sprintData.generatedAt || ''}`;
+  renderStats();
+  renderList();
+  updatePublishBtn();
+}
+
+function renderStats() {
+  const p = sprintData.pages;
+  const app = p.filter((_, i) => decisions[i] === 'approved').length;
+  const rej = p.filter((_, i) => decisions[i] === 'rejected').length;
+  const pen = p.length - app - rej;
+  const words = p.reduce((s, x) => s + (x.newWordCount || 0), 0);
+  const imp = p.reduce((s, x) => s + (x.impressions || 0), 0);
+  const links = p.reduce((s, x) => s + (x.links || []).length, 0);
+  document.getElementById('stats-bar').innerHTML = `
+    <div class="stat"><span class="stat-value">${p.length}</span><span class="stat-label">tekster</span></div>
+    <div class="stat"><span class="stat-value s-green">${app}</span><span class="stat-label">godkendt</span></div>
+    <div class="stat"><span class="stat-value s-red">${rej}</span><span class="stat-label">afvist</span></div>
+    <div class="stat"><span class="stat-value s-yellow">${pen}</span><span class="stat-label">afventer</span></div>
+    <div class="stat"><span class="stat-value s-blue">${(imp/1000).toFixed(0)}K</span><span class="stat-label">impressions</span></div>
+    <div class="stat"><span class="stat-value">${words.toLocaleString('da-DK')}</span><span class="stat-label">ord</span></div>
+    <div class="stat"><span class="stat-value">${links}</span><span class="stat-label">links</span></div>`;
+}
+
+function renderList() {
+  document.getElementById('list-body').innerHTML = sprintData.pages.map((p, i) => {
+    const st = decisions[i] || 'pending';
+    const dotClass = st === 'approved' ? 'dot-approved' : st === 'rejected' ? 'dot-rejected' : 'dot-pending';
+    const sel = i === selectedIndex ? 'selected' : '';
+    const vis = currentFilter === 'all' || currentFilter === st ? '' : 'style="display:none"';
+    return `<tr class="${st} ${sel}" onclick="selectPage(${i})" ${vis} data-status="${st}" data-index="${i}">
+      <td>${i + 1}</td>
+      <td class="td-title"><a href="${p.url}" target="_blank" onclick="event.stopPropagation()">${p.title}</a>${p.season ? ' <span class="badge b-season">Saeson</span>' : ''}</td>
+      <td><span class="badge b-market">${p.market}</span></td>
+      <td>${p.pageType}</td>
+      <td><span class="badge b-score">${p.score}</span></td>
+      <td>${p.position}</td>
+      <td>${(p.impressions/1000).toFixed(1)}K</td>
+      <td>${p.oldWordCount || '?'} &rarr; ${p.newWordCount}</td>
+      <td>${(p.links||[]).length}</td>
+      <td><span class="status-dot ${dotClass}"></span></td>
+    </tr>`;
+  }).join('');
+}
+
+function selectPage(i) {
+  selectedIndex = i;
+  const p = sprintData.pages[i];
+  // Update list selection
+  document.querySelectorAll('#list-body tr').forEach((tr, idx) => {
+    tr.classList.toggle('selected', idx === i);
+  });
+  // Show detail
+  document.getElementById('detail-empty').style.display = 'none';
+  const dc = document.getElementById('detail-content');
+  dc.style.display = 'flex';
+  // Collapse list a bit
+  document.getElementById('list-container').classList.add('collapsed');
+  // Title
+  document.getElementById('detail-title').innerHTML =
+    `<a href="${p.url}" target="_blank">${p.title}</a>
+     <span class="badge b-market" style="margin-left:8px">${p.market}</span>
+     <span class="badge b-score">${p.score}</span>
+     <span class="badge b-bucket">${p.bucket || 'LHF'}</span>
+     ${p.season ? '<span class="badge b-season">Saeson</span>' : ''}`;
+  // Comment
+  document.getElementById('detail-comment').value = decisions[i + '_comment'] || '';
+  // Links count
+  document.getElementById('tab-links-count').textContent = `(${(p.links||[]).length})`;
+  // Reset to overview tab
+  document.querySelectorAll('.dtab').forEach((t, idx) => t.classList.toggle('active', idx === 0));
+  document.querySelectorAll('.dpanel').forEach((t, idx) => t.classList.toggle('active', idx === 0));
+  // Render panels
+  renderOverview(p);
+  renderText(p);
+  renderLinks(p);
+  renderKeywords(p);
+}
+
+function renderOverview(p) {
+  document.getElementById('panel-overview').innerHTML = `
+    <div class="overview-grid">
+      <div class="overview-card">
+        <h4>Meta / Google-visning</h4>
+        <div class="meta-preview">
+          <div class="meta-title-preview">${p.metaTitle || p.title}</div>
+          <div class="meta-url-preview">${p.url}</div>
+          <div class="meta-desc-preview">${p.metaDescription || ''}</div>
+        </div>
+      </div>
+      <div class="overview-card">
+        <h4>SEO Data</h4>
+        <div class="data-row"><span class="data-label">Position</span><span class="data-value">${p.position}</span></div>
+        <div class="data-row"><span class="data-label">Impressions (30d)</span><span class="data-value">${p.impressions?.toLocaleString('da-DK')}</span></div>
+        <div class="data-row"><span class="data-label">Clicks (30d)</span><span class="data-value">${p.clicks || '?'}</span></div>
+        <div class="data-row"><span class="data-label">Score</span><span class="data-value">${p.score}/75</span></div>
+        <div class="data-row"><span class="data-label">Bucket</span><span class="data-value">${p.bucket}</span></div>
+        <div class="data-row"><span class="data-label">Ord (foer &rarr; efter)</span><span class="data-value">${p.oldWordCount || '?'} &rarr; ${p.newWordCount}</span></div>
+        <div class="data-row"><span class="data-label">Links</span><span class="data-value">${(p.links||[]).length} (alle LHF)</span></div>
+      </div>
+      <div class="overview-card" style="grid-column: 1 / -1">
+        <h4>Aendringer</h4>
+        <ul class="changes-list">${(p.changes||[]).map(c => `<li>${c}</li>`).join('')}</ul>
+      </div>
+    </div>`;
+}
+
+function renderText(p) {
+  document.getElementById('panel-text').innerHTML =
+    `<div class="content-preview">${p.contentHtml || '<em>Ingen content endnu</em>'}</div>`;
+}
+
+function renderLinks(p) {
+  document.getElementById('panel-links').innerHTML = `
+    <table class="link-table">
+      <thead><tr><th>Target</th><th>URL</th><th>Pos</th><th>Impressions</th><th>Bucket</th><th>Begrundelse</th></tr></thead>
+      <tbody>${(p.links||[]).map(l => `<tr>
+        <td style="font-weight:500">${l.label}</td>
+        <td><a href="${l.url}" target="_blank">${l.url.replace('https://www.med24.dk/','/')}</a></td>
+        <td class="${l.bucket?.includes('LHF') ? 'lhf' : l.bucket === 'Star' ? 'star' : ''}">${l.position || '?'}</td>
+        <td>${l.impressions ? l.impressions.toLocaleString('da-DK') : '?'}</td>
+        <td>${l.bucket || '?'}</td>
+        <td style="color:var(--text-muted);font-size:12px">${l.rationale || ''}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function renderKeywords(p) {
+  document.getElementById('panel-keywords').innerHTML = `
+    <div style="margin-bottom:16px">
+      <div class="kw-list">${(p.keywords||[]).map(k =>
+        `<span class="kw ${k.type === 'primary' ? 'kw-primary' : ''}">${k.keyword}<span class="kw-vol">${k.volume ? k.volume.toLocaleString('da-DK') + '/md' : ''}</span></span>`
+      ).join('')}</div>
+    </div>
+    <table class="link-table">
+      <thead><tr><th>Keyword</th><th>Type</th><th>Volumen</th></tr></thead>
+      <tbody>${(p.keywords||[]).map(k => `<tr>
+        <td style="font-weight:500">${k.keyword}</td>
+        <td>${k.type}</td>
+        <td>${k.volume ? k.volume.toLocaleString('da-DK') + '/md' : 'N/A'}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function switchDetailTab(name, el) {
+  document.querySelectorAll('.dtab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.dpanel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+function decideCurrent(status) {
+  if (selectedIndex < 0) return;
+  decisions[selectedIndex] = status;
+  saveToDisk(); render();
+  // Auto-advance to next
+  const next = sprintData.pages.findIndex((_, i) => i > selectedIndex && (decisions[i] || 'pending') === 'pending');
+  if (next >= 0) selectPage(next);
+}
+
+function saveCurrentComment(val) {
+  if (selectedIndex < 0) return;
+  decisions[selectedIndex + '_comment'] = val;
+  saveToDisk();
+}
+
+function navPage(dir) {
+  const next = selectedIndex + dir;
+  if (next >= 0 && next < sprintData.pages.length) selectPage(next);
+}
+
+function saveToDisk() {
+  if (sprintData) localStorage.setItem('seo-sprint-' + sprintData.sprintId, JSON.stringify(decisions));
+}
+
+function updatePublishBtn() {
+  const n = sprintData.pages.filter((_, i) => decisions[i] === 'approved').length;
+  document.getElementById('publish-btn').textContent = `Publicer godkendte (${n})`;
+}
+
+function approveAll() {
+  sprintData.pages.forEach((_, i) => { decisions[i] = 'approved'; });
+  saveToDisk(); render();
+  if (selectedIndex >= 0) selectPage(selectedIndex);
+}
+
+function resetAll() {
+  sprintData.pages.forEach((_, i) => { delete decisions[i]; });
+  saveToDisk(); render();
+  if (selectedIndex >= 0) selectPage(selectedIndex);
+}
+
+function filterRows(status, el) {
+  currentFilter = status;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('#list-body tr').forEach(tr => {
+    if (status === 'all') { tr.style.display = ''; return; }
+    tr.style.display = tr.dataset.status === status ? '' : 'none';
+  });
+}
+
+function showPublishModal() {
+  const approved = sprintData.pages.filter((_, i) => decisions[i] === 'approved');
+  if (!approved.length) { alert('Ingen tekster er godkendt endnu.'); return; }
+  const rejected = sprintData.pages.filter((_, i) => decisions[i] === 'rejected');
+  const comments = sprintData.pages
+    .map((p, i) => decisions[i + '_comment'] ? `#${i+1} ${p.title}: ${decisions[i + '_comment']}` : null)
+    .filter(Boolean);
+  document.getElementById('publish-summary').textContent =
+    `${approved.length} godkendt, ${rejected.length} afvist.`;
+  let txt = `Publicer disse ${approved.length} godkendte tekster fra sprint ${sprintData.sprintId}:\n\n`;
+  approved.forEach(p => { txt += `- ${p.title} (${p.market}, ${p.pageType} #${p.pageId})\n`; });
+  if (comments.length) { txt += `\nKommentarer:\n` + comments.join('\n') + '\n'; }
+  if (rejected.length) { txt += `\nAfviste:\n`; rejected.forEach(p => { txt += `- ${p.title}\n`; }); }
+  document.getElementById('publish-instructions').textContent = txt;
+  document.getElementById('publish-modal').classList.add('active');
+}
+
+function closeModal() { document.getElementById('publish-modal').classList.remove('active'); }
+
+function copyInstructions() {
+  navigator.clipboard.writeText(document.getElementById('publish-instructions').textContent);
+  event.target.textContent = 'Kopieret!';
+  setTimeout(() => { event.target.textContent = 'Kopier til Claude'; }, 2000);
+}
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); navPage(1); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); navPage(-1); }
+  if (e.key === 'a' || e.key === 'g') decideCurrent('approved');
+  if (e.key === 'r' || e.key === 'x') decideCurrent('rejected');
+});
+
+loadSprint();
+</script>
+</body>
+</html>

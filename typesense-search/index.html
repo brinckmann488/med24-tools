@@ -211,8 +211,30 @@
 </div>
 
 <script>
-const API_KEY = '4NywCS9dt3dm4MM9EZTspFh3pKTSxm7n';
+const API_KEY = '';
 const HOST = 'https://hw3ea2fxs7vnzd61p-1.a2.typesense.net';
+// Transparent Typesense → n8n proxy interceptor (search-only key never reaches browser)
+(function(){
+  const PROXY = 'https://n8n2.med24intra.dk/webhook/typesense-search';
+  const TOKEN = 'typesense-m24-Kr4z9bN7';
+  const TS_RE = /hw3ea2fxs7vnzd61p-1\.a2\.typesense\.net/;
+  const orig = window.fetch.bind(window);
+  window.fetch = async function(url, opts){
+    opts = opts || {};
+    const u = typeof url === 'string' ? url : (url && url.url) || '';
+    if (!TS_RE.test(u)) return orig(url, opts);
+    const parsed = new URL(u);
+    const query = Object.fromEntries(parsed.searchParams.entries());
+    const method = (opts.method || 'GET').toUpperCase();
+    let payload = null;
+    if (opts.body){ try { payload = JSON.parse(opts.body); } catch { payload = opts.body; } }
+    return orig(PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: TOKEN, method, path: parsed.pathname, query, payload })
+    });
+  };
+})();
 const presetMap = { products_dk: 'product-search-dk', products_se: 'product-search-se', products_no: 'product-search-no' };
 const currencyMap = { products_dk: 'kr.', products_se: 'kr.', products_no: 'kr.' };
 const suggestionsMap = { products_dk: 'suggestions_dk', products_se: 'suggestions_se', products_no: 'suggestions_no' };

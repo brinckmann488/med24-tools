@@ -1,0 +1,57 @@
+{
+  "sprintId": "2026-W15",
+  "title": "SEO Sprint \u2014 Uge 15",
+  "week": "7.\u201311. april 2026",
+  "generatedAt": "2026-04-09",
+  "pages": [
+    {
+      "title": "Solcreme",
+      "url": "https://www.med24.dk/personlig-pleje/solcreme",
+      "market": "DK",
+      "pageType": "category",
+      "pageId": "103",
+      "score": 66,
+      "position": 9.8,
+      "impressions": 5744,
+      "bucket": "Low Hanging Fruit",
+      "season": true,
+      "oldWordCount": 2047,
+      "newWordCount": 2350,
+      "metaTitle": "Solcreme 2026 | K\u00f8b solcreme, solspray & sololie | Med24.dk",
+      "metaDescription": "Stort udvalg af solcreme med SPF 15-50+ til hele familien. Allergivenlige, koralvenlige og tinted solcremer. Hurtig levering fra Med24.dk.",
+      "changes": [
+        "Ny FAQ-sektion med 4 PAA-sp\u00f8rgsm\u00e5l (+250 ord)",
+        "Ny H2: Koralvenlig og revvenlig solcreme (+100 ord)",
+        "Tinted solcreme l\u00f8ftet fra H4 til egen H2",
+        "Duplikeret afsnit om solskoldning fjernet",
+        "Stavefejl rettet: La Roche-Possay \u2192 La Roche-Posay",
+        "SPF-liste fra emoji-inline til clean <ul>",
+        "Meta title +2026 for s\u00e6son-relevans",
+        "Links: 11 \u2192 9 (data-kvalificeret, alle LHF)"
+      ],
+      "links": [
+        {"label": "Derma Sun", "url": "https://www.med24.dk/derma-sun", "position": 11.6, "impressions": 1516, "bucket": "LHF", "rationale": "Kontekst-relevant brand, pos 11.6"},
+        {"label": "Vichy", "url": "https://www.med24.dk/vichy", "position": 6.6, "impressions": 754, "bucket": "LHF Prime", "rationale": "Pos 6.6, 754 imp"},
+        {"label": "La Roche-Posay", "url": "https://www.med24.dk/la-roche-posay", "position": 6.6, "impressions": 18092, "bucket": "LHF Prime", "rationale": "Top brand, 18K imp, pos 6.6"},
+        {"label": "Solcreme b\u00f8rn", "url": "https://www.med24.dk/mor-og-barn/rejse-og-sol/solcreme-til-boern", "position": 13.3, "impressions": 756, "bucket": "LHF", "rationale": "Naturlig brugerrejse sol\u2192b\u00f8rn"},
+        {"label": "Nivea Sun", "url": "https://www.med24.dk/nivea-sun", "position": 10.9, "impressions": 871, "bucket": "LHF", "rationale": "N\u00e6vnt i tekst, LHF pos 10.9"},
+        {"label": "LRP Anthelios", "url": "https://www.med24.dk/la-roche-posay-anthelios", "position": 7.8, "impressions": 7704, "bucket": "LHF", "rationale": "S\u00e6son-relevant, 7.7K imp"},
+        {"label": "After Sun", "url": "https://www.med24.dk/aftersun", "position": 8.9, "impressions": 1644, "bucket": "LHF", "rationale": "Naturlig brugerrejse, s\u00e6son"},
+        {"label": "Av\u00e8ne", "url": "https://www.med24.dk/avene", "position": 9.6, "impressions": 289, "bucket": "LHF", "rationale": "Pos 9.6, n\u00e6vnt i FAQ"},
+        {"label": "Rudolph Care", "url": "https://www.med24.dk/rudolph-care", "position": 10.2, "impressions": 5862, "bucket": "LHF", "rationale": "5.9K imp, pos 10.2"}
+      ],
+      "keywords": [
+        {"keyword": "solcreme", "volume": 8100, "type": "primary"},
+        {"keyword": "solcreme faktor 50", "volume": 2900, "type": "secondary"},
+        {"keyword": "solcreme ansigt", "volume": 1600, "type": "secondary"},
+        {"keyword": "solcreme spray", "volume": 1600, "type": "secondary"},
+        {"keyword": "solcreme b\u00f8rn", "volume": 1000, "type": "secondary"},
+        {"keyword": "koralvenlig solcreme", "volume": 90, "type": "long-tail"},
+        {"keyword": "tinted solcreme", "volume": 294, "type": "long-tail"},
+        {"keyword": "bedste solcreme", "volume": 362, "type": "long-tail"},
+        {"keyword": "solcreme allergivenlig", "volume": null, "type": "long-tail"}
+      ],
+      "contentHtml": "<h2>Din guide til god solcreme og solbeskyttelse</h2><p>Solen er b\u00e5de din huds bedste ven og v\u00e6rste fjende. Den giver lys, varme og bidrager til dannelsen af D-vitamin...</p><hr><h2>Hvad er UV-str\u00e5ling?</h2><p>Foruden de synlige str\u00e5ler...</p><hr><h2>Anbefalinger om solbeskyttelse</h2><p>De tre kendte solr\u00e5d: Skygge, Solhat, Solcreme...</p><hr><h2>Hvilken SPF-faktor skal min solcreme have?</h2><p>SPF 15: 93% \u2022 SPF 20: 95% \u2022 SPF 30: 97% \u2022 SPF 50: 98%</p><hr><h2>Hvor meget solcreme skal du bruge?</h2><p>En h\u00e5ndfuld til en krop...</p><hr><h2>Solcreme applikator</h2><p>G\u00f8r p\u00e5f\u00f8ring til en leg med UNIQ applikatorer...</p><hr><h2>Solcreme til b\u00f8rn og sart hud</h2><p>Den sarte barnehud er afh\u00e6ngig af god solbeskyttelse...</p><hr><h2>Bedste solcreme til ansigtet</h2><p>Sensitiv hud: Nivea Sun, Av\u00e8ne, La Roche-Posay Anthelios...</p><hr><h2>Tinted solcreme \u2013 solbeskyttelse med farve</h2><p><em>(NY SEKTION)</em> Kombiner daglig solbeskyttelse med en flot gl\u00f8d...</p><hr><h2>Koralvenlig og revvenlig solcreme</h2><p><em>(NY SEKTION)</em> Mineralske filtre som zinkoxid, fri for oxybenzon...</p><hr><h2>Er du blevet solskoldet?</h2><p>Handle hurtigt: undg\u00e5 sol, drik vand, brug after sun...</p><hr><h2>Ofte stillede sp\u00f8rgsm\u00e5l om solcreme</h2><p><em>(NY SEKTION \u2014 4 PAA-sp\u00f8rgsm\u00e5l)</em></p><h3>Hvilken solcreme er den bedste?</h3><p>Derma Sollotion SPF30 k\u00e5ret Bedst i Test...</p><h3>Hvilken solcreme anbefaler hudl\u00e6ger?</h3><p>Minimum SPF 30, bredspektret...</p><h3>Forskellen p\u00e5 faktor 30 og 50?</h3><p>97% vs 98% UV-blokering...</p><h3>Ingredienser man b\u00f8r undg\u00e5?</h3><p>Parfume, oxybenzon...</p><hr><h2>Find den bedste solcreme til netop dig</h2><p>Derma, La Roche-Posay, Vichy, Rudolph Care og mange flere...</p>"
+    }
+  ]
+}
