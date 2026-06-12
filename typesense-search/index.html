@@ -245,6 +245,28 @@ let lastData = null;
 let lastQ = '';
 let lastCollection = 'products_dk';
 
+// ── Brand URL cache (loaded once, all brands) ──
+let brandUrlMap = {};
+async function loadBrandsCache() {
+  const fields = 'name,url_dk,url_se,url_no,available_markets';
+  let page = 1;
+  for (;;) {
+    const res = await fetch(`${HOST}/collections/brands/documents/search?q=*&query_by=name&per_page=250&page=${page}&include_fields=${fields}`, {
+      headers: { 'X-TYPESENSE-API-KEY': API_KEY }
+    });
+    const data = await res.json();
+    const hits = data.hits || [];
+    for (const h of hits) {
+      const d = h.document;
+      if (d && d.name) brandUrlMap[d.name.toLowerCase()] = d;
+    }
+    if (hits.length < 250 || page >= 20) break;
+    page++;
+  }
+  if (lastData) renderAll(lastData, lastQ, currencyMap[lastCollection]);
+}
+loadBrandsCache();
+
 // ── View switcher ──
 document.querySelectorAll('.view-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -346,19 +368,14 @@ function renderProductRow(h, i, currency) {
 
 // ── Render brand suggestions HTML (shared by A1/A2/A3) ──
 // Flat list of brands from top-ranked product hits. No hierarchy.
-// If a brand has a brand-page URL in current market (from data._brands), render as link.
+// Uses brandUrlMap (cached on page load) for synchronous lookup.
 function renderBrandSuggestions(data) {
   const brands = extractBrands(data.hits);
   if (brands.length === 0) return '';
   const market = (lastCollection || 'products_dk').replace('products_', '');
-  // Build lookup: brand name (lowercase) → url for current market
-  const urlByName = {};
-  for (const bd of (data._brands || [])) {
-    const u = bd[`url_${market}`];
-    if (u) urlByName[(bd.name || '').toLowerCase()] = u;
-  }
   return brands.map(b => {
-    const url = urlByName[b.toLowerCase()];
+    const cached = brandUrlMap[b.toLowerCase()];
+    const url = cached?.[`url_${market}`];
     if (url) {
       return `
     <a class="suggestion-item" href="${url}" target="_blank" rel="noopener">
