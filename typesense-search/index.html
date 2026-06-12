@@ -346,15 +346,34 @@ function renderProductRow(h, i, currency) {
 
 // ── Render brand suggestions HTML (shared by A1/A2/A3) ──
 // Flat list of brands from top-ranked product hits. No hierarchy.
+// If a brand has a brand-page URL in current market (from data._brands), render as link.
 function renderBrandSuggestions(data) {
   const brands = extractBrands(data.hits);
   if (brands.length === 0) return '';
-  return brands.map(b => `
+  const market = (lastCollection || 'products_dk').replace('products_', '');
+  // Build lookup: brand name (lowercase) → url for current market
+  const urlByName = {};
+  for (const bd of (data._brands || [])) {
+    const u = bd[`url_${market}`];
+    if (u) urlByName[(bd.name || '').toLowerCase()] = u;
+  }
+  return brands.map(b => {
+    const url = urlByName[b.toLowerCase()];
+    if (url) {
+      return `
+    <a class="suggestion-item" href="${url}" target="_blank" rel="noopener">
+      <span class="suggestion-icon">◆</span>
+      <span class="suggestion-text">${b}</span>
+      <span class="suggestion-arrow">↗</span>
+    </a>`;
+    }
+    return `
     <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
       <span class="suggestion-icon">◆</span>
       <span class="suggestion-text">${b}</span>
       <span class="suggestion-arrow">↗</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ── Brand diversity: pick diverse products from top hits ──
