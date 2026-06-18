@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Typesense Søgetest – Med24</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f0f0; padding: 32px 20px; }
+    .page-header { max-width: 960px; margin: 0 auto 20px; }
+    h1 { font-size: 20px; color: #333; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: #999; }
+
+    /* View switcher */
+    .view-switcher { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+    .view-btn { padding: 6px 14px; font-size: 13px; border: 2px solid #ddd; border-radius: 20px; background: white; cursor: pointer; color: #555; transition: all .15s; font-weight: 500; }
+    .view-btn:hover { border-color: #bbb; color: #222; }
+    .view-btn.active { border-color: #e0004d; background: #e0004d; color: white; }
+
+    /* Search bar */
+    .search-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
+    .search-wrap { position: relative; flex: 1; }
+    input[type=text] { width: 100%; padding: 13px 18px; font-size: 16px; border: 2px solid #ddd; border-radius: 10px; outline: none; transition: border-color .2s; background: white; }
+    input[type=text]:focus { border-color: #e0004d; }
+    select { padding: 12px 12px; font-size: 14px; border: 2px solid #ddd; border-radius: 10px; background: white; cursor: pointer; }
+    .stats { font-size: 12px; color: #bbb; margin-bottom: 16px; min-height: 18px; }
+
+    /* ── Shared federated panel (used by A, A1, A2) ── */
+    .federated-panel { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.12); display: flex; overflow: hidden; }
+    .fed-left { width: 260px; flex-shrink: 0; border-right: 1px solid #f0f0f0; padding: 16px 0; }
+    .fed-right { flex: 1; padding: 16px 20px; min-width: 0; }
+    .fed-section-title { font-size: 11px; font-weight: 700; color: #aaa; letter-spacing: .06em; text-transform: uppercase; padding: 0 16px 10px; }
+    .suggestion-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; cursor: pointer; transition: background .1s; color: #222; font-size: 14px; text-decoration: none; }
+    .suggestion-item:hover { background: #f9f9f9; }
+    .suggestion-item.sub-brand { padding-left: 36px; font-size: 13px; color: #666; }
+    .suggestion-icon { font-size: 13px; color: #bbb; flex-shrink: 0; }
+    .suggestion-text { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
+    .suggestion-text.parent { font-weight: 600; }
+    .suggestion-meta { font-size: 11px; color: #ccc; flex-shrink: 0; }
+    .suggestion-arrow { font-size: 11px; color: #ddd; flex-shrink: 0; }
+    .fed-products-grid { display: flex; flex-direction: column; gap: 2px; margin-bottom: 16px; }
+    .fed-product { display: flex; align-items: center; gap: 12px; padding: 8px 6px; border-radius: 8px; cursor: pointer; transition: background .1s; text-decoration: none; color: inherit; }
+    .fed-product:hover { background: #f9f9f9; }
+    .fed-product img { width: 48px; height: 48px; object-fit: contain; border-radius: 6px; background: #f9f9f9; flex-shrink: 0; }
+    .fed-product-img-placeholder { width: 48px; height: 48px; background: #f3f3f3; border-radius: 6px; flex-shrink: 0; }
+    .fed-product-info { flex: 1; min-width: 0; }
+    .fed-product-name { font-size: 13px; font-weight: 500; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fed-product-brand { font-size: 11px; color: #e0004d; margin-top: 1px; }
+    .fed-product-price { font-size: 14px; font-weight: 700; color: #222; flex-shrink: 0; }
+    .fed-divider { border: none; border-top: 1px solid #f0f0f0; margin: 12px 0; }
+    .fed-see-all { display: block; text-align: center; padding: 10px; font-size: 13px; color: #e0004d; font-weight: 500; cursor: pointer; border-top: 1px solid #f5f5f5; margin-top: 8px; }
+    .fed-see-all:hover { background: #fff5f8; }
+    mark { background: #fff3c4; border-radius: 2px; padding: 0 2px; font-style: normal; }
+
+    /* ── Genvej chips (A2) ── */
+    .shortcut-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 16px 4px; }
+    .shortcut-chip { display: inline-flex; align-items: center; gap: 4px; padding: 5px 11px; border: 1px solid #eee; border-radius: 16px; font-size: 12px; font-weight: 500; color: #555; cursor: pointer; transition: all .15s; background: #fafafa; text-decoration: none; }
+    .shortcut-chip:hover { border-color: #e0004d; color: #e0004d; background: #fff5f8; }
+    .shortcut-chip .chip-count { font-size: 10px; color: #ccc; font-weight: 400; }
+
+    /* ── VIEW A3: Produkt-først ── */
+    .a3-section { margin-bottom: 14px; }
+    .a3-label { font-size: 11px; font-weight: 700; color: #aaa; letter-spacing: .06em; text-transform: uppercase; margin-right: 8px; }
+    .a3-chips { display: inline-flex; flex-wrap: wrap; gap: 8px; vertical-align: middle; }
+    .a3-chip { display: inline-block; padding: 6px 14px; border: 1px solid #e0e0e0; border-radius: 20px; font-size: 13px; font-weight: 500; color: #444; cursor: pointer; transition: all .15s; background: white; text-decoration: none; }
+    .a3-chip:hover { border-color: #e0004d; color: #e0004d; background: #fff5f8; }
+    .a3-chip.combo { border-style: dashed; color: #888; }
+    .a3-chip.combo:hover { border-color: #e0004d; color: #e0004d; border-style: solid; }
+    .grid-panel { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+    .grid-card { background: white; border-radius: 10px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.08); display: flex; flex-direction: column; gap: 8px; transition: box-shadow .15s; text-decoration: none; color: inherit; }
+    .grid-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.13); }
+    .grid-card img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 6px; background: #f9f9f9; }
+    .grid-card-img-placeholder { width: 100%; aspect-ratio: 1; background: #f3f3f3; border-radius: 6px; }
+    .grid-card-name { font-size: 13px; font-weight: 500; color: #222; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .grid-card-brand { font-size: 11px; color: #e0004d; font-weight: 500; }
+    .grid-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+    .grid-card-price { font-size: 15px; font-weight: 700; color: #222; }
+    .grid-card-stock { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .grid-card-stock.in { background: #2ecc71; }
+    .grid-card-stock.out { background: #e74c3c; }
+
+    /* Shared */
+    .empty { text-align: center; color: #bbb; padding: 48px 20px; font-size: 15px; }
+    .start-hint { text-align: center; color: #ccc; padding: 48px 20px; font-size: 14px; }
+
+    /* Analytics link button */
+    .analytics-link { padding: 6px 18px; font-size: 13px; border: 2px solid #e0004d; border-radius: 20px; background: white; cursor: pointer; color: #e0004d; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: all .15s; }
+    .analytics-link:hover { background: #e0004d; color: white; }
+
+    /* Hidden until correct view */
+    .view-a1, .view-a2, .view-a3, .view-d, .view-e { display: none; }
+    .view-a1.active, .view-a2.active, .view-a3.active, .view-d.active, .view-e.active { display: block; }
+    .container { margin: 0 auto; }
+
+    /* ── VIEW D/E: Similar/CoPurchase (unchanged) ── */
+    .similar-input-bar { display: flex; gap: 10px; margin-bottom: 16px; }
+    .similar-input-bar input { flex: 1; padding: 12px 16px; font-size: 15px; border: 2px solid #ddd; border-radius: 10px; outline: none; }
+    .similar-input-bar input:focus { border-color: #e0004d; }
+    .similar-input-bar button { padding: 12px 24px; font-size: 14px; font-weight: 600; border: none; border-radius: 10px; background: #e0004d; color: white; cursor: pointer; transition: background .15s; }
+    .similar-input-bar button:hover { background: #c20040; }
+    .source-product { background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; display: flex; gap: 16px; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,.1); border-left: 4px solid #e0004d; }
+    .source-product img { width: 72px; height: 72px; object-fit: contain; border-radius: 8px; background: #f9f9f9; }
+    .source-product-info h3 { font-size: 16px; margin-bottom: 4px; }
+    .source-product-info .sp-brand { font-size: 13px; color: #e0004d; font-weight: 500; }
+    .source-product-info .sp-meta { font-size: 12px; color: #999; margin-top: 4px; }
+    .similar-label { font-size: 12px; font-weight: 700; color: #aaa; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 12px; }
+    .similar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    @media (max-width: 700px) { .similar-grid { grid-template-columns: repeat(2, 1fr); } }
+    .sim-card { background: white; border-radius: 10px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; transition: box-shadow .15s; position: relative; }
+    .sim-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.13); }
+    .sim-card img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 6px; background: #f9f9f9; }
+    .sim-card-name { font-size: 12px; font-weight: 500; color: #222; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .sim-card-brand { font-size: 11px; color: #e0004d; }
+    .sim-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+    .sim-card-price { font-size: 14px; font-weight: 700; }
+    .sim-card-dist { position: absolute; top: 6px; right: 6px; font-size: 10px; color: #bbb; background: rgba(255,255,255,.85); padding: 2px 6px; border-radius: 8px; }
+    .picker-dropdown { position: absolute; top: 0; left: 0; right: 0; background: white; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,.15); z-index: 10; overflow: hidden; }
+    .picker-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; transition: background .1s; border-bottom: 1px solid #f5f5f5; }
+    .picker-item:hover { background: #fdf5f7; }
+    .picker-item:last-child { border-bottom: none; }
+    .picker-item img { width: 40px; height: 40px; object-fit: contain; border-radius: 4px; background: #f9f9f9; flex-shrink: 0; }
+    .picker-item-info { flex: 1; min-width: 0; }
+    .picker-item-name { font-size: 13px; font-weight: 500; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .picker-item-meta { font-size: 11px; color: #999; }
+
+    /* ── Mobile responsive ── */
+    @media (max-width: 640px) {
+      .federated-panel { flex-direction: column; }
+      .fed-left { width: 100%; border-right: none; border-bottom: 1px solid #f0f0f0; padding: 12px 0; }
+      .fed-right { padding: 12px 16px; }
+      .grid-panel { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ===================================================================
+       NY SØG — Figma redesign (node 8013-8923). Real-data only.
+       Tokens from Figma variables; rules below override earlier ones.
+       =================================================================== */
+    :root{
+      /* Med24 Foundations tokens (Figma: Med24.Foundations — Components) */
+      --ny-black:#1a1a1a;          /* Background/Brand · Border/Brand · Text/Primary */
+      --ny-white:#ffffff;          /* Neutral/0 · Background/Primary */
+      --ny-peach:#f3b65f;          /* Peach/500 · Background/Warning */
+      --ny-n50:#f2f2f2;            /* Neutral/50 */
+      --ny-subtle:#fafafa;         /* row background */
+      --ny-text2:#333333;          /* Text/Secondary */
+      --ny-disabled:#808080;       /* Neutral/500 · Text/Disabled */
+      --ny-line:#e6e6e6;           /* Border/Primary — panel borders & dividers */
+      --ny-chipline:#cccccc;       /* Neutral/200 — chip / tag borders */
+      --ny-border-strong:#999999;  /* Border/Secondary */
+      --ny-blue:#0a6ad1;           /* highlighted campaign chip */
+      --ny-font:'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    body{ font-family:var(--ny-font); background:#ffffff; }
+    h1{ font-family:var(--ny-font); }
+    .page-header{ max-width:1120px; }
+
+    /* ── Search bar (shared, restyled) ── */
+    .search-bar{ display:flex; align-items:stretch; gap:0; margin:0 auto; max-width:1120px; }
+    .search-wrap{ position:relative; flex:1; display:flex; }
+    input[type=text]#q{ width:100%; height:60px; padding:0 44px 0 16px; font-size:16px; font-family:var(--ny-font);
+      border:1px solid var(--ny-black); border-right:none; border-radius:0; background:#fff; color:var(--ny-black); }
+    input[type=text]#q:focus{ border-color:var(--ny-black); outline:none; }
+    .search-btn{ width:66px; height:60px; flex-shrink:0; background:var(--ny-black); border:1px solid var(--ny-black);
+      color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
+    .search-btn:hover{ background:#000; }
+    .search-btn svg{ width:20px; height:20px; }
+    /* Clear (X) — appears in the Active input state (Figma 288-4673) */
+    .search-clear{ position:absolute; right:12px; top:50%; transform:translateY(-50%); width:24px; height:24px;
+      display:none; align-items:center; justify-content:center; background:none; border:none; padding:0; cursor:pointer; color:var(--ny-black); }
+    .search-clear svg{ width:16px; height:16px; }
+    .search-clear:hover{ color:#000; }
+
+    /* ── View switcher + market (restyled to design system) ── */
+    .view-switcher{ align-items:center; gap:6px; max-width:1120px; margin:0 auto 14px; }
+    .view-btn{ border:1px solid var(--ny-black); border-radius:0; font-weight:600; font-size:14px; color:var(--ny-black); padding:7px 13px; }
+    .view-btn:hover{ border-color:var(--ny-black); color:#000; background:#f7f7f7; }
+    .view-btn.active{ border-color:var(--ny-black); background:var(--ny-black); color:#fff; }
+    #market{ border:1px solid var(--ny-black); border-radius:0; font-family:var(--ny-font); height:34px; padding:0 10px; }
+    .analytics-link{ border:1px solid var(--ny-black); border-radius:0; color:var(--ny-black); font-weight:600; }
+    .analytics-link:hover{ background:var(--ny-black); color:#fff; }
+    .stats{ max-width:1120px; margin:8px auto 0; }
+
+    /* ── VIEW NY: search popout ── */
+    .view-ny{ display:none; }
+    .view-ny.active{ display:block; }
+    .ny-panel{ display:flex; border:1px solid var(--ny-black); background:#fff; max-width:1120px; margin:16px auto 0; }
+    .ny-left{ width:340px; flex-shrink:0; border-right:1px solid var(--ny-black); display:flex; flex-direction:column; }
+    .ny-right{ flex:1; min-width:0; display:flex; flex-direction:column; }
+    .ny-section{ border-bottom:1px solid var(--ny-black); padding-bottom:24px; }
+    .ny-left .ny-section:last-child{ border-bottom:none; }
+    /* Section headers use the Button look + spacing (no link). Filled = primary, --outline = secondary. */
+    .ny-tab{ display:inline-block; background:var(--ny-black); color:#fff; font-size:14px; font-weight:600;
+      line-height:16px; padding:6px 12px; border:1px solid var(--ny-black); border-radius:0;
+      margin:-1px 0 0 -1px; }   /* bleed over the panel/divider stroke so edges meet as one 1px line */
+    .ny-tab--outline{ background:#fff; color:var(--ny-black); }
+    .ny-right > .ny-tab{ align-self:flex-start; }   /* hug content, don't stretch in the flex column */
+
+    /* Søgeforslag — wrapped suggestions, matched prefix bold */
+    .ny-suggests{ display:flex; flex-wrap:wrap; gap:10px 18px; padding:16px 16px 0; }
+    .ny-suggest{ font-size:16px; font-weight:400; color:var(--ny-black); line-height:18px; text-decoration:none; cursor:pointer; }
+    .ny-suggest strong{ font-weight:700; }
+    .ny-suggest:hover{ text-decoration:underline; }
+
+    /* Brands / Kategorier — bordered chips */
+    .ny-chips{ display:flex; flex-wrap:wrap; gap:8px; padding:16px 16px 0; }
+    /* Tag component (Figma 2086-5218): 1px Border/Brand stroke, sharp corners */
+    .ny-chip{ display:inline-flex; align-items:center; padding:6px 12px; border:1px solid var(--ny-black);
+      background:#fff; border-radius:0; font-size:14px; font-weight:400; color:var(--ny-black); line-height:16px;
+      text-decoration:none; cursor:pointer; transition:background .12s; }
+    .ny-chip:hover{ background:var(--ny-n50); }
+    /* Deals — promo banner placeholder (peach / Background/Warning) */
+    .ny-deals{ padding:16px 16px 0; }
+    .ny-deal{ display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; box-sizing:border-box;
+      background:var(--ny-peach); border:1px solid var(--ny-black); color:var(--ny-text2); padding:6px 8px;
+      font-size:12px; font-weight:700; line-height:14px; text-decoration:none; cursor:pointer; }
+    .ny-deal:hover{ background:#eaa84d; }
+    .ny-deal-text{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 2px; }
+    .ny-deal-arrow{ flex-shrink:0; width:8px; height:12px; color:var(--ny-black); }
+
+    /* Produkter — product card (Figma 8013-11454) */
+    .ny-products{ display:flex; flex-direction:column; gap:8px; padding:16px 16px 0; }
+    .ny-product{ display:flex; align-items:center; gap:20px; background:var(--ny-subtle);
+      padding:0 24px 0 0; text-decoration:none; color:inherit; overflow:hidden; }
+    .ny-product:hover{ background:#f3f3f3; }
+    .ny-product-body{ flex:1; min-width:0; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .ny-product-media{ width:120px; height:120px; flex-shrink:0; background:var(--ny-n50); display:flex; align-items:center; justify-content:center; }
+    .ny-product-media img{ max-width:100%; max-height:100%; object-fit:contain; padding:6px; }
+    .ny-product-main{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+    .ny-product-head{ display:flex; align-items:center; gap:8px; min-width:0; }
+    .ny-product-brand{ font-size:20px; font-weight:700; line-height:24px; color:var(--ny-black); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ny-badge{ flex-shrink:0; background:var(--ny-peach); color:var(--ny-text2); font-size:12px; font-weight:700; line-height:14px; padding:4px 14px; }
+    .ny-product-name{ font-size:16px; font-weight:400; line-height:18px; color:var(--ny-black); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ny-product-rating{ display:flex; align-items:center; gap:4px; padding-top:4px; }
+    .ny-stars{ font-size:13px; letter-spacing:1px; color:var(--ny-black); line-height:1; }
+    .ny-rating-count{ font-size:14px; font-weight:600; color:var(--ny-black); }
+    .ny-product-pricing{ display:flex; flex-direction:column; align-items:flex-start; flex-shrink:0; }
+    .ny-product-price{ font-size:24px; font-weight:700; line-height:26px; color:var(--ny-black); white-space:nowrap; }
+    .ny-product-before{ font-size:13px; color:#707070; white-space:nowrap; }
+
+    /* Se alle resultater */
+    .ny-see-all{ display:block; margin:14px auto 16px; padding:12px; background:var(--ny-black); color:#fff;
+      text-align:center; font-size:16px; font-weight:600; line-height:18px; font-family:var(--ny-font); border:none; border-radius:0;
+      cursor:pointer; text-decoration:none; width:50%; min-width:260px; max-width:calc(100% - 32px); }
+    .ny-see-all:hover{ background:#000; }
+
+    /* ── VIEW NY: empty/focus state — popular categories + highlighted campaign + skeleton ── */
+    .ny-empty{ border:1px solid var(--ny-black); background:#fff; max-width:1120px; margin:16px auto 0; }
+    .ny-chiprow{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:14px 16px; border-bottom:1px solid var(--ny-black); }
+    .ny-chip-campaign{ background:var(--ny-blue); border-color:var(--ny-blue); color:#fff; font-weight:600; }
+    .ny-chip-campaign:hover{ background:#085bb3; border-color:#085bb3; }
+    /* Animated shimmer skeleton — signals a live/dynamic search box */
+    .ny-loading{ padding:18px 16px 22px; }
+    .ny-skel{ position:relative; overflow:hidden; display:block; background:#ececec; border-radius:4px; }
+    .ny-skel::after{ content:''; position:absolute; inset:0; transform:translateX(-100%);
+      background:linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent); animation:ny-shimmer 1.4s infinite; }
+    @keyframes ny-shimmer{ 100%{ transform:translateX(100%); } }
+    .ny-skel-box{ width:150px; border:1px solid var(--ny-line); padding:9px 12px; }
+    .ny-skel-line{ height:14px; width:100%; }
+    @media (prefers-reduced-motion: reduce){ .ny-skel::after{ animation:none; } }
+
+    /* ── Ny Søg overlay: dropdown anchored under the search bar + page backdrop ── */
+    .search-shell{ position:relative; max-width:1120px; margin:0 auto; }
+    body.ny-open .search-shell{ z-index:60; }
+    #ny-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50; display:none; }
+    body.ny-open #ny-backdrop{ display:block; }
+    #results-ny{ position:absolute; top:100%; left:0; right:0; z-index:61; display:none; }
+    body.ny-open #results-ny{ display:block; animation:ny-drop .14s ease-out; }
+    #results-ny .ny-panel, #results-ny .ny-empty{ margin:0; max-width:none; box-shadow:0 16px 38px rgba(0,0,0,.18); }
+    @keyframes ny-drop{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:translateY(0); } }
+
+    @media (max-width:760px){
+      /* Search bar — compact (~42px) like the mobile design */
+      input[type=text]#q{ height:44px; padding:0 40px 0 12px; font-size:15px; }
+      .search-btn{ width:48px; height:44px; }
+      .search-clear{ right:10px; }
+      /* Single column; products shown high: Søgeforslag → Produkter → Brands → Kategorier */
+      .ny-panel{ flex-direction:column; }
+      .ny-left{ display:contents; }
+      .ny-sec-sug{ order:1; }
+      .ny-sec-deals{ order:2; }
+      .ny-right{ order:3; border-bottom:1px solid var(--ny-black); }
+      .ny-sec-brands{ order:4; }
+      .ny-sec-kat{ order:5; border-bottom:none; }
+      .ny-left .ny-section.ny-sec-deals{ border-bottom:1px solid var(--ny-black); }
+      /* Product card — smaller image, price below the name */
+      .ny-product{ align-items:flex-start; gap:12px; padding:12px; }
+      .ny-product-media{ width:88px; height:88px; }
+      .ny-product-body{ flex-direction:column; align-items:flex-start; gap:6px; }
+      .ny-product-price{ font-size:20px; line-height:22px; }
+      .ny-product-name{ white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-header">
+  <h1>Typesense Søgetest</h1>
+  <p class="subtitle">Tester direkte mod Typesense cluster — ikke live på sitet endnu</p>
+</div>
+
+<div class="page-wrap" style="max-width:1120px;margin:0 auto;">
+  <!-- Test-harness switcher removed for the launch look. Market kept hidden so DK/SE/NO
+       logic still works (a real launch picks market from the med24 domain). -->
+  <select id="market" hidden>
+    <option value="products_dk">DK &mdash; Danmark</option>
+    <option value="products_se">SE &mdash; Sverige</option>
+    <option value="products_no">NO &mdash; Norge</option>
+  </select>
+
+  <!-- Search bar (shared) — Ny Søg dropdown is an overlay anchored under it -->
+  <div class="search-shell">
+    <div class="search-bar">
+      <div class="search-wrap">
+        <input type="text" id="q" placeholder="Søg i 25.000 produkter...">
+        <button class="search-clear" id="q-clear" type="button" aria-label="Ryd søgning">
+          <!-- Med24 Foundations Icon/Close (node 188-83) -->
+          <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M1.4 14L0 12.6L5.6 7L0 1.4L1.4 0L7 5.6L12.6 0L14 1.4L8.4 7L14 12.6L12.6 14L7 8.4L1.4 14Z" fill="currentColor"/></svg>
+        </button>
+      </div>
+      <button class="search-btn" type="button" onclick="search()" aria-label="Søg">
+        <!-- Med24 Foundations Icon/Search (node 188-86) -->
+        <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M7.55176 15.1035C9.2765 15.1035 10.8663 14.5252 12.1377 13.5519L16.5858 18L18 16.5858L13.5519 12.1377C14.4517 10.9624 15.0139 9.51502 15.0938 7.94043L15.1035 7.55176C15.1035 3.51153 11.9304 0.212129 7.94043 0.00976562L7.55176 0C3.38112 0 0 3.38112 0 7.55176L0.00976562 7.94043C0.205603 11.8017 3.30178 14.8981 7.16309 15.0938L7.55176 15.1035ZM13.1035 7.55176C13.1035 4.48574 10.6178 2.00008 7.55176 2C4.48569 2 2 4.48569 2 7.55176C2.00008 10.6178 4.48574 13.1035 7.55176 13.1035C10.6177 13.1034 13.1034 10.6177 13.1035 7.55176Z" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <div id="results-ny"></div>
+  </div>
+  <div class="stats" id="stats"></div>
+</div>
+<div id="ny-backdrop"></div>
+
+<!-- VIEW A1: Clean Split -->
+<div class="view-a1" id="view-a1">
+  <div class="container" style="max-width:960px;">
+    <div id="results-a1"></div>
+  </div>
+</div>
+
+<!-- VIEW A2: Med Genveje -->
+<div class="view-a2" id="view-a2">
+  <div class="container" style="max-width:960px;">
+    <div id="results-a2"></div>
+  </div>
+</div>
+
+<!-- VIEW A3: Produkt-først -->
+<div class="view-a3" id="view-a3">
+  <div class="container" style="max-width:960px;">
+    <div id="results-a3"></div>
+  </div>
+</div>
+
+<!-- VIEW D: Andre købte også -->
+<div class="view-d" id="view-d">
+  <div class="container" style="max-width:960px;">
+    <div class="similar-input-bar">
+      <input type="text" id="copurchase-q" placeholder="Søg produkt ved navn eller ID..." autocomplete="off">
+      <button onclick="searchCoPurchase()">Vis co-køb</button>
+    </div>
+    <div id="copurchase-picker" style="position:relative;"></div>
+    <div id="copurchase-source"></div>
+    <div id="copurchase-results"></div>
+  </div>
+</div>
+
+<!-- VIEW E: Alternative Produkter (vector search) -->
+<div class="view-e" id="view-e">
+  <div class="container" style="max-width:960px;">
+    <div class="similar-input-bar">
+      <input type="text" id="similar-q" placeholder="Søg produkt ved navn eller ID..." autocomplete="off">
+      <button onclick="searchSimilar()">Find alternativer</button>
+    </div>
+    <div id="similar-picker" style="position:relative;"></div>
+    <div id="source-product"></div>
+    <div id="similar-results"></div>
+  </div>
+</div>
+
+<script>
+const API_KEY = '';
+const HOST = 'https://hw3ea2fxs7vnzd61p-1.a2.typesense.net';
+// Transparent Typesense → n8n proxy interceptor (search-only key never reaches browser)
+(function(){
+  const PROXY = 'https://n8n2.med24intra.dk/webhook/typesense-search';
+  const TOKEN = 'typesense-m24-Kr4z9bN7';
+  const TS_RE = /hw3ea2fxs7vnzd61p-1\.a2\.typesense\.net/;
+  const orig = window.fetch.bind(window);
+  window.fetch = async function(url, opts){
+    opts = opts || {};
+    const u = typeof url === 'string' ? url : (url && url.url) || '';
+    if (!TS_RE.test(u)) return orig(url, opts);
+    const parsed = new URL(u);
+    const query = Object.fromEntries(parsed.searchParams.entries());
+    const method = (opts.method || 'GET').toUpperCase();
+    let payload = null;
+    if (opts.body){ try { payload = JSON.parse(opts.body); } catch { payload = opts.body; } }
+    return orig(PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: TOKEN, method, path: parsed.pathname, query, payload })
+    });
+  };
+})();
+const presetMap = { products_dk: 'product-search-dk', products_se: 'product-search-se', products_no: 'product-search-no' };
+const currencyMap = { products_dk: 'kr.', products_se: 'kr.', products_no: 'kr.' };
+const suggestionsMap = { products_dk: 'suggestions_dk', products_se: 'suggestions_se', products_no: 'suggestions_no' };
+
+let timer;
+let currentView = 'ny';
+let lastData = null;
+let lastQ = '';
+let lastCollection = 'products_dk';
+
+// ── Brand URL cache (loaded once, all brands) ──
+let brandUrlMap = {};
+async function loadBrandsCache() {
+  const fields = 'name,url_dk,url_se,url_no,available_markets';
+  let page = 1;
+  for (;;) {
+    const res = await fetch(`${HOST}/collections/brands/documents/search?q=*&query_by=name&per_page=250&page=${page}&include_fields=${fields}`, {
+      headers: { 'X-TYPESENSE-API-KEY': API_KEY }
+    });
+    const data = await res.json();
+    const hits = data.hits || [];
+    for (const h of hits) {
+      const d = h.document;
+      if (d && d.name) brandUrlMap[d.name.toLowerCase()] = d;
+    }
+    if (hits.length < 250 || page >= 20) break;
+    page++;
+  }
+  if (lastData) renderAll(lastData, lastQ, currencyMap[lastCollection]);
+}
+loadBrandsCache();
+
+// ── View switcher ──
+document.querySelectorAll('.view-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    closeNy();
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentView = btn.dataset.view;
+    document.querySelectorAll('.view-a1,.view-a2,.view-a3,.view-d,.view-e').forEach(v => v.classList.remove('active'));
+    const hideSearch = currentView === 'd' || currentView === 'e';
+    document.querySelector('.search-bar').style.display = hideSearch ? 'none' : 'flex';
+    document.getElementById('stats').style.display = hideSearch ? 'none' : 'block';
+    document.getElementById('view-' + currentView)?.classList.add('active');
+    if (currentView === 'ny') { document.getElementById('q').focus(); return; }
+    if (lastData) renderAll(lastData, lastQ, currencyMap[lastCollection]);
+    else if (!document.getElementById('q').value.trim()) {
+      if (['a1','a2','a3'].includes(currentView)) showPopular();
+      else showHints();
+    }
+  });
+});
+
+// ── Helpers ──
+function fmtPrice(p, currency) {
+  if (!p) return '–';
+  return Number(p).toLocaleString('da', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + currency;
+}
+
+// Group brands from brands collection by parent_brand
+function groupBrands(brandDocs) {
+  const parents = [];
+  const childMap = {};
+  for (const b of brandDocs) {
+    if (b.parent_brand) {
+      if (!childMap[b.parent_brand]) childMap[b.parent_brand] = [];
+      childMap[b.parent_brand].push(b);
+    } else {
+      parents.push(b);
+    }
+  }
+  // Build grouped list: parent followed by its children
+  const result = [];
+  const usedParents = new Set();
+  for (const p of parents) {
+    result.push({ ...p, isParent: true });
+    usedParents.add(p.name);
+    const children = childMap[p.name] || [];
+    for (const c of children) result.push({ ...c, isChild: true });
+  }
+  // Orphan children whose parent wasn't in results
+  for (const [parentName, children] of Object.entries(childMap)) {
+    if (usedParents.has(parentName)) continue;
+    result.push({ name: parentName, url: '/' + parentName.toLowerCase().replace(/[^a-z0-9æøåäöü]+/g, '-'), isParent: true, inferred: true });
+    for (const c of children) result.push({ ...c, isChild: true });
+  }
+  return result;
+}
+
+// Extract unique parent brands from product hits (deduped by brand_parent)
+function extractBrands(hits) {
+  const seenParent = new Set();
+  const brands = [];
+  for (const h of hits) {
+    const b = h.document.brand;
+    const bp = h.document.brand_parent || b;
+    if (!b || !bp) continue;
+    const bpLower = bp.toLowerCase();
+    if (seenParent.has(bpLower)) continue;
+    seenParent.add(bpLower);
+    brands.push(bp);
+    if (brands.length >= 6) break;
+  }
+  // Sort: brand matching query text comes first (e.g. "Lavera" before "Lavera Men")
+  const ql = (lastQ || '').toLowerCase();
+  if (ql) brands.sort((a, b) => {
+    const aExact = a.toLowerCase() === ql ? -1 : 0;
+    const bExact = b.toLowerCase() === ql ? -1 : 0;
+    return aExact - bExact;
+  });
+  return brands;
+}
+
+function renderProductRow(h, i, currency) {
+  const d = h.document;
+  const hl = h.highlights || [];
+  const hlMap = Object.fromEntries(hl.map(x => [x.field, x.snippet || x.value || '']));
+  const name = hlMap.name || d.name || '';
+  const img = d.image_url
+    ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="fed-product-img-placeholder" style="display:none"></div>`
+    : `<div class="fed-product-img-placeholder"></div>`;
+  const link = d.product_url || '#';
+  return `
+    <a class="fed-product" href="${link}" target="_blank" data-doc-id="${d.id}" data-pos="${i+1}">
+      ${img}
+      <div class="fed-product-info">
+        <div class="fed-product-name">${name}</div>
+        ${d.brand ? `<div class="fed-product-brand">${d.brand}</div>` : ''}
+      </div>
+      <div class="fed-product-price">${fmtPrice(d.price, currency)}</div>
+    </a>`;
+}
+
+// ── Render brand suggestions HTML (shared by A1/A2/A3) ──
+// Flat list of brands from top-ranked product hits. No hierarchy.
+// Uses brandUrlMap (cached on page load) for synchronous lookup.
+function renderBrandSuggestions(data) {
+  const brands = extractBrands(data.hits);
+  if (brands.length === 0) return '';
+  const market = (lastCollection || 'products_dk').replace('products_', '');
+  return brands.map(b => {
+    const cached = brandUrlMap[b.toLowerCase()];
+    const url = cached?.[`url_${market}`];
+    if (url) {
+      return `
+    <a class="suggestion-item" href="${url}" target="_blank" rel="noopener">
+      <span class="suggestion-icon">◆</span>
+      <span class="suggestion-text">${b}</span>
+      <span class="suggestion-arrow">↗</span>
+    </a>`;
+    }
+    return `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(b)})">
+      <span class="suggestion-icon">◆</span>
+      <span class="suggestion-text">${b}</span>
+      <span class="suggestion-arrow">↗</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Brand diversity: pick diverse products from top hits ──
+// Broad queries: max 2 per brand_parent in first N shown
+// Brand intent: if query contains a top brand name, skip diversity
+function diversifyHits(hits, q, limit) {
+  if (!hits || hits.length <= limit) return hits.slice(0, limit);
+  const ql = (q || '').toLowerCase();
+  // Brand intent check: does query contain a known brand from top hits?
+  const topBrands = [...new Set(hits.slice(0, 10).map(h => h.document.brand_parent || h.document.brand).filter(Boolean))];
+  const hasBrandIntent = topBrands.some(b => ql.includes(b.toLowerCase()) || b.toLowerCase().includes(ql));
+  if (hasBrandIntent) return hits.slice(0, limit);
+  // Diversity: max 2 per brand_parent
+  const brandCount = {};
+  const diverse = [];
+  const overflow = [];
+  for (const h of hits) {
+    const bp = (h.document.brand_parent || h.document.brand || '').toLowerCase();
+    brandCount[bp] = (brandCount[bp] || 0) + 1;
+    if (brandCount[bp] <= 2) { diverse.push(h); } else { overflow.push(h); }
+  }
+  return [...diverse, ...overflow].slice(0, limit);
+}
+
+// ── Render VIEW A1 (Clean Split) ──
+// Mærker: fra brands collection med parent/child gruppering
+// Kategorier: KUN context="category" fra suggestions (ingen brand-combos)
+function renderA1(data, q, currency) {
+  const el = document.getElementById('results-a1');
+  if (!data.hits || data.hits.length === 0) {
+    el.innerHTML = '<div class="empty">Ingen resultater</div>';
+    return;
+  }
+
+  // MÆRKER: from brands collection, grouped by parent_brand
+  const brandsHtml = renderBrandSuggestions(data);
+
+  // Suggestions: alle undtagen brand-combos (kategorier + landing pages)
+  const suggestions = data._suggestions || [];
+  const navSuggestions = suggestions.filter(s => s.context !== 'brand');
+
+  // Fallback: category facets from product search when no suggestions
+  const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 5);
+
+  const products = diversifyHits(data.hits, q, 5);
+
+  const catsHtml = navSuggestions.length > 0
+    ? navSuggestions.slice(0, 8).map(s => `
+    <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank">
+      <span class="suggestion-icon">≡</span>
+      <span class="suggestion-text">${s.name}</span>
+      <span class="suggestion-arrow">↗</span>
+    </a>`).join('')
+    : facetCats.map(c => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c.value)})">
+      <span class="suggestion-icon">≡</span>
+      <span class="suggestion-text">${c.value}</span>
+      <span class="suggestion-arrow">↗</span>
+    </div>`).join('');
+
+  const productsHtml = products.map((h, i) => renderProductRow(h, i, currency)).join('');
+
+  el.innerHTML = `
+    <div class="federated-panel">
+      <div class="fed-left">
+        ${brandsHtml ? `<div class="fed-section-title">Mærker</div>${brandsHtml}` : ''}
+        ${catsHtml ? `<hr class="fed-divider"><div class="fed-section-title">Forslag</div>${catsHtml}` : ''}
+      </div>
+      <div class="fed-right">
+        <div class="fed-section-title">Produkter</div>
+        <div class="fed-products-grid">${productsHtml}</div>
+        <div class="fed-see-all">Se alle ${(data.found||0).toLocaleString('da')} resultater →</div>
+      </div>
+    </div>`;
+}
+
+// ── Render VIEW A2 (Med Genveje) ──
+// Som A1, men med ekstra "Genveje"-sektion: brand+kategori combos som chips
+function renderA2(data, q, currency) {
+  const el = document.getElementById('results-a2');
+  if (!data.hits || data.hits.length === 0) {
+    el.innerHTML = '<div class="empty">Ingen resultater</div>';
+    return;
+  }
+
+  const brandsHtml = renderBrandSuggestions(data);
+  const suggestions = data._suggestions || [];
+  const navSuggestions = suggestions.filter(s => s.context !== 'brand');
+  const combos = suggestions.filter(s => s.context === 'brand')
+    .sort((a, b) => (b.product_count || 0) - (a.product_count || 0));
+  const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 5);
+
+  const products = data.hits.slice(0, 5);
+
+  const catsHtml = navSuggestions.length > 0
+    ? navSuggestions.slice(0, 6).map(s => `
+    <a class="suggestion-item" href="https://www.med24.dk${s.url || ''}" target="_blank">
+      <span class="suggestion-icon">≡</span>
+      <span class="suggestion-text">${s.name}</span>
+      <span class="suggestion-arrow">↗</span>
+    </a>`).join('')
+    : facetCats.map(c => `
+    <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(c.value)})">
+      <span class="suggestion-icon">≡</span>
+      <span class="suggestion-text">${c.value}</span>
+      <span class="suggestion-arrow">↗</span>
+    </div>`).join('');
+
+  // Genveje: brand+kategori combos as clickable chips
+  const combosHtml = combos.length >= 2
+    ? `<hr class="fed-divider">
+       <div class="fed-section-title">Genveje</div>
+       <div class="shortcut-chips">
+         ${combos.slice(0, 6).map(s => `
+           <a class="shortcut-chip" href="https://www.med24.dk${s.url || ''}" target="_blank">
+             ${s.name}
+           </a>`).join('')}
+       </div>`
+    : '';
+
+  const productsHtml = products.map((h, i) => renderProductRow(h, i, currency)).join('');
+
+  el.innerHTML = `
+    <div class="federated-panel">
+      <div class="fed-left">
+        ${brandsHtml ? `<div class="fed-section-title">Mærker</div>${brandsHtml}` : ''}
+        ${catsHtml ? `<hr class="fed-divider"><div class="fed-section-title">Kategorier</div>${catsHtml}` : ''}
+        ${combosHtml}
+      </div>
+      <div class="fed-right">
+        <div class="fed-section-title">Produkter</div>
+        <div class="fed-products-grid">${productsHtml}</div>
+        <div class="fed-see-all">Se alle ${(data.found||0).toLocaleString('da')} resultater →</div>
+      </div>
+    </div>`;
+}
+
+// ── Render VIEW A3 (Produkt-først) ──
+// Ingen sidepanel — chips over fuld-bredde produktgrid
+function renderA3(data, q, currency) {
+  const el = document.getElementById('results-a3');
+  if (!data.hits || data.hits.length === 0) {
+    el.innerHTML = '<div class="empty">Ingen resultater</div>';
+    return;
+  }
+
+  const suggestions = data._suggestions || [];
+  const navSuggestions = suggestions.filter(s => s.context !== 'brand');
+  const combos = suggestions.filter(s => s.context === 'brand')
+    .sort((a, b) => (b.product_count || 0) - (a.product_count || 0));
+  const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 5);
+
+  const products = data.hits.slice(0, 8);
+
+  // Brand chips from product facets (sorted by count)
+  const brandFacets = ((data.facet_counts || []).find(f => f.field_name === 'brand_parent')?.counts
+    || []).slice(0, 6);
+  const brandChips = brandFacets.map(f =>
+    `<span class="a3-chip" onclick="fillSearch(${JSON.stringify(f.value)})">${f.value} <span style="color:#ccc;font-size:11px">${f.count}</span></span>`
+  ).join('');
+
+  // Category/suggestion chips — fallback to facets when no suggestions
+  const catChips = navSuggestions.length > 0
+    ? navSuggestions.slice(0, 6).map(s =>
+        `<a class="a3-chip" href="https://www.med24.dk${s.url || ''}" target="_blank">${s.name}</a>`
+      ).join('')
+    : facetCats.map(c =>
+        `<span class="a3-chip" onclick="fillSearch(${JSON.stringify(c.value)})">${c.value}</span>`
+      ).join('');
+
+  // Combo chips (dashed border to distinguish)
+  const comboChips = combos.slice(0, 4).map(s =>
+    `<a class="a3-chip combo" href="https://www.med24.dk${s.url || ''}" target="_blank">${s.name}</a>`
+  ).join('');
+
+  // Product grid
+  const gridHtml = products.map((h, i) => {
+    const d = h.document;
+    const hl = h.highlights || [];
+    const hlMap = Object.fromEntries(hl.map(x => [x.field, x.snippet || x.value || '']));
+    const name = hlMap.name || d.name || '';
+    const img = d.image_url
+      ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">`
+      : `<div class="grid-card-img-placeholder"></div>`;
+    const link = d.product_url || '#';
+    return `<a class="grid-card" href="${link}" target="_blank" data-doc-id="${d.id}" data-pos="${i+1}">
+      ${img}
+      <div class="grid-card-name">${name}</div>
+      ${d.brand ? `<div class="grid-card-brand">${d.brand}</div>` : ''}
+      <div class="grid-card-footer">
+        <span class="grid-card-price">${fmtPrice(d.price, currency)}</span>
+        <span class="grid-card-stock ${d.in_stock ? 'in' : 'out'}"></span>
+      </div>
+    </a>`;
+  }).join('');
+
+  el.innerHTML = `
+    ${brandChips ? `<div class="a3-section"><span class="a3-label">Mærker</span><div class="a3-chips">${brandChips}</div></div>` : ''}
+    ${catChips ? `<div class="a3-section"><span class="a3-label">Kategorier</span><div class="a3-chips">${catChips}</div></div>` : ''}
+    ${comboChips ? `<div class="a3-section"><span class="a3-label">Genveje</span><div class="a3-chips">${comboChips}</div></div>` : ''}
+    <div class="grid-panel">${gridHtml}</div>
+    <div class="fed-see-all" style="background:white;border-radius:0 0 10px 10px;margin-top:0;border-top:1px solid #f0f0f0;">Se alle ${(data.found||0).toLocaleString('da')} resultater →</div>`;
+}
+
+// ── Render VIEW NY (Figma redesign 8013-8923) — real data only ──
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// Bold the part of `text` matching the typed query (prefix-highlight like the Figma)
+function boldMatch(text, q){
+  const t = String(text || '');
+  if(!q) return escapeHtml(t);
+  const i = t.toLowerCase().indexOf(q.toLowerCase());
+  if(i < 0) return escapeHtml(t);
+  return escapeHtml(t.slice(0,i)) + '<strong>' + escapeHtml(t.slice(i,i+q.length)) + '</strong>' + escapeHtml(t.slice(i+q.length));
+}
+
+// Danish price, no currency suffix (matches the card design)
+function fmtNum(p){ return p ? Number(p).toLocaleString('da', { minimumFractionDigits:2, maximumFractionDigits:2 }) : '–'; }
+
+// ⚠ DEMO ONLY: discount %, before-price ("Vejl. pris") and ratings are NOT in the Typesense index
+// (confirmed across 50 products — only `price` exists). Shown as "XX" placeholders so the card matches
+// the Figma (8013-11454) without faking real numbers. Set SHOW_DEMO_FIELDS=false to hide them entirely.
+const SHOW_DEMO_FIELDS = true;
+
+function renderProductRowNy(h, i, currency){
+  const d = h.document;
+  const img = d.image_url ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">` : '';
+  const link = d.product_url || '#';
+  const brand = d.brand_parent || d.brand || '';
+  const demo = SHOW_DEMO_FIELDS && d.price;
+  const badge = demo ? `<span class="ny-badge">XX%</span>` : '';
+  const rating = demo
+    ? `<div class="ny-product-rating"><span class="ny-stars">★★★★★</span><span class="ny-rating-count">(XX)</span></div>`
+    : '';
+  const before = demo ? `<span class="ny-product-before">Vejl. pris XX,XX</span>` : '';
+  return `
+    <a class="ny-product" href="${link}" target="_blank" rel="noopener" data-doc-id="${d.id}" data-pos="${i+1}">
+      <div class="ny-product-media">${img}</div>
+      <div class="ny-product-body">
+        <div class="ny-product-main">
+          <div class="ny-product-head">
+            ${brand ? `<span class="ny-product-brand">${escapeHtml(brand)}</span>` : ''}
+            ${badge}
+          </div>
+          <div class="ny-product-name">${escapeHtml(d.name || '')}</div>
+          ${rating}
+        </div>
+        <div class="ny-product-pricing">
+          <span class="ny-product-price">${fmtNum(d.price)}</span>
+          ${before}
+        </div>
+      </div>
+    </a>`;
+}
+
+// Left: Søgeforslag (suggestions) · Brands (facet) · Kategorier (facet) — right: products + Se alle
+function renderNy(data, q, currency){
+  const el = document.getElementById('results-ny');
+  if(!data.hits || data.hits.length === 0){
+    el.innerHTML = '<div class="empty">Ingen resultater</div>';
+    return;
+  }
+  const market = (lastCollection || 'products_dk').replace('products_', '');
+
+  // Søgeforslag — real autocomplete suggestions, matched prefix bold
+  const sugHtml = (data._suggestions || []).slice(0, 8).map(s => {
+    const inner = boldMatch(s.name, q);
+    const href = s.url ? `https://www.med24.dk${s.url}` : null;
+    return href
+      ? `<a class="ny-suggest" href="${href}" target="_blank" rel="noopener">${inner}</a>`
+      : `<span class="ny-suggest" onclick="fillSearch(${JSON.stringify(s.name)})">${inner}</span>`;
+  }).join('');
+
+  // Brands — parent brands from product hits, linked via cached brand URLs
+  const brandsHtml = extractBrands(data.hits).map(b => {
+    const url = brandUrlMap[b.toLowerCase()]?.[`url_${market}`];
+    return url
+      ? `<a class="ny-chip" href="${url}" target="_blank" rel="noopener">${escapeHtml(b)}</a>`
+      : `<span class="ny-chip" onclick="fillSearch(${JSON.stringify(b)})">${escapeHtml(b)}</span>`;
+  }).join('');
+
+  // Kategorier — category facets from the product search
+  const facetCats = ((data.facet_counts || []).find(f => f.field_name === 'categories')?.counts || []).slice(0, 6);
+  const catsHtml = facetCats.map(c =>
+    `<span class="ny-chip" onclick="fillSearch(${JSON.stringify(c.value)})">${escapeHtml(c.value)}</span>`
+  ).join('');
+
+  // Produkter — 4 brand-diversified rows (matches Figma)
+  const productsHtml = diversifyHits(data.hits, q, 4).map((h, i) => renderProductRowNy(h, i, currency)).join('');
+
+  // Deals — placeholder promo banner (driven by DEAL; empty text hides it)
+  const dealInner = `<span class="ny-deal-text">${escapeHtml(DEAL.text)}</span><svg class="ny-deal-arrow" viewBox="0 0 6.22768 9.6875" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3.87126 4.84375L0 1.13021L1.17821 0L6.22768 4.84375L1.17821 9.6875L0 8.55729L3.87126 4.84375Z" fill="currentColor"/></svg>`;
+  const dealHtml = DEAL.text
+    ? `<div class="ny-section ny-sec-deals"><span class="ny-tab ny-tab--outline">Deals</span><div class="ny-deals">${DEAL.url ? `<a class="ny-deal" href="${DEAL.url}" target="_blank" rel="noopener">${dealInner}</a>` : `<span class="ny-deal">${dealInner}</span>`}</div></div>`
+    : '';
+
+  el.innerHTML = `
+    <div class="ny-panel">
+      <div class="ny-left">
+        ${sugHtml ? `<div class="ny-section ny-sec-sug"><span class="ny-tab">Søgeforslag</span><div class="ny-suggests">${sugHtml}</div></div>` : ''}
+        ${brandsHtml ? `<div class="ny-section ny-sec-brands"><span class="ny-tab ny-tab--outline">Brands</span><div class="ny-chips">${brandsHtml}</div></div>` : ''}
+        ${catsHtml ? `<div class="ny-section ny-sec-kat"><span class="ny-tab ny-tab--outline">Kategorier</span><div class="ny-chips">${catsHtml}</div></div>` : ''}
+        ${dealHtml}
+      </div>
+      <div class="ny-right">
+        <span class="ny-tab">Produkter</span>
+        <div class="ny-products">${productsHtml}</div>
+        <button class="ny-see-all" type="button">Se alle resultater</button>
+      </div>
+    </div>`;
+}
+
+// ── Render dispatcher ──
+function renderAll(data, q, currency) {
+  if (currentView === 'ny') renderNy(data, q, currency);
+  else if (currentView === 'a1') renderA1(data, q, currency);
+  else if (currentView === 'a2') renderA2(data, q, currency);
+  else if (currentView === 'a3') renderA3(data, q, currency);
+  setTimeout(attachClickTracking, 0);
+}
+
+function showHints() {
+  ['results-a1','results-a2','results-a3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
+  });
+  document.getElementById('stats').textContent = '';
+}
+
+// ── VIEW NY empty/focus state: popular categories + highlighted campaign + animated skeleton ──
+// No campaign feed exists in the index — edit CAMPAIGN to match the live campaign (set url to make it a link).
+const CAMPAIGN = { label: 'Summer Sale', emoji: '☀️', url: '' };
+// Deals — placeholder for future sales promotions (no data feed yet). Edit the text / set a url,
+// or wire a real promo feed later. Empty text hides the Deals section entirely.
+const DEAL = { text: 'Få en gratis Aftersun ved køb af 2 valgfrie solprodukter', url: '' };
+
+let cachedCats = null;
+async function loadPopularCategories(){
+  if (cachedCats) return cachedCats;
+  const collection = document.getElementById('market').value;
+  try {
+    const res = await fetch(`${HOST}/multi_search`, {
+      method: 'POST', headers: { 'X-TYPESENSE-API-KEY': API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ searches: [{ collection, q: '*', query_by: 'name', facet_by: 'categories', max_facet_values: 25, per_page: 0 }] })
+    });
+    const data = await res.json();
+    const r = (data.results || [])[0] || {};
+    const counts = ((r.facet_counts || []).find(f => f.field_name === 'categories')?.counts) || [];
+    const skip = new Set(['Anvendelsesområder','Personlig pleje','Kampagner','Tilbud','Mærker','Brands','Andet']);
+    const seen = new Set();
+    cachedCats = [];
+    for (const v of counts.map(c => c.value)) {
+      if (!v || /\d/.test(v) || skip.has(v)) continue;
+      const key = v.toLowerCase().split(/\s+/).pop();   // dedupe variants by last word (Hudpleje vs Luxury hudpleje)
+      if (seen.has(key)) continue;
+      seen.add(key);
+      cachedCats.push(v);
+      if (cachedCats.length >= 6) break;
+    }
+    return cachedCats;
+  } catch { return []; }
+}
+
+async function showNyEmpty(){
+  const el = document.getElementById('results-ny');
+  if (!el) return;
+  document.getElementById('stats').textContent = '';
+  const cats = await loadPopularCategories();
+  const campaign = CAMPAIGN.url
+    ? `<a class="ny-chip ny-chip-campaign" href="${CAMPAIGN.url}" target="_blank" rel="noopener">${escapeHtml(CAMPAIGN.label)} ${CAMPAIGN.emoji}</a>`
+    : `<span class="ny-chip ny-chip-campaign">${escapeHtml(CAMPAIGN.label)} ${CAMPAIGN.emoji}</span>`;
+  const catChips = cats.map(c => `<span class="ny-chip" onclick="fillSearch(${JSON.stringify(c)})">${escapeHtml(c)}</span>`).join('');
+  el.innerHTML = `
+    <div class="ny-empty">
+      <div class="ny-chiprow">${campaign}${catChips}</div>
+      <div class="ny-loading" aria-hidden="true">
+        <div class="ny-skel-box"><span class="ny-skel ny-skel-line" style="width:64%"></span></div>
+        <span class="ny-skel ny-skel-line" style="height:18px;margin-top:16px"></span>
+        <span class="ny-skel ny-skel-line" style="height:18px;width:38%;margin-top:10px"></span>
+      </div>
+    </div>`;
+}
+
+// ── Ny Søg overlay open/close ──
+function openNy(){ if (currentView === 'ny') document.body.classList.add('ny-open'); }
+function closeNy(){ document.body.classList.remove('ny-open'); }
+
+// ── Popular on focus ──
+let cachedPopular = null;
+
+async function loadPopularQueries() {
+  if (cachedPopular) return cachedPopular;
+  const marketCode = document.getElementById('market').value.split('_')[1];
+  try {
+    const params = new URLSearchParams({ q: '*', sort_by: 'count:desc', per_page: 8 });
+    const res = await fetch(`${HOST}/collections/analytics_popular_${marketCode}/documents/search?${params}`, {
+      headers: { 'X-TYPESENSE-API-KEY': API_KEY }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    cachedPopular = (data.hits || []).map(h => h.document.q).filter(Boolean);
+    return cachedPopular;
+  } catch { return []; }
+}
+
+async function showPopular() {
+  const queries = await loadPopularQueries();
+  // Update all A-variant views with popular queries
+  const viewIds = ['results-a1','results-a2','results-a3'];
+  for (const id of viewIds) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (!queries.length) {
+      el.innerHTML = '<div class="start-hint">Begynd at skrive for at søge</div>';
+      continue;
+    }
+    const itemsHtml = queries.map(q => `
+      <div class="suggestion-item" onclick="fillSearch(${JSON.stringify(q)})">
+        <span class="suggestion-icon" style="color:#e0004d">↑</span>
+        <span class="suggestion-text">${q}</span>
+        <span class="suggestion-arrow">↗</span>
+      </div>`).join('');
+
+    if (id === 'results-a3') {
+      // A3: show as chips instead of panel
+      const chipsHtml = queries.map(q => `<span class="a3-chip" onclick="fillSearch(${JSON.stringify(q)})">${q}</span>`).join('');
+      el.innerHTML = `<div class="a3-section"><span class="a3-label">Populære søgninger</span><div class="a3-chips">${chipsHtml}</div></div>`;
+    } else {
+      el.innerHTML = `
+        <div class="federated-panel">
+          <div class="fed-left">
+            <div class="fed-section-title">Populære søgninger</div>
+            ${itemsHtml}
+          </div>
+          <div class="fed-right" style="display:flex;align-items:center;justify-content:center;">
+            <div style="color:#ccc;font-size:14px;text-align:center;padding:24px;">Klik på en søgning<br>eller begynd at skrive</div>
+          </div>
+        </div>`;
+    }
+  }
+
+  // NY view: dedicated empty/focus state (popular categories + campaign + animated skeleton)
+  showNyEmpty();
+}
+
+function fillSearch(q) {
+  document.getElementById('q').value = q;
+  search();
+}
+
+// ── Search (federated multi_search) ──
+async function search() {
+  const q = document.getElementById('q').value.trim();
+  const collection = document.getElementById('market').value;
+  const preset = presetMap[collection];
+  const currency = currencyMap[collection];
+  const suggestionsCollection = suggestionsMap[collection];
+  lastCollection = collection;
+  lastQ = q;
+
+  if (!q) { lastData = null; showHints(); showNyEmpty(); return; }
+
+  try {
+    const res = await fetch(`${HOST}/multi_search`, {
+      method: 'POST',
+      headers: { 'X-TYPESENSE-API-KEY': API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ searches: [
+        { collection, q, preset, highlight_full_fields: 'name,brand', facet_by: 'categories,brand_parent', max_facet_values: 10 },
+        { collection: suggestionsCollection, q, query_by: 'name', per_page: 30, highlight_fields: 'name' },
+        { collection: 'brands', q, query_by: 'name', per_page: 10, highlight_fields: 'name' }
+      ]})
+    });
+    const multi = await res.json();
+    const [productsData, suggestionsData, brandsData] = multi.results || [];
+
+    const data = productsData || { hits: [], found: 0 };
+    data._suggestions = (suggestionsData?.hits || []).map(h => h.document);
+    data._brands = (brandsData?.hits || []).map(h => h.document);
+    lastData = data;
+
+    const found = data.found || 0;
+    const totalMs = (productsData?.search_time_ms || 0) + (suggestionsData?.search_time_ms || 0) + (brandsData?.search_time_ms || 0);
+    document.getElementById('stats').textContent = found > 0
+      ? `${found.toLocaleString('da')} resultater på ${totalMs} ms (multi_search)`
+      : `Ingen resultater · ${totalMs} ms`;
+
+    renderAll(data, q, currency);
+  } catch (e) {
+    document.getElementById('stats').textContent = 'Fejl ved søgning';
+    console.error('multi_search error:', e);
+  }
+}
+
+document.getElementById('q').addEventListener('input', () => {
+  clearTimeout(timer);
+  toggleClear();
+  const q = document.getElementById('q').value.trim();
+  if (q.length < 2) {
+    lastData = null;
+    if (['ny','a1','a2','a3'].includes(currentView)) showPopular();
+    else showHints();
+    return;
+  }
+  timer = setTimeout(search, 200);
+});
+
+document.getElementById('q').addEventListener('focus', () => {
+  toggleClear();
+  const v = document.getElementById('q').value.trim();
+  if (currentView === 'ny') {
+    openNy();
+    if (v.length >= 2 && lastData) renderNy(lastData, v, currencyMap[lastCollection]);
+    else showNyEmpty();
+  } else if (!v && ['a1','a2','a3'].includes(currentView)) {
+    showPopular();
+  }
+});
+
+document.getElementById('market').addEventListener('change', () => {
+  cachedPopular = null;
+  cachedCats = null;
+  const q = document.getElementById('q').value.trim();
+  if (q.length >= 2) search();
+  else if (['ny','a1','a2','a3'].includes(currentView)) showPopular();
+});
+
+// Ny Søg overlay: close on backdrop click or Escape
+document.getElementById('ny-backdrop').addEventListener('click', () => { closeNy(); document.getElementById('q').blur(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('ny-open')) { closeNy(); document.getElementById('q').blur(); } });
+
+// Clear (X) button — shows when the field has input (Active input state, Figma 288-4673)
+function toggleClear(){ document.getElementById('q-clear').style.display = document.getElementById('q').value ? 'flex' : 'none'; }
+document.getElementById('q-clear').addEventListener('click', () => {
+  const q = document.getElementById('q');
+  q.value = ''; toggleClear(); q.focus(); q.dispatchEvent(new Event('input'));
+});
+
+// ── Click tracking ──
+function trackClick(docId, position) {
+  if (!lastQ) return;
+  const userId = localStorage.getItem('ts_uid') || (() => {
+    const id = 'u' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('ts_uid', id);
+    return id;
+  })();
+  fetch(`${HOST}/analytics/events`, {
+    method: 'POST',
+    headers: { 'X-TYPESENSE-API-KEY': API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'search_click', data: { q: lastQ, doc_id: String(docId), user_id: userId, position } })
+  }).catch(() => {});
+}
+
+function attachClickTracking() {
+  document.querySelectorAll('[data-doc-id]').forEach(el => {
+    el.addEventListener('click', () => trackClick(el.dataset.docId, parseInt(el.dataset.pos)));
+  });
+}
+
+// ── VIEW E: Alternative Produkter (vector search) ──
+let similarSelectedId = null;
+let similarTimer = null;
+
+// Typeahead: search products by name as user types
+document.getElementById('similar-q').addEventListener('input', () => {
+  clearTimeout(similarTimer);
+  const q = document.getElementById('similar-q').value.trim();
+  if (q.length < 2) { closePicker(); return; }
+  // If input is purely numeric, treat as direct ID
+  if (/^\d+$/.test(q)) { closePicker(); similarSelectedId = q; return; }
+  similarTimer = setTimeout(() => searchPicker(q), 200);
+});
+
+document.getElementById('similar-q').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { closePicker(); searchSimilar(); }
+});
+
+// Close picker when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#similar-picker') && !e.target.closest('#similar-q')) closePicker();
+});
+
+function closePicker() {
+  document.getElementById('similar-picker').innerHTML = '';
+}
+
+async function searchPicker(q) {
+  const collection = document.getElementById('market').value;
+  const currency = currencyMap[collection];
+  const params = new URLSearchParams({ q, query_by: 'name,brand', per_page: 6, exclude_fields: 'embedding', highlight_full_fields: 'name' });
+  try {
+    const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } });
+    const data = await res.json();
+    if (!data.hits || data.hits.length === 0) { closePicker(); return; }
+    const html = data.hits.map(h => {
+      const d = h.document;
+      const img = d.image_url ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">` : '';
+      return `<div class="picker-item" data-id="${d.id}">
+        ${img}
+        <div class="picker-item-info">
+          <div class="picker-item-name">${d.name}</div>
+          <div class="picker-item-meta">${d.brand || ''} · ${fmtPrice(d.price, currency)} · ID: ${d.id}</div>
+        </div>
+      </div>`;
+    }).join('');
+    const picker = document.getElementById('similar-picker');
+    picker.innerHTML = `<div class="picker-dropdown">${html}</div>`;
+    picker.querySelectorAll('.picker-item').forEach(el => {
+      el.addEventListener('click', () => {
+        similarSelectedId = el.dataset.id;
+        document.getElementById('similar-q').value = el.querySelector('.picker-item-name').textContent;
+        closePicker();
+        searchSimilar();
+      });
+    });
+  } catch (e) { closePicker(); }
+}
+
+async function searchSimilar() {
+  const input = document.getElementById('similar-q').value.trim();
+  const productId = similarSelectedId || (/^\d+$/.test(input) ? input : null);
+  if (!productId) return;
+  const collection = document.getElementById('market').value;
+  const currency = currencyMap[collection];
+  const srcEl = document.getElementById('source-product');
+  const resEl = document.getElementById('similar-results');
+  srcEl.innerHTML = '<div class="start-hint">Henter produkt...</div>';
+  resEl.innerHTML = '';
+
+  const headers = { 'X-TYPESENSE-API-KEY': API_KEY };
+
+  // 1. Fetch source product
+  let sourceDoc;
+  try {
+    const srcRes = await fetch(`${HOST}/collections/${collection}/documents/${productId}`, { headers });
+    if (!srcRes.ok) { srcEl.innerHTML = '<div class="empty">Produkt ikke fundet — tjek ID og marked</div>'; return; }
+    sourceDoc = await srcRes.json();
+  } catch (e) { srcEl.innerHTML = '<div class="empty">Fejl ved hentning af produkt</div>'; return; }
+
+  const srcImg = sourceDoc.image_url
+    ? `<img src="${sourceDoc.image_url}" alt="" onerror="this.style.display='none'">`
+    : '';
+  srcEl.innerHTML = `
+    <div class="source-product">
+      ${srcImg}
+      <div class="source-product-info">
+        <h3>${sourceDoc.name || 'Ukendt'}</h3>
+        ${sourceDoc.brand ? `<div class="sp-brand">${sourceDoc.brand}</div>` : ''}
+        <div class="sp-meta">ID: ${sourceDoc.id} · ${fmtPrice(sourceDoc.price, currency)} · ${sourceDoc.in_stock ? 'På lager' : 'Udsolgt'}</div>
+      </div>
+    </div>`;
+
+  // 2. Vector search for similar products
+  resEl.innerHTML = '<div class="start-hint">Søger efter alternativer...</div>';
+  try {
+    const params = new URLSearchParams({
+      q: '*',
+      vector_query: `embedding:([], id:${productId})`,
+      filter_by: `id:!=${productId}&&in_stock:true`,
+      per_page: 10,
+      exclude_fields: 'embedding'
+    });
+    const simRes = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers });
+    const simData = await simRes.json();
+
+    if (!simData.hits || simData.hits.length === 0) {
+      resEl.innerHTML = '<div class="empty">Ingen alternativer fundet</div>';
+      return;
+    }
+
+    const cardsHtml = simData.hits.map(h => {
+      const d = h.document;
+      const dist = h.vector_distance != null ? (h.vector_distance).toFixed(3) : '';
+      const img = d.image_url
+        ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">`
+        : `<div class="grid-card-img-placeholder"></div>`;
+      const link = d.product_url || '#';
+      return `<a class="sim-card" href="${link}" target="_blank">
+        ${dist ? `<span class="sim-card-dist">${dist}</span>` : ''}
+        ${img}
+        <div class="sim-card-name">${d.name || ''}</div>
+        ${d.brand ? `<div class="sim-card-brand">${d.brand}</div>` : ''}
+        <div class="sim-card-footer">
+          <span class="sim-card-price">${fmtPrice(d.price, currency)}</span>
+          <span class="grid-card-stock ${d.in_stock ? 'in' : 'out'}"></span>
+        </div>
+      </a>`;
+    }).join('');
+
+    resEl.innerHTML = `
+      <div class="similar-label">Alternative produkter (${simData.hits.length} fundet via vektor-søgning)</div>
+      <div class="similar-grid">${cardsHtml}</div>`;
+  } catch (e) {
+    resEl.innerHTML = '<div class="empty">Fejl ved vektor-søgning</div>';
+  }
+}
+
+// ── VIEW D: Andre købte også ──
+let copurchaseSelectedId = null;
+let copurchaseTimer = null;
+
+document.getElementById('copurchase-q').addEventListener('input', () => {
+  clearTimeout(copurchaseTimer);
+  const q = document.getElementById('copurchase-q').value.trim();
+  if (q.length < 2) { closeCopurchasePicker(); return; }
+  if (/^\d+$/.test(q)) { closeCopurchasePicker(); copurchaseSelectedId = q; return; }
+  copurchaseTimer = setTimeout(() => searchCopurchasePicker(q), 200);
+});
+
+document.getElementById('copurchase-q').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { closeCopurchasePicker(); searchCoPurchase(); }
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#copurchase-picker') && !e.target.closest('#copurchase-q')) closeCopurchasePicker();
+});
+
+function closeCopurchasePicker() {
+  document.getElementById('copurchase-picker').innerHTML = '';
+}
+
+async function searchCopurchasePicker(q) {
+  const collection = document.getElementById('market').value;
+  const currency = currencyMap[collection];
+  const params = new URLSearchParams({ q, query_by: 'name,brand', per_page: 6, exclude_fields: 'embedding', highlight_full_fields: 'name' });
+  try {
+    const res = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers: { 'X-TYPESENSE-API-KEY': API_KEY } });
+    const data = await res.json();
+    if (!data.hits || data.hits.length === 0) { closeCopurchasePicker(); return; }
+    const html = data.hits.map(h => {
+      const d = h.document;
+      const hasCo = d.bought_together_ids && d.bought_together_ids.length > 0;
+      const img = d.image_url ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">` : '';
+      return `<div class="picker-item" data-id="${d.id}">
+        ${img}
+        <div class="picker-item-info">
+          <div class="picker-item-name">${d.name}</div>
+          <div class="picker-item-meta">${d.brand || ''} · ${fmtPrice(d.price, currency)} · ID: ${d.id}${hasCo ? ' · ' + d.bought_together_ids.length + ' co-køb' : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+    const picker = document.getElementById('copurchase-picker');
+    picker.innerHTML = `<div class="picker-dropdown">${html}</div>`;
+    picker.querySelectorAll('.picker-item').forEach(el => {
+      el.addEventListener('click', () => {
+        copurchaseSelectedId = el.dataset.id;
+        document.getElementById('copurchase-q').value = el.querySelector('.picker-item-name').textContent;
+        closeCopurchasePicker();
+        searchCoPurchase();
+      });
+    });
+  } catch (e) { closeCopurchasePicker(); }
+}
+
+async function searchCoPurchase() {
+  const input = document.getElementById('copurchase-q').value.trim();
+  const productId = copurchaseSelectedId || (/^\d+$/.test(input) ? input : null);
+  if (!productId) return;
+  const collection = document.getElementById('market').value;
+  const currency = currencyMap[collection];
+  const srcEl = document.getElementById('copurchase-source');
+  const resEl = document.getElementById('copurchase-results');
+  srcEl.innerHTML = '<div class="start-hint">Henter produkt...</div>';
+  resEl.innerHTML = '';
+
+  const headers = { 'X-TYPESENSE-API-KEY': API_KEY };
+
+  // 1. Fetch source product (including bought_together_ids)
+  let sourceDoc;
+  try {
+    const srcRes = await fetch(`${HOST}/collections/${collection}/documents/${productId}`, { headers });
+    if (!srcRes.ok) { srcEl.innerHTML = '<div class="empty">Produkt ikke fundet — tjek ID og marked</div>'; return; }
+    sourceDoc = await srcRes.json();
+  } catch (e) { srcEl.innerHTML = '<div class="empty">Fejl ved hentning af produkt</div>'; return; }
+
+  const srcImg = sourceDoc.image_url
+    ? `<img src="${sourceDoc.image_url}" alt="" onerror="this.style.display='none'">`
+    : '';
+  srcEl.innerHTML = `
+    <div class="source-product">
+      ${srcImg}
+      <div class="source-product-info">
+        <h3>${sourceDoc.name || 'Ukendt'}</h3>
+        ${sourceDoc.brand ? `<div class="sp-brand">${sourceDoc.brand}</div>` : ''}
+        <div class="sp-meta">ID: ${sourceDoc.id} · ${fmtPrice(sourceDoc.price, currency)} · ${sourceDoc.in_stock ? 'På lager' : 'Udsolgt'}</div>
+      </div>
+    </div>`;
+
+  // 2. Check bought_together_ids — fallback to vector search if empty
+  const coIds = sourceDoc.bought_together_ids || [];
+  let hits = [];
+  let label = '';
+
+  if (coIds.length > 0) {
+    // Primary: co-purchase data from real orders
+    resEl.innerHTML = '<div class="start-hint">Henter co-køb...</div>';
+    try {
+      const idFilter = coIds.map(id => `id:=${id}`).join(' || ');
+      const params = new URLSearchParams({
+        q: '*',
+        filter_by: `(${idFilter})&&in_stock:true`,
+        per_page: coIds.length,
+        exclude_fields: 'embedding'
+      });
+      const coRes = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers });
+      const coData = await coRes.json();
+      if (coData.hits && coData.hits.length > 0) {
+        const orderMap = {};
+        coIds.forEach((id, i) => orderMap[id] = i);
+        coData.hits.sort((a, b) => (orderMap[a.document.id] ?? 999) - (orderMap[b.document.id] ?? 999));
+        hits = coData.hits;
+        label = `Andre købte også (${hits.length} produkter baseret på ordredata)`;
+      }
+    } catch (e) {}
+  }
+
+  // Fallback: vector search (semantic similarity)
+  if (hits.length === 0) {
+    resEl.innerHTML = '<div class="start-hint">Finder lignende produkter via AI...</div>';
+    try {
+      const params = new URLSearchParams({
+        q: '*',
+        vector_query: `embedding:([], id:${productId})`,
+        filter_by: `id:!=${productId}&&in_stock:true`,
+        per_page: 10,
+        exclude_fields: 'embedding'
+      });
+      const simRes = await fetch(`${HOST}/collections/${collection}/documents/search?${params}`, { headers });
+      const simData = await simRes.json();
+      if (simData.hits && simData.hits.length > 0) {
+        hits = simData.hits;
+        label = `Lignende produkter (${hits.length} fundet via AI — ingen ordredata endnu)`;
+      }
+    } catch (e) {}
+  }
+
+  if (hits.length === 0) {
+    resEl.innerHTML = '<div class="empty">Ingen relaterede produkter fundet</div>';
+    return;
+  }
+
+  const cardsHtml = hits.map(h => {
+    const d = h.document;
+    const dist = h.vector_distance != null ? `<span class="sim-card-dist">${h.vector_distance.toFixed(3)}</span>` : '';
+    const img = d.image_url
+      ? `<img src="${d.image_url}" alt="" onerror="this.style.display='none'">`
+      : `<div class="grid-card-img-placeholder"></div>`;
+    const link = d.product_url || '#';
+    return `<a class="sim-card" href="${link}" target="_blank">
+      ${dist}
+      ${img}
+      <div class="sim-card-name">${d.name || ''}</div>
+      ${d.brand ? `<div class="sim-card-brand">${d.brand}</div>` : ''}
+      <div class="sim-card-footer">
+        <span class="sim-card-price">${fmtPrice(d.price, currency)}</span>
+        <span class="grid-card-stock ${d.in_stock ? 'in' : 'out'}"></span>
+      </div>
+    </a>`;
+  }).join('');
+
+  resEl.innerHTML = `
+    <div class="similar-label">${label}</div>
+    <div class="similar-grid">${cardsHtml}</div>`;
+}
+
+showHints();
+showPopular();
+</script>
+</body>
+</html>
