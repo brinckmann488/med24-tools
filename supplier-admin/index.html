@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Med24 Supplier Hub — Admin</title>
+<style>
+  :root{--bg:#f4f5f7;--panel:#fff;--ink:#0a0a0a;--muted:#6b7280;--line:#e5e7eb;--black:#0a0a0a;--ok:#16a34a;--warn:#b45309}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  .app{display:flex;min-height:100vh}
+  .side{width:230px;background:var(--black);color:#fff;flex-shrink:0;display:flex;flex-direction:column;padding:18px 0}
+  .brand{display:flex;align-items:center;gap:8px;padding:0 20px 18px;font-weight:800;font-size:17px}
+  .brand .tag{background:#fff;color:#000;font-size:10px;font-weight:700;border-radius:5px;padding:2px 6px;letter-spacing:.04em}
+  .navhead{color:#8b8f98;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:14px 20px 6px}
+  .nav a{display:flex;align-items:center;gap:10px;color:#d6d8dc;text-decoration:none;padding:9px 20px;font-size:14px;border-left:3px solid transparent;cursor:pointer}
+  .nav a.active{background:#1b1c1f;color:#fff;border-left-color:#fff;font-weight:600}
+  .side .who{margin-top:auto;padding:14px 20px;border-top:1px solid #1f2024;color:#9aa0a6;font-size:12px}
+  .side .who b{color:#fff;display:block;font-size:13px}
+  .main{flex:1;min-width:0;padding:26px 34px;max-width:1180px}
+  h1{font-size:21px;margin:0 0 2px}
+  .sub{color:var(--muted);margin:0 0 22px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin-bottom:22px}
+  .card h2{font-size:15px;margin:0 0 16px}
+  .row{display:flex;gap:18px;flex-wrap:wrap}
+  .field{margin-bottom:16px}.field.grow{flex:1;min-width:220px}
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px;color:#374151}
+  .hint{font-weight:400;color:var(--muted);font-size:11.5px}
+  input[type=text]{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit}
+  input[type=text]:focus{outline:none;border-color:#0a0a0a;box-shadow:0 0 0 3px rgba(0,0,0,.06)}
+  .ms{border:1px solid var(--line);border-radius:8px;padding:6px;min-height:42px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;cursor:text}
+  .ms .chip{background:#0a0a0a;color:#fff;border-radius:6px;padding:4px 8px;font-size:12.5px;display:flex;align-items:center;gap:6px}
+  .ms .chip b{cursor:pointer;opacity:.7}
+  .ms input{border:none;flex:1;min-width:110px;padding:6px;font-size:13px;font-family:inherit}.ms input:focus{outline:none}
+  .toggles{display:flex;flex-wrap:wrap;gap:8px}
+  .tg{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;font-size:13px;cursor:pointer;user-select:none;display:flex;align-items:center;gap:7px}
+  .tg .dot{width:8px;height:8px;border-radius:50%;background:#cfd3d8}
+  .tg.on{background:#0a0a0a;color:#fff;border-color:#0a0a0a}.tg.on .dot{background:#22c55e}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{border:none;background:#fff;padding:8px 14px;font-size:13px;cursor:pointer;font-family:inherit;border-right:1px solid var(--line)}
+  .seg button:last-child{border-right:none}.seg button.on{background:#0a0a0a;color:#fff}
+  .btn{background:#0a0a0a;color:#fff;border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.sec{background:#fff;color:#0a0a0a;border:1px solid var(--line)}
+  .btn.sm{padding:6px 11px;font-size:12.5px;font-weight:500}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 12px 10px;border-bottom:1px solid var(--line)}
+  td{padding:14px 12px;border-bottom:1px solid #f0f1f3;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  .name b{font-size:14px}
+  .bset{display:flex;gap:5px;flex-wrap:wrap}.bpill{background:#f3f4f6;border-radius:5px;padding:2px 7px;font-size:11.5px}
+  .mk{font-size:11.5px;color:#374151;font-weight:600}.modcount{font-size:12px;color:var(--muted)}
+  .status{display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+  .sw{width:34px;height:20px;border-radius:999px;background:#cfd3d8;position:relative;transition:.15s}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+  .status.on .sw{background:var(--ok)}.status.on .sw::after{left:16px}
+  .status .lbl{font-size:12px;color:var(--muted)}.status.on .lbl{color:var(--ok);font-weight:600}
+  .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#0a0a0a;color:#fff;padding:12px 20px;border-radius:10px;font-size:13.5px;opacity:0;transition:.2s;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{background:#b91c1c}
+  .linkbox{display:flex;gap:8px;align-items:center;background:#f8f9fa;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:14px}
+  .linkbox code{flex:1;font-size:12px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,Menlo,monospace}
+  .success{border-color:#bbf7d0;background:#f0fdf4}.success h3{margin:0 0 4px;font-size:15px}
+  .note{font-size:12px;color:var(--muted);margin-top:8px}
+  .gate{position:fixed;inset:0;background:#0a0a0a;color:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;z-index:100;text-align:center;padding:20px}
+  .gate h2{margin:0;font-size:20px}.gate p{color:#9aa0a6;max-width:380px;margin:0}
+  .empty{padding:40px;text-align:center;color:var(--muted)}
+  .spin{padding:30px;text-align:center;color:var(--muted)}
+</style></head>
+<body>
+<div id="gate" class="gate" style="display:none">
+  <div class="brand" style="color:#fff">Med24 <span class="tag">Supplier Hub</span></div>
+  <h2>Adgang kræver gyldigt admin-link</h2>
+  <p id="gateMsg">Åbn admin via dit personlige admin-link (bookmark). Linket mangler eller er udløbet.</p>
+</div>
+
+<div class="app" id="app" style="display:none">
+  <aside class="side">
+    <div class="brand">Med24 <span class="tag">Supplier Hub</span></div>
+    <div class="navhead">Admin</div>
+    <nav class="nav"><a class="active">▦ &nbsp;Dashboards</a></nav>
+    <div class="who"><b id="whoLabel">Administrator</b>Adgangsstyring</div>
+  </aside>
+  <main class="main">
+    <h1>Dashboards</h1>
+    <p class="sub">Opret og styr leverandørernes adgang. Hvert dashboard giver ét link til margin-fri data for valgte brands/markeder.</p>
+
+    <section class="card">
+      <h2>Opret nyt dashboard</h2>
+      <div class="row">
+        <div class="field grow"><label>Leverandør / dashboard-navn</label>
+          <input type="text" id="name" placeholder="fx L'Oréal Active Cosmetics Nordics" autocomplete="off"></div>
+        <div class="field grow"><label>Brands <span class="hint">— skriv brand præcist som i kataloget, Enter for at tilføje</span></label>
+          <div class="ms" id="brandMs"><input type="text" id="brandIn" placeholder="Tilføj brand…" autocomplete="off"></div></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Markeder</label>
+          <div class="toggles" id="markets">
+            <div class="tg on" data-v="dk"><span class="dot"></span>DK</div>
+            <div class="tg on" data-v="se"><span class="dot"></span>SE</div>
+            <div class="tg on" data-v="no"><span class="dot"></span>NO</div></div></div>
+        <div class="field grow"><label>Moduler <span class="hint">— hvad leverandøren kan se</span></label>
+          <div class="toggles" id="modules">
+            <div class="tg on" data-v="kpi"><span class="dot"></span>Oversigt</div>
+            <div class="tg on" data-v="persona"><span class="dot"></span>Kundeprofil</div>
+            <div class="tg on" data-v="basket"><span class="dot"></span>Kurv</div>
+            <div class="tg on" data-v="categoryShare"><span class="dot"></span>Kategori</div>
+            <div class="tg on" data-v="sales"><span class="dot"></span>Salg</div>
+            <div class="tg on" data-v="inventory"><span class="dot"></span>Lager</div>
+            <div class="tg on" data-v="marketing"><span class="dot"></span>Marketing</div></div></div>
+      </div>
+      <div class="row" style="align-items:flex-end">
+        <div class="field"><label>Udløb</label>
+          <div class="seg" id="exp"><button data-v="3">3 mdr</button><button data-v="6">6 mdr</button><button data-v="12" class="on">12 mdr</button></div></div>
+        <div class="field grow" style="text-align:right"><button class="btn" id="createBtn" disabled>Opret &amp; generér link</button></div>
+      </div>
+      <div id="successBox" style="display:none" class="card success">
+        <h3>✓ Dashboard oprettet</h3>
+        <div class="note" id="successName"></div>
+        <div class="linkbox"><code id="successLink"></code>
+          <button class="btn sm" id="successCopy">Kopiér link</button>
+          <button class="btn sm sec" id="successOpen">Åbn</button></div>
+        <div class="note">Send dette link til leverandøren. Gyldigt i den valgte periode, kun margin-fri data for valgte brands/markeder.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Aktive dashboards</h2>
+      <div id="listWrap"><div class="spin">Henter…</div></div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var API='https://n8n2.med24intra.dk/webhook/supplier-admin';
+var PORTAL='https://n8n2.med24intra.dk/webhook/supplier-portal';
+function qp(n){var m=new RegExp('[?&]'+n+'=([^&]+)').exec(location.search);return m?decodeURIComponent(m[1]):'';}
+var TOKEN=qp('t')||location.hash.replace(/^#t=/,'');
+var chosen=[];
+
+function decodePayload(){try{var p=TOKEN.split('.')[0];return JSON.parse(decodeURIComponent(escape(atob(p.replace(/-/g,'+').replace(/_/g,'/')))));}catch(e){return null;}}
+
+function api(action,extra){
+  var body=Object.assign({action:action,adminToken:TOKEN},extra||{});
+  return fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){if(r.status===401){showGate('Linket er ugyldigt eller udløbet.');throw new Error('401');}return r.text().then(function(t){try{return JSON.parse(t);}catch(e){return {ok:true,rows:[]};}});});
+}
+function showGate(m){document.getElementById('app').style.display='none';var g=document.getElementById('gate');g.style.display='flex';if(m)document.getElementById('gateMsg').textContent=m;}
+function toast(m,err){var t=document.getElementById('toast');t.textContent=m;t.className='toast show'+(err?' err':'');clearTimeout(t._t);t._t=setTimeout(function(){t.className='toast';},2400);}
+function copy(t){navigator.clipboard.writeText(t).then(function(){toast('Link kopieret');},function(){toast('Link kopieret');});}
+function portalLink(token,brands,markets){var b=(brands&&brands[0])||'';var m=(markets&&markets[0])||'dk';return PORTAL+'?token='+encodeURIComponent(token)+'&brand='+encodeURIComponent(b)+'&market='+m;}
+
+// brand chips
+var bin=document.getElementById('brandIn'),bms=document.getElementById('brandMs');
+function renderChips(){[].slice.call(bms.querySelectorAll('.chip')).forEach(function(c){c.remove();});chosen.forEach(function(b){var el=document.createElement('span');el.className='chip';el.innerHTML=b+' <b>✕</b>';el.querySelector('b').onclick=function(e){e.stopPropagation();chosen=chosen.filter(function(x){return x!==b;});renderChips();validate();};bms.insertBefore(el,bin);});}
+function addBrand(){var v=bin.value.trim().replace(/,$/,'');if(v&&chosen.indexOf(v)<0){chosen.push(v);bin.value='';renderChips();validate();}}
+bin.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===','){e.preventDefault();addBrand();}});
+bin.addEventListener('blur',addBrand);
+bms.onclick=function(){bin.focus();};
+
+[].slice.call(document.querySelectorAll('#markets .tg,#modules .tg')).forEach(function(t){t.onclick=function(){t.classList.toggle('on');};});
+[].slice.call(document.querySelectorAll('#exp button')).forEach(function(b){b.onclick=function(){[].slice.call(document.querySelectorAll('#exp button')).forEach(function(x){x.classList.remove('on');});b.classList.add('on');};});
+var nameEl=document.getElementById('name'),createBtn=document.getElementById('createBtn');
+function validate(){createBtn.disabled=!(nameEl.value.trim()&&chosen.length);}
+nameEl.oninput=validate;
+
+createBtn.onclick=function(){
+  addBrand();
+  var mk=[].slice.call(document.querySelectorAll('#markets .tg.on')).map(function(t){return t.dataset.v;});
+  var mods=[].slice.call(document.querySelectorAll('#modules .tg.on')).map(function(t){return t.dataset.v;});
+  var days={3:90,6:180,12:365}[document.querySelector('#exp button.on').dataset.v];
+  createBtn.disabled=true;createBtn.textContent='Opretter…';
+  api('create',{label:nameEl.value.trim(),brands:chosen.slice(),markets:mk,modules:mods,days:days}).then(function(j){
+    createBtn.textContent='Opret & generér link';
+    if(!j||!j.link){toast('Kunne ikke oprette',true);return;}
+    document.getElementById('successName').textContent=nameEl.value.trim()+' · '+chosen.join(', ')+' · '+mk.join('/').toUpperCase();
+    document.getElementById('successLink').textContent=j.link;
+    document.getElementById('successCopy').onclick=function(){copy(j.link);};
+    document.getElementById('successOpen').onclick=function(){window.open(j.link,'_blank');};
+    document.getElementById('successBox').style.display='block';
+    nameEl.value='';chosen=[];renderChips();validate();load();
+    toast('Dashboard oprettet');
+  }).catch(function(){createBtn.textContent='Opret & generér link';validate();});
+};
+
+function load(){
+  api('list').then(function(j){
+    var rows=(j&&j.rows)||[];
+    var wrap=document.getElementById('listWrap');
+    if(!rows.length){wrap.innerHTML='<div class="empty">Ingen dashboards endnu — opret det første ovenfor.</div>';return;}
+    var html='<table><thead><tr><th>Leverandør</th><th>Brands</th><th>Markeder</th><th>Moduler</th><th>Udløb</th><th>Status</th><th></th></tr></thead><tbody>';
+    rows.forEach(function(s){
+      var brands;try{brands=JSON.parse(s.brands);}catch(e){brands=[];}
+      var mods;try{mods=JSON.parse(s.modules);}catch(e){mods=[];}
+      var markets=(s.markets||'').split(',').filter(Boolean);
+      var active=(s.is_active===true||s.is_active==='true'||s.is_active===1);
+      var exp=s.exp_at?new Date(s.exp_at).toLocaleDateString('da-DK',{day:'2-digit',month:'short',year:'numeric'}):'—';
+      html+='<tr data-sid="'+s.sid+'">'
+        +'<td class="name"><b>'+(s.label||s.sid)+'</b></td>'
+        +'<td><div class="bset">'+brands.map(function(b){return '<span class="bpill">'+b+'</span>';}).join('')+'</div></td>'
+        +'<td class="mk">'+markets.join(' · ').toUpperCase()+'</td>'
+        +'<td class="modcount">'+mods.length+' / 7</td>'
+        +'<td>'+exp+'</td>'
+        +'<td><span class="status'+(active?' on':'')+'"><span class="sw"></span><span class="lbl">'+(active?'Aktiv':'Inaktiv')+'</span></span></td>'
+        +'<td><div class="acts">'
+          +'<button class="btn sec sm a-open">Åbn view</button>'
+          +'<button class="btn sec sm a-copy">Kopiér link</button>'
+        +'</div></td></tr>';
+    });
+    html+='</tbody></table>';
+    wrap.innerHTML=html;
+    rows.forEach(function(s){
+      var brands;try{brands=JSON.parse(s.brands);}catch(e){brands=[];}
+      var markets=(s.markets||'').split(',').filter(Boolean);
+      var link=portalLink(s.token,brands,markets);
+      var tr=wrap.querySelector('tr[data-sid="'+CSS.escape(s.sid)+'"]');
+      if(!tr)return;
+      tr.querySelector('.a-open').onclick=function(){window.open(link,'_blank');};
+      tr.querySelector('.a-copy').onclick=function(){copy(link);};
+      var st=tr.querySelector('.status');
+      st.onclick=function(){
+        var nowActive=!st.classList.contains('on');
+        api('toggle',{sid:s.sid,active:nowActive}).then(function(){
+          st.classList.toggle('on',nowActive);
+          st.querySelector('.lbl').textContent=nowActive?'Aktiv':'Inaktiv';
+          toast(nowActive?'Dashboard aktiveret':'Dashboard deaktiveret');
+        });
+      };
+    });
+  });
+}
+
+// boot
+(function(){
+  var pl=decodePayload();
+  if(!TOKEN||!pl||pl.mode!=='admin'){showGate();return;}
+  document.getElementById('app').style.display='flex';
+  document.getElementById('whoLabel').textContent=pl.label||'Administrator';
+  renderChips();load();
+})();
+</script>
+</body></html>
