@@ -79,6 +79,9 @@
   .gate h2{margin:0;font-size:20px}.gate p{color:#9aa0a6;max-width:380px;margin:0}
   .empty{padding:40px;text-align:center;color:var(--muted)}
   .spin{padding:30px;text-align:center;color:var(--muted)}
+  .ld{display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:#0a0a0a;border-radius:50%;animation:ldspin .7s linear infinite;vertical-align:middle}
+  .ld.big{width:30px;height:30px;border-width:3px}
+  @keyframes ldspin{to{transform:rotate(360deg)}}
   /* overview placeholder KPI grid */
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:22px}
   .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
@@ -194,7 +197,7 @@
       </section>
       <section class="card">
         <h2>Aktive dashboards</h2>
-        <div id="listWrap"><div class="spin">Henter…</div></div>
+        <div id="listWrap"><div class="spin"><span class="ld big"></span><div style="margin-top:10px">Henter…</div></div></div>
       </section>
     </section>
 
@@ -314,7 +317,7 @@ function refreshCategories(){
   var dl=document.getElementById('catList');
   if(!chosen.length){CATS=[];dl.innerHTML='';chosenCats=[];renderCatChips();updateCatHint();return;}
   var myReq=++catReq;
-  document.getElementById('catHint').textContent='Henter kategorier…';
+  document.getElementById('catHint').innerHTML='<span class="ld"></span> Henter kategorier…';
   lookup('categories',{brands:chosen.slice()}).then(function(j){
     if(myReq!==catReq)return; // stale response
     CATS=(j&&j.categories)||[];
@@ -412,7 +415,7 @@ function onSupplierChange(){
   var brands=parseBrands(s.brands), markets=(s.markets||'').split(',').filter(Boolean), modules=parseBrands(s.modules);
   bSel.innerHTML=brands.map(function(b){return '<option>'+b+'</option>';}).join('');
   mSel.innerHTML=markets.map(function(m){return '<option value="'+m+'">'+m.toUpperCase()+'</option>';}).join('');
-  var ov=document.getElementById('vOverlay'); ov.classList.remove('hidden'); ov.innerHTML='<div>Forbereder staff-visning…</div>';
+  var ov=document.getElementById('vOverlay'); ov.classList.remove('hidden'); ov.innerHTML='<div><span class="ld big"></span><div style="margin-top:10px">Forbereder staff-visning…</div></div>';
   var cats=parseBrands(s.categories||'[]');
   api('mintview',{brands:brands,markets:markets,modules:modules,categories:cats}).then(function(j){
     currentEphToken=(j&&j.token)||null; loadFrame();
@@ -426,7 +429,7 @@ function loadFrame(){
   var link=currentViewLink();
   var fr=document.getElementById('vFrame'), ov=document.getElementById('vOverlay');
   if(!link){ov.classList.remove('hidden');ov.innerHTML='<div>Vælg en leverandør for at se deres dashboard.</div>';fr.src='about:blank';return;}
-  ov.classList.remove('hidden');ov.innerHTML='<div>Indlæser leverandørens dashboard… (~20s)</div>';
+  ov.classList.remove('hidden');ov.innerHTML='<div><span class="ld big"></span><div style="margin-top:10px">Indlæser leverandørens dashboard… (~20s)</div></div>';
   fr.src=link;
   fr.onload=function(){ov.classList.add('hidden');};
   setTimeout(function(){ if(!ov.classList.contains('hidden')){ ov.innerHTML='<div>Kan ikke vise indlejret (eller indlæser stadig).</div><button class="btn" id="ovOpen">Åbn i ny fane ↗</button>'; var b=document.getElementById('ovOpen'); if(b)b.onclick=function(){window.open(link,'_blank');}; } }, 30000);
