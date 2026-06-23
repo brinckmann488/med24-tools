@@ -72,6 +72,9 @@
   .linkbox code{flex:1;font-size:12px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,Menlo,monospace}
   .success{border-color:#bbf7d0;background:#f0fdf4}.success h3{margin:0 0 4px;font-size:15px}
   .note{font-size:12px;color:var(--muted);margin-top:8px}
+  .warnline{font-size:12px;color:var(--warn);font-weight:600;margin-top:8px}
+  .catnote{font-size:11px;color:var(--muted);margin-top:4px}
+  datalist{max-height:240px}
   .gate{position:fixed;inset:0;background:#0a0a0a;color:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;z-index:100;text-align:center;padding:20px}
   .gate h2{margin:0;font-size:20px}.gate p{color:#9aa0a6;max-width:380px;margin:0}
   .empty{padding:40px;text-align:center;color:var(--muted)}
@@ -144,10 +147,20 @@
       <section class="card">
         <h2>Opret nyt dashboard</h2>
         <div class="row">
+          <div class="field grow"><label>Vælg leverandør <span class="hint">— auto-udfylder brands fra kataloget (kan redigeres). Spring over for ren manuel oprettelse.</span></label>
+            <input type="text" id="supIn" list="supList" placeholder="Søg leverandør…" autocomplete="off">
+            <datalist id="supList"></datalist></div>
           <div class="field grow"><label>Leverandør / dashboard-navn</label>
             <input type="text" id="name" placeholder="fx L'Oréal Active Cosmetics Nordics" autocomplete="off"></div>
-          <div class="field grow"><label>Brands <span class="hint">— skriv brand præcist som i kataloget, Enter for at tilføje</span></label>
-            <div class="ms" id="brandMs"><input type="text" id="brandIn" placeholder="Tilføj brand…" autocomplete="off"></div></div>
+        </div>
+        <div class="row">
+          <div class="field grow"><label>Brands <span class="hint">— auto-udfyldt fra leverandøren; fravælg med ✕ eller tilføj manuelt (Enter)</span></label>
+            <div class="ms" id="brandMs"><input type="text" id="brandIn" placeholder="Tilføj brand…" autocomplete="off"></div>
+            <div id="brandWarn" class="warnline" style="display:none"></div></div>
+          <div class="field grow"><label>Kategorier (Category Share) <span class="hint">— begræns til udvalgte kategorier. Tom = alle brandets kategorier</span></label>
+            <div class="ms" id="catMs"><input type="text" id="catIn" list="catList" placeholder="Tilføj kategori…" autocomplete="off"></div>
+            <datalist id="catList"></datalist>
+            <div id="catHint" class="note" style="margin-top:6px">Vælg brands først for at se kategorier.</div></div>
         </div>
         <div class="row">
           <div class="field"><label>Markeder</label>
@@ -206,10 +219,17 @@
 
 <script>
 var API='https://n8n2.med24intra.dk/webhook/supplier-admin';
+var LOOKUP='https://n8n2.med24intra.dk/webhook/admin-lookup';
 var PORTAL='https://n8n2.med24intra.dk/webhook/supplier-portal';
 function qp(n){var m=new RegExp('[?&]'+n+'=([^&]+)').exec(location.search);return m?decodeURIComponent(m[1]):'';}
 var TOKEN=qp('t')||location.hash.replace(/^#t=/,'');
 var chosen=[]; var ROWS=[]; var currentEphToken=null;
+var SUPPLIERS=[]; var suppliersLoaded=false; var currentSupplier=null; var chosenCats=[]; var CATS=[]; var catReq=0;
+function lookup(action,extra){
+  var body=Object.assign({action:action,adminToken:TOKEN},extra||{});
+  return fetch(LOOKUP,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){return {ok:false};}});});
+}
 
 function decodePayload(){try{var p=TOKEN.split('.')[0];return JSON.parse(decodeURIComponent(escape(atob(p.replace(/-/g,'+').replace(/_/g,'/')))));}catch(e){return null;}}
 function api(action,extra){
@@ -234,6 +254,7 @@ function showTab(which){
   document.getElementById('viewTab').classList.toggle('hidden',which!=='view');
   document.getElementById('navOverview').classList.toggle('active',which==='overview');
   document.getElementById('navAdmin').classList.toggle('active',which==='admin');
+  if(which==='admin') loadSuppliers();
   if(which==='view') initView();
 }
 document.getElementById('navOverview').onclick=function(){showTab('overview');};
@@ -241,8 +262,8 @@ document.getElementById('navAdmin').onclick=function(){showTab('admin');};
 
 // ---- brand chips (create) ----
 var bin=document.getElementById('brandIn'),bms=document.getElementById('brandMs');
-function renderChips(){[].slice.call(bms.querySelectorAll('.chip')).forEach(function(c){c.remove();});chosen.forEach(function(b){var el=document.createElement('span');el.className='chip';el.innerHTML=b+' <b>✕</b>';el.querySelector('b').onclick=function(e){e.stopPropagation();chosen=chosen.filter(function(x){return x!==b;});renderChips();validate();};bms.insertBefore(el,bin);});}
-function addBrand(){var v=bin.value.trim().replace(/,$/,'');if(v&&chosen.indexOf(v)<0){chosen.push(v);bin.value='';renderChips();validate();}}
+function renderChips(){[].slice.call(bms.querySelectorAll('.chip')).forEach(function(c){c.remove();});chosen.forEach(function(b){var el=document.createElement('span');el.className='chip';el.innerHTML=b+' <b>✕</b>';el.querySelector('b').onclick=function(e){e.stopPropagation();chosen=chosen.filter(function(x){return x!==b;});renderChips();validate();updateBrandWarn();refreshCategories();};bms.insertBefore(el,bin);});}
+function addBrand(){var v=bin.value.trim().replace(/,$/,'');if(v&&chosen.indexOf(v)<0){chosen.push(v);bin.value='';renderChips();validate();updateBrandWarn();refreshCategories();}}
 bin.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===','){e.preventDefault();addBrand();}});
 bin.addEventListener('blur',addBrand); bms.onclick=function(){bin.focus();};
 [].slice.call(document.querySelectorAll('#markets .tg,#modules .tg')).forEach(function(t){t.onclick=function(){t.classList.toggle('on');};});
@@ -251,21 +272,80 @@ var nameEl=document.getElementById('name'),createBtn=document.getElementById('cr
 function validate(){createBtn.disabled=!(nameEl.value.trim()&&chosen.length);}
 nameEl.oninput=validate;
 
+// ---- supplier picker (auto-fill brands) ----
+var supIn=document.getElementById('supIn');
+function loadSuppliers(){
+  if(suppliersLoaded)return;
+  lookup('suppliers').then(function(j){
+    SUPPLIERS=(j&&j.suppliers)||[]; suppliersLoaded=true;
+    var dl=document.getElementById('supList');
+    dl.innerHTML=SUPPLIERS.map(function(s){
+      var v=String(s.vendorRaw).replace(/"/g,'&quot;');
+      return '<option value="'+v+'">'+s.brandNames.length+' brands · '+s.totalSkus+' SKU</option>';
+    }).join('');
+  });
+}
+function pickSupplier(val){
+  var s=null; for(var i=0;i<SUPPLIERS.length;i++){if(SUPPLIERS[i].vendorRaw===val){s=SUPPLIERS[i];break;}}
+  if(!s){currentSupplier=null;updateBrandWarn();return;}
+  currentSupplier=s;
+  chosen=s.brandNames.slice();
+  if(!nameEl.value.trim()) nameEl.value=s.vendorName;
+  renderChips();validate();updateBrandWarn();refreshCategories();
+}
+supIn.addEventListener('change',function(){pickSupplier(supIn.value);});
+
+function updateBrandWarn(){
+  var w=document.getElementById('brandWarn');
+  if(!currentSupplier){w.style.display='none';return;}
+  var have=currentSupplier.brandNames.filter(function(b){return chosen.indexOf(b)>=0;}).length;
+  var tot=currentSupplier.brandNames.length;
+  if(have<tot){w.style.display='block';w.textContent='⚠ '+have+' af '+tot+' af leverandørens brands valgt — leverandøren ser ikke alle deres brands.';}
+  else{w.style.display='none';}
+}
+
+// ---- category picker (chips, dynamic from chosen brands) ----
+var cin=document.getElementById('catIn'),cms=document.getElementById('catMs');
+function renderCatChips(){[].slice.call(cms.querySelectorAll('.chip')).forEach(function(c){c.remove();});chosenCats.forEach(function(b){var el=document.createElement('span');el.className='chip';el.innerHTML=b+' <b>✕</b>';el.querySelector('b').onclick=function(e){e.stopPropagation();chosenCats=chosenCats.filter(function(x){return x!==b;});renderCatChips();updateCatHint();};cms.insertBefore(el,cin);});}
+function addCat(){var v=cin.value.trim().replace(/,$/,'');if(v&&chosenCats.indexOf(v)<0){chosenCats.push(v);cin.value='';renderCatChips();updateCatHint();}}
+cin.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===','){e.preventDefault();addCat();}});
+cin.addEventListener('blur',addCat); cms.onclick=function(){cin.focus();};
+function refreshCategories(){
+  var dl=document.getElementById('catList');
+  if(!chosen.length){CATS=[];dl.innerHTML='';chosenCats=[];renderCatChips();updateCatHint();return;}
+  var myReq=++catReq;
+  document.getElementById('catHint').textContent='Henter kategorier…';
+  lookup('categories',{brands:chosen.slice()}).then(function(j){
+    if(myReq!==catReq)return; // stale response
+    CATS=(j&&j.categories)||[];
+    dl.innerHTML=CATS.map(function(c){return '<option value="'+String(c.category).replace(/"/g,'&quot;')+'">'+c.skus+' produkter</option>';}).join('');
+    var avail=CATS.map(function(c){return c.category;});
+    chosenCats=chosenCats.filter(function(c){return avail.indexOf(c)>=0;});
+    renderCatChips();updateCatHint();
+  });
+}
+function updateCatHint(){
+  var hint=document.getElementById('catHint');
+  if(!chosen.length){hint.textContent='Vælg brands først for at se kategorier.';return;}
+  if(!chosenCats.length){hint.textContent=CATS.length+' kategorier tilgængelige · alle vises (ingen begrænsning).';}
+  else{hint.textContent=chosenCats.length+' valgt · Category Share begrænses til disse.';}
+}
+
 createBtn.onclick=function(){
-  addBrand();
+  addBrand();addCat();
   var mk=[].slice.call(document.querySelectorAll('#markets .tg.on')).map(function(t){return t.dataset.v;});
   var mods=[].slice.call(document.querySelectorAll('#modules .tg.on')).map(function(t){return t.dataset.v;});
   var days={3:90,6:180,12:365}[document.querySelector('#exp button.on').dataset.v];
   createBtn.disabled=true;createBtn.textContent='Opretter…';
-  api('create',{label:nameEl.value.trim(),brands:chosen.slice(),markets:mk,modules:mods,days:days}).then(function(j){
+  api('create',{label:nameEl.value.trim(),brands:chosen.slice(),markets:mk,modules:mods,categories:chosenCats.slice(),days:days}).then(function(j){
     createBtn.textContent='Opret & generér link';
     if(!j||!j.link){toast('Kunne ikke oprette',true);return;}
-    document.getElementById('successName').textContent=nameEl.value.trim()+' · '+chosen.join(', ')+' · '+mk.join('/').toUpperCase();
+    document.getElementById('successName').textContent=nameEl.value.trim()+' · '+chosen.join(', ')+' · '+mk.join('/').toUpperCase()+(chosenCats.length?(' · '+chosenCats.length+' kategorier'):' · alle kategorier');
     document.getElementById('successLink').textContent=j.link;
     document.getElementById('successCopy').onclick=function(){copy(j.link);};
     document.getElementById('successView').onclick=function(){window.open(j.link,'_blank');};
     document.getElementById('successBox').style.display='block';
-    nameEl.value='';chosen=[];renderChips();validate();load();
+    nameEl.value='';chosen=[];chosenCats=[];currentSupplier=null;supIn.value='';renderChips();renderCatChips();validate();updateBrandWarn();updateCatHint();load();
     toast('Dashboard oprettet');
   }).catch(function(){createBtn.textContent='Opret & generér link';validate();});
 };
@@ -278,13 +358,13 @@ function load(){
     if(!ROWS.length){wrap.innerHTML='<div class="empty">Ingen dashboards endnu — opret det første ovenfor.</div>';return;}
     var html='<table><thead><tr><th>Leverandør</th><th>Brands</th><th>Markeder</th><th>Moduler</th><th>Udløb</th><th>Status</th><th></th></tr></thead><tbody>';
     ROWS.forEach(function(s){
-      var brands=parseBrands(s.brands); var mods=parseBrands(s.modules);
+      var brands=parseBrands(s.brands); var mods=parseBrands(s.modules); var cats=parseBrands(s.categories||'[]');
       var markets=(s.markets||'').split(',').filter(Boolean);
       var active=(s.is_active===true||s.is_active==='true'||s.is_active===1);
       var exp=s.exp_at?new Date(s.exp_at).toLocaleDateString('da-DK',{day:'2-digit',month:'short',year:'numeric'}):'—';
       html+='<tr data-sid="'+s.sid+'">'
         +'<td class="name"><b>'+(s.label||s.sid)+'</b></td>'
-        +'<td><div class="bset">'+brands.map(function(b){return '<span class="bpill">'+b+'</span>';}).join('')+'</div></td>'
+        +'<td><div class="bset">'+brands.map(function(b){return '<span class="bpill">'+b+'</span>';}).join('')+'</div>'+(cats.length?'<div class="catnote">Kategorier: '+cats.length+' valgt</div>':'')+'</td>'
         +'<td class="mk">'+markets.join(' · ').toUpperCase()+'</td>'
         +'<td class="modcount">'+mods.length+' / 7</td>'
         +'<td>'+exp+'</td>'
