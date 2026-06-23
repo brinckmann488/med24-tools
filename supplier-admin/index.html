@@ -113,7 +113,6 @@
     <div class="navhead">Leverandører</div>
     <nav class="nav">
       <a id="navAdmin"><span class="ic">⚙</span>Administrér</a>
-      <a id="navView"><span class="ic">◐</span>Vis leverandør</a>
     </nav>
     <div class="who"><b id="whoLabel">Administrator</b>Staff-konsol</div>
   </aside>
@@ -235,12 +234,10 @@ function showTab(which){
   document.getElementById('viewTab').classList.toggle('hidden',which!=='view');
   document.getElementById('navOverview').classList.toggle('active',which==='overview');
   document.getElementById('navAdmin').classList.toggle('active',which==='admin');
-  document.getElementById('navView').classList.toggle('active',which==='view');
   if(which==='view') initView();
 }
 document.getElementById('navOverview').onclick=function(){showTab('overview');};
 document.getElementById('navAdmin').onclick=function(){showTab('admin');};
-document.getElementById('navView').onclick=function(){showTab('view');};
 
 // ---- brand chips (create) ----
 var bin=document.getElementById('brandIn'),bms=document.getElementById('brandMs');
@@ -293,7 +290,7 @@ function load(){
         +'<td>'+exp+'</td>'
         +'<td><span class="status'+(active?' on':'')+'"><span class="sw"></span><span class="lbl">'+(active?'Aktiv':'Inaktiv')+'</span></span></td>'
         +'<td><div class="acts">'
-          +'<button class="btn sec sm a-view">Vis view</button>'
+          +'<button class="btn sec sm a-open">Åbn dashboard ↗</button>'
           +'<button class="btn sec sm a-copy">Kopiér link</button>'
         +'</div></td></tr>';
     });
@@ -301,7 +298,9 @@ function load(){
     ROWS.forEach(function(s){
       var brands=parseBrands(s.brands); var markets=(s.markets||'').split(',').filter(Boolean);
       var tr=wrap.querySelector('tr[data-sid="'+CSS.escape(s.sid)+'"]'); if(!tr)return;
-      tr.querySelector('.a-view').onclick=function(){showTab('view');setTimeout(function(){selectSupplier(s.sid);},50);};
+      var openLink=function(){window.open(portalLink(s.token,brands[0],markets[0]),'_blank');};
+      tr.querySelector('.a-open').onclick=openLink;
+      var nm=tr.querySelector('.name'); nm.style.cursor='pointer'; nm.title='Åbn leverandørens dashboard'; nm.onclick=openLink;
       tr.querySelector('.a-copy').onclick=function(){copy(portalLink(s.token,brands[0],markets[0]));};
       var st=tr.querySelector('.status');
       st.onclick=function(){
