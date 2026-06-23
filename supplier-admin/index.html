@@ -122,38 +122,20 @@
       <div class="brand">Med24 <span class="tag">Supplier Hub</span></div>
       <button class="collapse" id="collapseBtn" title="Skjul menu">⟨</button>
     </div>
-    <div class="navhead">Med24</div>
+    <div class="navhead">Medarbejdere · intern</div>
     <nav class="nav">
-      <a id="navOverview" class="active"><span class="ic">▤</span>Salgsoverblik</a>
-      <a id="navSupplier"><span class="ic">◭</span>Leverandør (intern)</a>
-      <a class="soon"><span class="ic">◷</span>Inventory<span class="soonbadge">SENERE</span></a>
-      <a class="soon"><span class="ic">◴</span>Category Share<span class="soonbadge">SENERE</span></a>
+      <a id="navSupplier" class="active"><span class="ic">◭</span>Leverandør-overblik</a>
     </nav>
-    <div class="navhead">Leverandører</div>
+    <div class="navhead">Leverandører · eksternt (sælges)</div>
     <nav class="nav">
-      <a id="navAdmin"><span class="ic">⚙</span>Supplier Portals</a>
+      <a id="navAdmin"><span class="ic">⚙</span>Opret &amp; del dashboards</a>
+      <a id="navView"><span class="ic">◷</span>Forhåndsvis leverandør-view</a>
     </nav>
     <div class="who"><b id="whoLabel">Administrator</b>Staff-konsol</div>
   </aside>
 
   <main class="main">
-    <!-- OVERVIEW (landing) -->
-    <section id="overviewTab" class="pad">
-      <h1>Salgsoverblik</h1>
-      <p class="sub">Vores eget overblik på tværs af hele Med24 — med avancer. Live fra PowerBI/SSAS. <span class="hint">(intern · kun staff)</span></p>
-      <div class="ovctrls">
-        <div class="seg" id="ovMarket"><button data-v="all" class="on">Alle</button><button data-v="dk">DK</button><button data-v="se">SE</button><button data-v="no">NO</button></div>
-        <div class="seg" id="ovPeriod"><button data-v="ytd" class="on">År til dato</button><button data-v="30">30 dage</button><button data-v="90">90 dage</button><button data-v="12m">12 mdr.</button></div>
-        <div class="seg" id="ovGroup"><button data-v="vendor" class="on">Leverandører</button><button data-v="brand">Brands</button><button data-v="subBrand">Sub-brands</button></div>
-      </div>
-      <div class="kpis" id="ovKpis"></div>
-      <div class="ovrow">
-        <div class="card ovg"><div class="ovgh">Salg index</div><div id="ovGaugeSalg" class="ovgauge"></div></div>
-        <div class="card ovg"><div class="ovgh">Avance index</div><div id="ovGaugeAvance" class="ovgauge"></div></div>
-        <div class="card ovt"><div class="ovgh">Salg over tid — i år vs sidste år</div><div id="ovTrend"></div></div>
-      </div>
-      <div class="card"><div id="ovTableWrap"><div class="spin"><span class="ld big"></span><div style="margin-top:10px">Henter fra PowerBI…</div></div></div></div>
-    </section>
+    <!-- (Generelt Med24-overblik fjernet — det ligger i PowerBI. Konsollen = 2 views: medarbejder + leverandør.) -->
 
     <!-- ADMIN -->
     <section id="adminTab" class="pad hidden">
@@ -278,20 +260,19 @@ document.getElementById('expandBtn').onclick=function(){document.getElementById(
 
 // ---- nav (left sidebar) ----
 function showTab(which){
-  document.getElementById('overviewTab').classList.toggle('hidden',which!=='overview');
   document.getElementById('supplierTab').classList.toggle('hidden',which!=='supplier');
   document.getElementById('adminTab').classList.toggle('hidden',which!=='admin');
   document.getElementById('viewTab').classList.toggle('hidden',which!=='view');
-  document.getElementById('navOverview').classList.toggle('active',which==='overview');
   document.getElementById('navSupplier').classList.toggle('active',which==='supplier');
   document.getElementById('navAdmin').classList.toggle('active',which==='admin');
-  if(which==='admin') loadSuppliers();
+  document.getElementById('navView').classList.toggle('active',which==='view');
+  if(which==='admin'){ loadSuppliers(); load(); }
   if(which==='supplier') loadSuppliers(spPopulate);
-  if(which==='view') initView();
+  if(which==='view'){ load(); initView(); }
 }
-document.getElementById('navOverview').onclick=function(){showTab('overview');};
 document.getElementById('navSupplier').onclick=function(){showTab('supplier');};
 document.getElementById('navAdmin').onclick=function(){showTab('admin');};
+document.getElementById('navView').onclick=function(){showTab('view');};
 
 // ---- brand chips (create) ----
 var bin=document.getElementById('brandIn'),bms=document.getElementById('brandMs');
@@ -582,7 +563,7 @@ function renderDrill(d){
   document.getElementById('ovDrillBody').innerHTML=html;
 }
 ['ovMarket','ovPeriod','ovGroup'].forEach(function(id){
-  var box=document.getElementById(id);
+  var box=document.getElementById(id); if(!box)return;
   [].slice.call(box.querySelectorAll('button')).forEach(function(b){b.onclick=function(){
     [].slice.call(box.querySelectorAll('button')).forEach(function(x){x.classList.remove('on');});b.classList.add('on');
     if(id==='ovMarket')ovState.market=b.dataset.v; else if(id==='ovPeriod')ovState.period=b.dataset.v; else ovState.group=b.dataset.v;
@@ -677,7 +658,7 @@ document.getElementById('spExt').onclick=spOpenExt;
   if(!TOKEN||!pl||pl.mode!=='admin'){showGate();return;}
   document.getElementById('app').style.display='flex';
   document.getElementById('whoLabel').textContent=pl.label||'Administrator';
-  renderChips(); load(); loadOverview();
+  renderChips(); load(); showTab('supplier');
 })();
 </script>
 </body></html>
