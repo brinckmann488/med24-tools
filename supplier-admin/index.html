@@ -91,6 +91,15 @@
   .ovctrls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px}
   .kpi .val.live{color:#0a0a0a}
   #ovTableWrap td{font-size:13.5px}#ovTableWrap th{white-space:nowrap}
+  #ovTableWrap tbody tr{cursor:pointer}#ovTableWrap tbody tr:hover{background:#f8f9fa}
+  .ovrow{display:flex;gap:22px;margin-bottom:22px;flex-wrap:wrap}
+  .ovg{flex:1;min-width:190px;display:flex;flex-direction:column}
+  .ovt{flex:2.4;min-width:320px}
+  .ovgh{font-size:13.5px;font-weight:600;margin-bottom:10px}
+  .ovgauge{display:flex;justify-content:center;align-items:center;flex:1}
+  .ovmodal{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow:auto}
+  .ovmodal-inner{background:#fff;border-radius:12px;max-width:1120px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .ovmodal-close{float:right;cursor:pointer;border:none;background:#f3f4f6;border-radius:8px;padding:6px 12px;font-size:13.5px;font-family:inherit}
   /* view tab */
   .subbar{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line);background:#fff}
   .subbar .field{margin:0;min-width:160px}
@@ -134,9 +143,14 @@
       <div class="ovctrls">
         <div class="seg" id="ovMarket"><button data-v="all" class="on">Alle</button><button data-v="dk">DK</button><button data-v="se">SE</button><button data-v="no">NO</button></div>
         <div class="seg" id="ovPeriod"><button data-v="ytd" class="on">År til dato</button><button data-v="30">30 dage</button><button data-v="90">90 dage</button><button data-v="12m">12 mdr.</button></div>
-        <div class="seg" id="ovGroup"><button data-v="vendor" class="on">Leverandører</button><button data-v="brand">Brands</button></div>
+        <div class="seg" id="ovGroup"><button data-v="vendor" class="on">Leverandører</button><button data-v="brand">Brands</button><button data-v="subBrand">Sub-brands</button></div>
       </div>
       <div class="kpis" id="ovKpis"></div>
+      <div class="ovrow">
+        <div class="card ovg"><div class="ovgh">Salg index</div><div id="ovGaugeSalg" class="ovgauge"></div></div>
+        <div class="card ovg"><div class="ovgh">Avance index</div><div id="ovGaugeAvance" class="ovgauge"></div></div>
+        <div class="card ovt"><div class="ovgh">Salg over tid — i år vs sidste år</div><div id="ovTrend"></div></div>
+      </div>
       <div class="card"><div id="ovTableWrap"><div class="spin"><span class="ld big"></span><div style="margin-top:10px">Henter fra PowerBI…</div></div></div></div>
     </section>
 
@@ -436,8 +450,9 @@ document.getElementById('vBrand').onchange=loadFrame;
 document.getElementById('vMarket').onchange=loadFrame;
 document.getElementById('vOpen').onclick=function(){var l=currentViewLink(); if(l)window.open(l,'_blank'); else toast('Vælg en leverandør',true);};
 
-// ---- internt salgsoverblik (forside) — live PowerBI/SSAS via /webhook/internal-overview ----
+// ---- internt salgsoverblik (forside) — live PowerBI/SSAS ----
 var OVERVIEW_API='https://n8n2.med24intra.dk/webhook/internal-overview';
+var PRODUCTS_API='https://n8n2.med24intra.dk/webhook/internal-products';
 var ovState={market:'all',period:'ytd',group:'vendor'};
 function ovRange(k){var now=new Date();function ymd(d){return d.toISOString().slice(0,10);}var to=ymd(now),from;
   if(k==='ytd')from=ymd(new Date(now.getFullYear(),0,1));
@@ -446,39 +461,103 @@ function ovRange(k){var now=new Date();function ymd(d){return d.toISOString().sl
   else {var d=new Date(now);d.setFullYear(d.getFullYear()-1);from=ymd(d);}
   return {from:from,to:to};}
 function ovKr(n){return n==null?'–':Math.round(n).toLocaleString('da-DK')+' kr';}
+function ovNum(n){return n==null?'–':Math.round(n).toLocaleString('da-DK');}
 function ovPct(n){return n==null?'–':Number(n).toLocaleString('da-DK',{minimumFractionDigits:1,maximumFractionDigits:1})+' %';}
 function ovIdx(n){return n==null?'–':Number(n).toLocaleString('da-DK',{minimumFractionDigits:1,maximumFractionDigits:1});}
-function loadOverview(){
+// SVG halvcirkel-gauge (0–200, par 100) — samme stil som leverandør-portalen
+function ovGauge(val){
+  var has=val!=null&&!isNaN(val); var v=has?Math.max(0,Math.min(200,val)):0; var pct=v/200;
+  var cx=110,cy=110,r=86,sw=18;
+  function pol(deg,rr){rr=rr||r;var rad=deg*Math.PI/180;return [cx+rr*Math.cos(rad),cy-rr*Math.sin(rad)];}
+  function arc(a0,a1){var s=pol(a0),e=pol(a1);var lg=Math.abs(a1-a0)>180?1:0;return 'M '+s[0]+' '+s[1]+' A '+r+' '+r+' 0 '+lg+' 0 '+e[0]+' '+e[1];}
+  var va=180-pct*180; var col=!has?'#9ca3af':v>=100?'#16a34a':v>=90?'#d97706':'#dc2626';
+  var t0=pol(90,r-sw/2-2),t1=pol(90,r+sw/2+2);
+  return '<svg viewBox="0 0 220 132" style="width:100%;max-width:230px"><path d="'+arc(180,0)+'" fill="none" stroke="#eceef1" stroke-width="'+sw+'" stroke-linecap="round"/>'
+    +(has&&pct>0?'<path d="'+arc(180,va)+'" fill="none" stroke="'+col+'" stroke-width="'+sw+'" stroke-linecap="round"/>':'')
+    +'<line x1="'+t0[0]+'" y1="'+t0[1]+'" x2="'+t1[0]+'" y2="'+t1[1]+'" stroke="#0a0a0a" stroke-width="2.5"/>'
+    +'<text x="110" y="102" text-anchor="middle" style="font-size:34px;font-weight:700;fill:#0a0a0a">'+(has?ovIdx(val):'–')+'</text></svg>'
+    +'<div style="text-align:center;font-size:11px;color:#6b7280;margin-top:-2px">0 · par 100 · 200</div>';
+}
+// SVG linje-graf: i år (sort) vs sidste år (grå stiplet) pr. måned
+function ovTrendChart(trend){
+  if(!trend||!trend.length) return '<p class="note">Ingen tidsserie.</p>';
+  var W=560,H=210,padL=8,padR=10,padB=26,padT=8;
+  var max=Math.max.apply(null,trend.map(function(t){return Math.max(t.salg||0,t.salgLy||0);}))||1;
+  var n=trend.length;
+  function x(i){return padL+(n<=1?(W-padL-padR)/2:i*(W-padL-padR)/(n-1));}
+  function y(v){return H-padB-(v/max)*(H-padB-padT);}
+  function pth(key){return trend.map(function(t,i){return (i?'L':'M')+x(i).toFixed(1)+' '+y(t[key]||0).toFixed(1);}).join(' ');}
+  var labels=trend.map(function(t,i){return '<text x="'+x(i).toFixed(1)+'" y="'+(H-9)+'" text-anchor="middle" style="font-size:10px;fill:#6b7280">'+t.month.substring(5)+'</text>';}).join('');
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%"><line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" stroke="#e5e7eb"/>'
+    +'<path d="'+pth('salgLy')+'" fill="none" stroke="#9ca3af" stroke-width="2" stroke-dasharray="4 3"/>'
+    +'<path d="'+pth('salg')+'" fill="none" stroke="#0a0a0a" stroke-width="2.5"/>'+labels+'</svg>'
+    +'<div style="display:flex;gap:18px;justify-content:center;font-size:12px;color:#374151;margin-top:4px"><span style="color:#0a0a0a">▬ I år</span><span style="color:#9ca3af">▬ ▬ Sidste år</span></div>';
+}
+function loadOverview(attempt){
+  attempt=attempt||0;
   var wrap=document.getElementById('ovTableWrap');
   wrap.innerHTML='<div class="spin"><span class="ld big"></span><div style="margin-top:10px">Henter fra PowerBI… (~15s)</div></div>';
-  document.getElementById('ovKpis').innerHTML='';
+  document.getElementById('ovKpis').innerHTML=''; document.getElementById('ovGaugeSalg').innerHTML=''; document.getElementById('ovGaugeAvance').innerHTML=''; document.getElementById('ovTrend').innerHTML='';
   var pr=ovRange(ovState.period);
   fetch(OVERVIEW_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({adminToken:TOKEN,groupBy:ovState.group,market:ovState.market,from:pr.from,to:pr.to})})
-   .then(function(r){if(r.status===401){showGate('Linket er ugyldigt eller udløbet.');throw new Error('401');}return r.json();})
-   .then(function(d){if(!d||!d.ok)throw new Error('uventet svar');renderOverview(d);})
-   .catch(function(e){if((e&&e.message)==='401')return;wrap.innerHTML='<div class="empty">Kunne ikke hente data. '+((e&&e.message)||'')+'</div>';});
+   .then(function(r){if(r.status===401){showGate('Linket er ugyldigt eller udløbet.');throw new Error('401');}return r.text();})
+   .then(function(txt){var d; try{d=JSON.parse(txt);}catch(e){d=null;}
+     if(!d||!d.ok||!(d.rows&&d.rows.length)){ if(attempt<2){return setTimeout(function(){loadOverview(attempt+1);},600);} throw new Error('motoren var travl'); }
+     renderOverview(d);})
+   .catch(function(e){if((e&&e.message)==='401')return;wrap.innerHTML='<div class="empty">Kunne ikke hente data ('+((e&&e.message)||'')+'). <button class="btn sec sm" onclick="loadOverview()">Prøv igen</button></div>';});
 }
 function renderOverview(d){
   var t=d.totals||{};
-  var kpis=[['Salg',ovKr(t.salg)],['Salg index',ovIdx(t.salgIndex)],['Avance',ovKr(t.avance)],['Avance index',ovIdx(t.avanceIndex)],['Margin %',ovPct(t.marginPct)]];
+  var kpis=[['Salg',ovKr(t.salg)],['Salg antal',ovNum(t.qty)],['Avance',ovKr(t.avance)],['Margin %',ovPct(t.marginPct)]];
   document.getElementById('ovKpis').innerHTML=kpis.map(function(k){return '<div class="kpi"><div class="lbl">'+k[0]+'</div><div class="val live">'+k[1]+'</div></div>';}).join('');
-  var head=ovState.group==='vendor'?'Leverandør':'Brand';
+  document.getElementById('ovGaugeSalg').innerHTML=ovGauge(t.salgIndex);
+  document.getElementById('ovGaugeAvance').innerHTML=ovGauge(t.avanceIndex);
+  document.getElementById('ovTrend').innerHTML=ovTrendChart(d.trend);
+  var head=ovState.group==='vendor'?'Leverandør':(ovState.group==='subBrand'?'Sub-brand':'Brand');
+  var title=ovState.group==='vendor'?'Salg pr. leverandør':(ovState.group==='subBrand'?'Salg pr. sub-brand':'Salg pr. brand');
   var rows=d.rows||[];
-  var note=rows.length+' rækker'+(d.excludedUnattributed?(' · ekskl. '+ovKr(d.excludedUnattributed)+' ikke-attribueret (gavekort/fragt)'):'');
-  var html='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;flex-wrap:wrap;gap:8px"><h2 style="margin:0">'+(ovState.group==='vendor'?'Salg pr. leverandør':'Salg pr. brand')+'</h2><span class="hint">'+note+'</span></div>';
-  html+='<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>'+head+'</th><th style="text-align:right">Salg</th><th style="text-align:right">Index</th><th style="text-align:right">Avance</th><th style="text-align:right">Avance diff LY</th><th style="text-align:right">Margin</th></tr></thead><tbody>';
+  var note=rows.length+' rækker'+(d.excludedUnattributed?(' · ekskl. '+ovKr(d.excludedUnattributed)+' ikke-attribueret (gavekort/fragt)'):'')+' · klik en række for varer';
+  var html='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;flex-wrap:wrap;gap:8px"><h2 style="margin:0">'+title+'</h2><span class="hint">'+note+'</span></div>';
+  html+='<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>'+head+'</th><th style="text-align:right">Salg</th><th style="text-align:right">Antal</th><th style="text-align:right">Index</th><th style="text-align:right">Avance</th><th style="text-align:right">Avance diff LY</th><th style="text-align:right">Margin</th></tr></thead><tbody>';
   rows.forEach(function(r,i){
     var ic=r.salgIndex==null?'#9aa0a6':r.salgIndex>=100?'#16a34a':'#b45309';
     var dc=r.avanceDiffLy>=0?'#16a34a':'#b91c1c';
-    html+='<tr><td style="color:#9aa0a6">'+(i+1)+'</td><td><b>'+r.label+'</b></td>'
+    html+='<tr data-i="'+i+'"><td style="color:#9aa0a6">'+(i+1)+'</td><td><b>'+r.label+'</b></td>'
       +'<td style="text-align:right;font-variant-numeric:tabular-nums">'+ovKr(r.salg)+'</td>'
+      +'<td style="text-align:right">'+ovNum(r.qty)+'</td>'
       +'<td style="text-align:right;color:'+ic+';font-weight:600">'+ovIdx(r.salgIndex)+'</td>'
       +'<td style="text-align:right;font-variant-numeric:tabular-nums">'+ovKr(r.avance)+'</td>'
       +'<td style="text-align:right;color:'+dc+'">'+(r.avanceDiffLy>=0?'+':'')+ovKr(r.avanceDiffLy)+'</td>'
       +'<td style="text-align:right">'+ovPct(r.marginPct)+'</td></tr>';
   });
   html+='</tbody></table></div>';
-  document.getElementById('ovTableWrap').innerHTML=html;
+  var tw=document.getElementById('ovTableWrap'); tw.innerHTML=html;
+  [].slice.call(tw.querySelectorAll('tbody tr')).forEach(function(tr){tr.onclick=function(){var r=rows[+tr.dataset.i];openDrill(ovState.group,r.key,r.label);};});
+}
+function closeDrill(){var m=document.getElementById('ovModal');if(m)m.remove();}
+function openDrill(scope,value,label){
+  var pr=ovRange(ovState.period);
+  var m=document.createElement('div'); m.className='ovmodal'; m.id='ovModal';
+  m.innerHTML='<div class="ovmodal-inner"><button class="ovmodal-close" id="ovClose">Luk ✕</button><h2 style="margin:0 0 4px">'+label+'</h2><div class="note" style="margin-bottom:14px">Varer · '+ovState.market.toUpperCase()+' · '+pr.from+' → '+pr.to+'</div><div id="ovDrillBody"><div class="spin"><span class="ld big"></span><div style="margin-top:10px">Henter varer fra PowerBI…</div></div></div></div>';
+  document.body.appendChild(m);
+  m.onclick=function(e){if(e.target===m)closeDrill();};
+  document.getElementById('ovClose').onclick=closeDrill;
+  fetch(PRODUCTS_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({adminToken:TOKEN,scope:scope,value:value,market:ovState.market,from:pr.from,to:pr.to})})
+   .then(function(r){return r.text();}).then(function(txt){var d;try{d=JSON.parse(txt);}catch(e){d=null;} if(!d||!d.ok){document.getElementById('ovDrillBody').innerHTML='<div class="empty">Kunne ikke hente varer (prøv igen).</div>';return;} renderDrill(d);})
+   .catch(function(){var b=document.getElementById('ovDrillBody');if(b)b.innerHTML='<div class="empty">Kunne ikke hente varer.</div>';});
+}
+function renderDrill(d){
+  var rows=d.rows||[];
+  var html='<div class="hint" style="margin-bottom:10px">'+rows.length+' varer · sorteret efter salg</div><div style="overflow-x:auto"><table><thead><tr><th>Varenr</th><th>Vare</th><th>Brand</th><th>EAN</th><th style="text-align:right">Salg</th><th style="text-align:right">Antal</th><th style="text-align:right">Index</th><th style="text-align:right">Avance</th><th style="text-align:right">Margin</th><th style="text-align:right">Kostpris</th><th>Klasse</th></tr></thead><tbody>';
+  rows.forEach(function(r){
+    var ic=r.salgIndex==null?'#9aa0a6':r.salgIndex>=100?'#16a34a':'#b45309';
+    html+='<tr><td style="color:#6b7280">'+r.itemNo+'</td><td>'+(r.name||'')+'</td><td class="hint">'+(r.brand||'')+'</td><td class="hint">'+(r.ean||'')+'</td>'
+      +'<td style="text-align:right;font-variant-numeric:tabular-nums">'+ovKr(r.salg)+'</td><td style="text-align:right">'+ovNum(r.qty)+'</td>'
+      +'<td style="text-align:right;color:'+ic+'">'+ovIdx(r.salgIndex)+'</td><td style="text-align:right">'+ovKr(r.avance)+'</td>'
+      +'<td style="text-align:right">'+ovPct(r.marginPct)+'</td><td style="text-align:right">'+ovKr(r.kostpris)+'</td><td>'+(r.klasse||'–')+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  document.getElementById('ovDrillBody').innerHTML=html;
 }
 ['ovMarket','ovPeriod','ovGroup'].forEach(function(id){
   var box=document.getElementById(id);
