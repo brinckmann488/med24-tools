@@ -157,7 +157,7 @@
             <div>Vælg en leverandør for at se deres dashboard.</div>
           </div>
         </div>
-        <div class="note">Indlæsning kan tage ~20s (henter live data). Er dashboardet deaktiveret/udløbet, vises leverandørens adgangs-side — re-aktivér under <b>Administrér</b>. (Staff-visning uafhængig af leverandørens token kommer som tillæg.)</div>
+        <div class="note">Indlæsning kan tage ~20s (henter live data). Staff-visningen virker <b>uanset</b> om leverandørens eget link er deaktiveret eller udløbet — den bruger et midlertidigt staff-token (margin-frit, vores adgang).</div>
       </section>
     </section>
   </main>
@@ -277,6 +277,7 @@ function populateSuppliers(){
   sel.innerHTML='<option value="">— vælg leverandør —</option>'+ROWS.map(function(s){return '<option value="'+s.sid+'">'+(s.label||s.sid)+'</option>';}).join('');
   if(cur) sel.value=cur;
 }
+var currentEphToken=null;
 function rowBySid(sid){return ROWS.filter(function(s){return s.sid===sid;})[0];}
 function selectSupplier(sid){
   var sel=document.getElementById('vSupplier'); sel.value=sid; onSupplierChange();
@@ -284,15 +285,20 @@ function selectSupplier(sid){
 function onSupplierChange(){
   var s=rowBySid(document.getElementById('vSupplier').value);
   var bSel=document.getElementById('vBrand'), mSel=document.getElementById('vMarket');
+  currentEphToken=null;
   if(!s){bSel.innerHTML='';mSel.innerHTML='';loadFrame();return;}
-  var brands=parseBrands(s.brands), markets=(s.markets||'').split(',').filter(Boolean);
+  var brands=parseBrands(s.brands), markets=(s.markets||'').split(',').filter(Boolean), modules=parseBrands(s.modules);
   bSel.innerHTML=brands.map(function(b){return '<option>'+b+'</option>';}).join('');
   mSel.innerHTML=markets.map(function(m){return '<option value="'+m+'">'+m.toUpperCase()+'</option>';}).join('');
-  loadFrame();
+  var ov=document.getElementById('vOverlay'); ov.classList.remove('hidden'); ov.innerHTML='<div>Forbereder staff-visning…</div>';
+  // mint an ephemeral staff token (works selv om dashboardet er deaktiveret/udløbet)
+  api('mintview',{brands:brands,markets:markets,modules:modules}).then(function(j){
+    currentEphToken=(j&&j.token)||null; loadFrame();
+  }).catch(function(){ loadFrame(); });
 }
 function currentViewLink(){
-  var s=rowBySid(document.getElementById('vSupplier').value); if(!s)return null;
-  return portalLink(s.token, document.getElementById('vBrand').value, document.getElementById('vMarket').value);
+  if(!currentEphToken)return null;
+  return portalLink(currentEphToken, document.getElementById('vBrand').value, document.getElementById('vMarket').value);
 }
 function loadFrame(){
   var link=currentViewLink();
