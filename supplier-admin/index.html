@@ -12,6 +12,7 @@
   .navhead{color:#8b8f98;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:14px 20px 6px}
   .nav a{display:flex;align-items:center;gap:10px;color:#d6d8dc;text-decoration:none;padding:9px 20px;font-size:14px;border-left:3px solid transparent;cursor:pointer}
   .nav a.active{background:#1b1c1f;color:#fff;border-left-color:#fff;font-weight:600}
+  .nav a:hover:not(.active){background:#141518}
   .side .who{margin-top:auto;padding:14px 20px;border-top:1px solid #1f2024;color:#9aa0a6;font-size:12px}
   .side .who b{color:#fff;display:block;font-size:13px}
   .main{flex:1;min-width:0;padding:26px 34px;max-width:1180px}
@@ -23,8 +24,8 @@
   .field{margin-bottom:16px}.field.grow{flex:1;min-width:220px}
   label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px;color:#374151}
   .hint{font-weight:400;color:var(--muted);font-size:11.5px}
-  input[type=text]{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit}
-  input[type=text]:focus{outline:none;border-color:#0a0a0a;box-shadow:0 0 0 3px rgba(0,0,0,.06)}
+  input[type=text],select{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;background:#fff}
+  input[type=text]:focus,select:focus{outline:none;border-color:#0a0a0a;box-shadow:0 0 0 3px rgba(0,0,0,.06)}
   .ms{border:1px solid var(--line);border-radius:8px;padding:6px;min-height:42px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;cursor:text}
   .ms .chip{background:#0a0a0a;color:#fff;border-radius:6px;padding:4px 8px;font-size:12.5px;display:flex;align-items:center;gap:6px}
   .ms .chip b{cursor:pointer;opacity:.7}
@@ -54,8 +55,7 @@
   .status .lbl{font-size:12px;color:var(--muted)}.status.on .lbl{color:var(--ok);font-weight:600}
   .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#0a0a0a;color:#fff;padding:12px 20px;border-radius:10px;font-size:13.5px;opacity:0;transition:.2s;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:50}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-  .toast.err{background:#b91c1c}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.toast.err{background:#b91c1c}
   .linkbox{display:flex;gap:8px;align-items:center;background:#f8f9fa;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:14px}
   .linkbox code{flex:1;font-size:12px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,Menlo,monospace}
   .success{border-color:#bbf7d0;background:#f0fdf4}.success h3{margin:0 0 4px;font-size:15px}
@@ -64,67 +64,101 @@
   .gate h2{margin:0;font-size:20px}.gate p{color:#9aa0a6;max-width:380px;margin:0}
   .empty{padding:40px;text-align:center;color:var(--muted)}
   .spin{padding:30px;text-align:center;color:var(--muted)}
+  .viewbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
+  .viewbar .field{margin:0;min-width:170px}
+  .frameWrap{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;height:calc(100vh - 220px);min-height:480px}
+  .frameWrap iframe{width:100%;height:100%;border:0;display:block}
+  .frameOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:#fafafa;color:var(--muted);text-align:center;padding:20px}
+  .hidden{display:none!important}
 </style></head>
 <body>
 <div id="gate" class="gate" style="display:none">
   <div class="brand" style="color:#fff">Med24 <span class="tag">Supplier Hub</span></div>
   <h2>Adgang kræver gyldigt admin-link</h2>
-  <p id="gateMsg">Åbn admin via dit personlige admin-link (bookmark). Linket mangler eller er udløbet.</p>
+  <p id="gateMsg">Åbn staff-konsollen via dit personlige admin-link (bookmark). Linket mangler eller er udløbet.</p>
 </div>
 
 <div class="app" id="app" style="display:none">
   <aside class="side">
     <div class="brand">Med24 <span class="tag">Supplier Hub</span></div>
-    <div class="navhead">Admin</div>
-    <nav class="nav"><a class="active">▦ &nbsp;Dashboards</a></nav>
+    <div class="navhead">Staff-konsol</div>
+    <nav class="nav">
+      <a id="navAdmin" class="active">▦ &nbsp;Administrér</a>
+      <a id="navView">◐ &nbsp;Vis dashboard</a>
+    </nav>
     <div class="who"><b id="whoLabel">Administrator</b>Adgangsstyring</div>
   </aside>
-  <main class="main">
-    <h1>Dashboards</h1>
-    <p class="sub">Opret og styr leverandørernes adgang. Hvert dashboard giver ét link til margin-fri data for valgte brands/markeder.</p>
 
-    <section class="card">
-      <h2>Opret nyt dashboard</h2>
-      <div class="row">
-        <div class="field grow"><label>Leverandør / dashboard-navn</label>
-          <input type="text" id="name" placeholder="fx L'Oréal Active Cosmetics Nordics" autocomplete="off"></div>
-        <div class="field grow"><label>Brands <span class="hint">— skriv brand præcist som i kataloget, Enter for at tilføje</span></label>
-          <div class="ms" id="brandMs"><input type="text" id="brandIn" placeholder="Tilføj brand…" autocomplete="off"></div></div>
-      </div>
-      <div class="row">
-        <div class="field"><label>Markeder</label>
-          <div class="toggles" id="markets">
-            <div class="tg on" data-v="dk"><span class="dot"></span>DK</div>
-            <div class="tg on" data-v="se"><span class="dot"></span>SE</div>
-            <div class="tg on" data-v="no"><span class="dot"></span>NO</div></div></div>
-        <div class="field grow"><label>Moduler <span class="hint">— hvad leverandøren kan se</span></label>
-          <div class="toggles" id="modules">
-            <div class="tg on" data-v="kpi"><span class="dot"></span>Oversigt</div>
-            <div class="tg on" data-v="persona"><span class="dot"></span>Kundeprofil</div>
-            <div class="tg on" data-v="basket"><span class="dot"></span>Kurv</div>
-            <div class="tg on" data-v="categoryShare"><span class="dot"></span>Kategori</div>
-            <div class="tg on" data-v="sales"><span class="dot"></span>Salg</div>
-            <div class="tg on" data-v="inventory"><span class="dot"></span>Lager</div>
-            <div class="tg on" data-v="marketing"><span class="dot"></span>Marketing</div></div></div>
-      </div>
-      <div class="row" style="align-items:flex-end">
-        <div class="field"><label>Udløb</label>
-          <div class="seg" id="exp"><button data-v="3">3 mdr</button><button data-v="6">6 mdr</button><button data-v="12" class="on">12 mdr</button></div></div>
-        <div class="field grow" style="text-align:right"><button class="btn" id="createBtn" disabled>Opret &amp; generér link</button></div>
-      </div>
-      <div id="successBox" style="display:none" class="card success">
-        <h3>✓ Dashboard oprettet</h3>
-        <div class="note" id="successName"></div>
-        <div class="linkbox"><code id="successLink"></code>
-          <button class="btn sm" id="successCopy">Kopiér link</button>
-          <button class="btn sm sec" id="successOpen">Åbn</button></div>
-        <div class="note">Send dette link til leverandøren. Gyldigt i den valgte periode, kun margin-fri data for valgte brands/markeder.</div>
-      </div>
+  <main class="main">
+    <!-- ========== ADMIN TAB ========== -->
+    <section id="adminTab">
+      <h1>Administrér dashboards</h1>
+      <p class="sub">Opret og styr leverandørernes adgang. Hvert dashboard giver ét link til margin-fri data for valgte brands/markeder.</p>
+
+      <section class="card">
+        <h2>Opret nyt dashboard</h2>
+        <div class="row">
+          <div class="field grow"><label>Leverandør / dashboard-navn</label>
+            <input type="text" id="name" placeholder="fx L'Oréal Active Cosmetics Nordics" autocomplete="off"></div>
+          <div class="field grow"><label>Brands <span class="hint">— skriv brand præcist som i kataloget, Enter for at tilføje</span></label>
+            <div class="ms" id="brandMs"><input type="text" id="brandIn" placeholder="Tilføj brand…" autocomplete="off"></div></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Markeder</label>
+            <div class="toggles" id="markets">
+              <div class="tg on" data-v="dk"><span class="dot"></span>DK</div>
+              <div class="tg on" data-v="se"><span class="dot"></span>SE</div>
+              <div class="tg on" data-v="no"><span class="dot"></span>NO</div></div></div>
+          <div class="field grow"><label>Moduler <span class="hint">— hvad leverandøren kan se</span></label>
+            <div class="toggles" id="modules">
+              <div class="tg on" data-v="kpi"><span class="dot"></span>Oversigt</div>
+              <div class="tg on" data-v="persona"><span class="dot"></span>Kundeprofil</div>
+              <div class="tg on" data-v="basket"><span class="dot"></span>Kurv</div>
+              <div class="tg on" data-v="categoryShare"><span class="dot"></span>Kategori</div>
+              <div class="tg on" data-v="sales"><span class="dot"></span>Salg</div>
+              <div class="tg on" data-v="inventory"><span class="dot"></span>Lager</div>
+              <div class="tg on" data-v="marketing"><span class="dot"></span>Marketing</div></div></div>
+        </div>
+        <div class="row" style="align-items:flex-end">
+          <div class="field"><label>Udløb</label>
+            <div class="seg" id="exp"><button data-v="3">3 mdr</button><button data-v="6">6 mdr</button><button data-v="12" class="on">12 mdr</button></div></div>
+          <div class="field grow" style="text-align:right"><button class="btn" id="createBtn" disabled>Opret &amp; generér link</button></div>
+        </div>
+        <div id="successBox" style="display:none" class="card success">
+          <h3>✓ Dashboard oprettet</h3>
+          <div class="note" id="successName"></div>
+          <div class="linkbox"><code id="successLink"></code>
+            <button class="btn sm" id="successCopy">Kopiér link</button>
+            <button class="btn sm sec" id="successView">Vis i konsol</button></div>
+          <div class="note">Send dette link til leverandøren. Gyldigt i den valgte periode, kun margin-fri data for valgte brands/markeder.</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Aktive dashboards</h2>
+        <div id="listWrap"><div class="spin">Henter…</div></div>
+      </section>
     </section>
 
-    <section class="card">
-      <h2>Aktive dashboards</h2>
-      <div id="listWrap"><div class="spin">Henter…</div></div>
+    <!-- ========== VIEW TAB ========== -->
+    <section id="viewTab" class="hidden">
+      <h1>Vis dashboard</h1>
+      <p class="sub">Se en leverandørs dashboard præcis som de ser det (margin-frit). Vælg leverandør herunder — du kan også skifte brand og marked.</p>
+      <section class="card">
+        <div class="viewbar">
+          <div class="field"><label>Leverandør</label><select id="vSupplier"></select></div>
+          <div class="field"><label>Brand</label><select id="vBrand"></select></div>
+          <div class="field"><label>Marked</label><select id="vMarket"></select></div>
+          <button class="btn sec" id="vOpen">Åbn i ny fane ↗</button>
+        </div>
+        <div class="frameWrap">
+          <iframe id="vFrame" title="Leverandør-dashboard"></iframe>
+          <div class="frameOverlay" id="vOverlay">
+            <div>Vælg en leverandør for at se deres dashboard.</div>
+          </div>
+        </div>
+        <div class="note">Indlæsning kan tage ~20s (henter live data). Er dashboardet deaktiveret/udløbet, vises leverandørens adgangs-side — re-aktivér under <b>Administrér</b>. (Staff-visning uafhængig af leverandørens token kommer som tillæg.)</div>
+      </section>
     </section>
   </main>
 </div>
@@ -135,10 +169,9 @@ var API='https://n8n2.med24intra.dk/webhook/supplier-admin';
 var PORTAL='https://n8n2.med24intra.dk/webhook/supplier-portal';
 function qp(n){var m=new RegExp('[?&]'+n+'=([^&]+)').exec(location.search);return m?decodeURIComponent(m[1]):'';}
 var TOKEN=qp('t')||location.hash.replace(/^#t=/,'');
-var chosen=[];
+var chosen=[]; var ROWS=[];
 
 function decodePayload(){try{var p=TOKEN.split('.')[0];return JSON.parse(decodeURIComponent(escape(atob(p.replace(/-/g,'+').replace(/_/g,'/')))));}catch(e){return null;}}
-
 function api(action,extra){
   var body=Object.assign({action:action,adminToken:TOKEN},extra||{});
   return fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})
@@ -147,16 +180,26 @@ function api(action,extra){
 function showGate(m){document.getElementById('app').style.display='none';var g=document.getElementById('gate');g.style.display='flex';if(m)document.getElementById('gateMsg').textContent=m;}
 function toast(m,err){var t=document.getElementById('toast');t.textContent=m;t.className='toast show'+(err?' err':'');clearTimeout(t._t);t._t=setTimeout(function(){t.className='toast';},2400);}
 function copy(t){navigator.clipboard.writeText(t).then(function(){toast('Link kopieret');},function(){toast('Link kopieret');});}
-function portalLink(token,brands,markets){var b=(brands&&brands[0])||'';var m=(markets&&markets[0])||'dk';return PORTAL+'?token='+encodeURIComponent(token)+'&brand='+encodeURIComponent(b)+'&market='+m;}
+function parseBrands(s){try{return JSON.parse(s);}catch(e){return [];}}
+function portalLink(token,brand,market){return PORTAL+'?token='+encodeURIComponent(token)+'&brand='+encodeURIComponent(brand||'')+'&market='+(market||'dk');}
 
-// brand chips
+// ---- tabs ----
+function showTab(which){
+  document.getElementById('adminTab').classList.toggle('hidden',which!=='admin');
+  document.getElementById('viewTab').classList.toggle('hidden',which!=='view');
+  document.getElementById('navAdmin').classList.toggle('active',which==='admin');
+  document.getElementById('navView').classList.toggle('active',which==='view');
+  if(which==='view') initView();
+}
+document.getElementById('navAdmin').onclick=function(){showTab('admin');};
+document.getElementById('navView').onclick=function(){showTab('view');};
+
+// ---- brand chips (create) ----
 var bin=document.getElementById('brandIn'),bms=document.getElementById('brandMs');
 function renderChips(){[].slice.call(bms.querySelectorAll('.chip')).forEach(function(c){c.remove();});chosen.forEach(function(b){var el=document.createElement('span');el.className='chip';el.innerHTML=b+' <b>✕</b>';el.querySelector('b').onclick=function(e){e.stopPropagation();chosen=chosen.filter(function(x){return x!==b;});renderChips();validate();};bms.insertBefore(el,bin);});}
 function addBrand(){var v=bin.value.trim().replace(/,$/,'');if(v&&chosen.indexOf(v)<0){chosen.push(v);bin.value='';renderChips();validate();}}
 bin.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===','){e.preventDefault();addBrand();}});
-bin.addEventListener('blur',addBrand);
-bms.onclick=function(){bin.focus();};
-
+bin.addEventListener('blur',addBrand); bms.onclick=function(){bin.focus();};
 [].slice.call(document.querySelectorAll('#markets .tg,#modules .tg')).forEach(function(t){t.onclick=function(){t.classList.toggle('on');};});
 [].slice.call(document.querySelectorAll('#exp button')).forEach(function(b){b.onclick=function(){[].slice.call(document.querySelectorAll('#exp button')).forEach(function(x){x.classList.remove('on');});b.classList.add('on');};});
 var nameEl=document.getElementById('name'),createBtn=document.getElementById('createBtn');
@@ -175,22 +218,22 @@ createBtn.onclick=function(){
     document.getElementById('successName').textContent=nameEl.value.trim()+' · '+chosen.join(', ')+' · '+mk.join('/').toUpperCase();
     document.getElementById('successLink').textContent=j.link;
     document.getElementById('successCopy').onclick=function(){copy(j.link);};
-    document.getElementById('successOpen').onclick=function(){window.open(j.link,'_blank');};
+    document.getElementById('successView').onclick=function(){window.open(j.link,'_blank');};
     document.getElementById('successBox').style.display='block';
     nameEl.value='';chosen=[];renderChips();validate();load();
     toast('Dashboard oprettet');
   }).catch(function(){createBtn.textContent='Opret & generér link';validate();});
 };
 
+// ---- list (admin tab) ----
 function load(){
   api('list').then(function(j){
-    var rows=(j&&j.rows)||[];
+    ROWS=(j&&j.rows)||[];
     var wrap=document.getElementById('listWrap');
-    if(!rows.length){wrap.innerHTML='<div class="empty">Ingen dashboards endnu — opret det første ovenfor.</div>';return;}
+    if(!ROWS.length){wrap.innerHTML='<div class="empty">Ingen dashboards endnu — opret det første ovenfor.</div>';return;}
     var html='<table><thead><tr><th>Leverandør</th><th>Brands</th><th>Markeder</th><th>Moduler</th><th>Udløb</th><th>Status</th><th></th></tr></thead><tbody>';
-    rows.forEach(function(s){
-      var brands;try{brands=JSON.parse(s.brands);}catch(e){brands=[];}
-      var mods;try{mods=JSON.parse(s.modules);}catch(e){mods=[];}
+    ROWS.forEach(function(s){
+      var brands=parseBrands(s.brands); var mods=parseBrands(s.modules);
       var markets=(s.markets||'').split(',').filter(Boolean);
       var active=(s.is_active===true||s.is_active==='true'||s.is_active===1);
       var exp=s.exp_at?new Date(s.exp_at).toLocaleDateString('da-DK',{day:'2-digit',month:'short',year:'numeric'}):'—';
@@ -202,40 +245,77 @@ function load(){
         +'<td>'+exp+'</td>'
         +'<td><span class="status'+(active?' on':'')+'"><span class="sw"></span><span class="lbl">'+(active?'Aktiv':'Inaktiv')+'</span></span></td>'
         +'<td><div class="acts">'
-          +'<button class="btn sec sm a-open">Åbn view</button>'
+          +'<button class="btn sec sm a-view">Vis view</button>'
           +'<button class="btn sec sm a-copy">Kopiér link</button>'
         +'</div></td></tr>';
     });
-    html+='</tbody></table>';
-    wrap.innerHTML=html;
-    rows.forEach(function(s){
-      var brands;try{brands=JSON.parse(s.brands);}catch(e){brands=[];}
-      var markets=(s.markets||'').split(',').filter(Boolean);
-      var link=portalLink(s.token,brands,markets);
-      var tr=wrap.querySelector('tr[data-sid="'+CSS.escape(s.sid)+'"]');
-      if(!tr)return;
-      tr.querySelector('.a-open').onclick=function(){window.open(link,'_blank');};
-      tr.querySelector('.a-copy').onclick=function(){copy(link);};
+    html+='</tbody></table>'; wrap.innerHTML=html;
+    ROWS.forEach(function(s){
+      var brands=parseBrands(s.brands); var markets=(s.markets||'').split(',').filter(Boolean);
+      var tr=wrap.querySelector('tr[data-sid="'+CSS.escape(s.sid)+'"]'); if(!tr)return;
+      tr.querySelector('.a-view').onclick=function(){showTab('view');setTimeout(function(){selectSupplier(s.sid);},50);};
+      tr.querySelector('.a-copy').onclick=function(){copy(portalLink(s.token,brands[0],markets[0]));};
       var st=tr.querySelector('.status');
       st.onclick=function(){
         var nowActive=!st.classList.contains('on');
         api('toggle',{sid:s.sid,active:nowActive}).then(function(){
-          st.classList.toggle('on',nowActive);
-          st.querySelector('.lbl').textContent=nowActive?'Aktiv':'Inaktiv';
+          st.classList.toggle('on',nowActive);st.querySelector('.lbl').textContent=nowActive?'Aktiv':'Inaktiv';s.is_active=nowActive;
           toast(nowActive?'Dashboard aktiveret':'Dashboard deaktiveret');
         });
       };
     });
+    // refresh view-tab supplier list if present
+    if(!document.getElementById('viewTab').classList.contains('hidden')) populateSuppliers();
   });
 }
 
-// boot
+// ---- view tab ----
+var viewInited=false;
+function initView(){ populateSuppliers(); if(!viewInited){viewInited=true;} }
+function populateSuppliers(){
+  var sel=document.getElementById('vSupplier'); var cur=sel.value;
+  sel.innerHTML='<option value="">— vælg leverandør —</option>'+ROWS.map(function(s){return '<option value="'+s.sid+'">'+(s.label||s.sid)+'</option>';}).join('');
+  if(cur) sel.value=cur;
+}
+function rowBySid(sid){return ROWS.filter(function(s){return s.sid===sid;})[0];}
+function selectSupplier(sid){
+  var sel=document.getElementById('vSupplier'); sel.value=sid; onSupplierChange();
+}
+function onSupplierChange(){
+  var s=rowBySid(document.getElementById('vSupplier').value);
+  var bSel=document.getElementById('vBrand'), mSel=document.getElementById('vMarket');
+  if(!s){bSel.innerHTML='';mSel.innerHTML='';loadFrame();return;}
+  var brands=parseBrands(s.brands), markets=(s.markets||'').split(',').filter(Boolean);
+  bSel.innerHTML=brands.map(function(b){return '<option>'+b+'</option>';}).join('');
+  mSel.innerHTML=markets.map(function(m){return '<option value="'+m+'">'+m.toUpperCase()+'</option>';}).join('');
+  loadFrame();
+}
+function currentViewLink(){
+  var s=rowBySid(document.getElementById('vSupplier').value); if(!s)return null;
+  return portalLink(s.token, document.getElementById('vBrand').value, document.getElementById('vMarket').value);
+}
+function loadFrame(){
+  var link=currentViewLink();
+  var fr=document.getElementById('vFrame'), ov=document.getElementById('vOverlay');
+  if(!link){ov.classList.remove('hidden');ov.innerHTML='<div>Vælg en leverandør for at se deres dashboard.</div>';fr.src='about:blank';return;}
+  ov.classList.remove('hidden');ov.innerHTML='<div>Indlæser leverandørens dashboard… (~20s)</div>';
+  fr.src=link;
+  fr.onload=function(){ov.classList.add('hidden');};
+  // fallback if framing blocked
+  setTimeout(function(){ if(!ov.classList.contains('hidden')){ ov.innerHTML='<div>Kan ikke vise indlejret (eller indlæser stadig).</div><button class="btn" id="ovOpen">Åbn i ny fane ↗</button>'; var b=document.getElementById('ovOpen'); if(b)b.onclick=function(){window.open(link,'_blank');}; } }, 30000);
+}
+document.getElementById('vSupplier').onchange=onSupplierChange;
+document.getElementById('vBrand').onchange=loadFrame;
+document.getElementById('vMarket').onchange=loadFrame;
+document.getElementById('vOpen').onclick=function(){var l=currentViewLink(); if(l)window.open(l,'_blank'); else toast('Vælg en leverandør',true);};
+
+// ---- boot ----
 (function(){
   var pl=decodePayload();
   if(!TOKEN||!pl||pl.mode!=='admin'){showGate();return;}
   document.getElementById('app').style.display='flex';
   document.getElementById('whoLabel').textContent=pl.label||'Administrator';
-  renderChips();load();
+  renderChips(); load();
 })();
 </script>
 </body></html>
