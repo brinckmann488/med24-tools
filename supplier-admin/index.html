@@ -88,6 +88,9 @@
   .kpi .lbl{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
   .kpi .val{font-size:24px;font-weight:700;margin-top:6px;color:#c8ccd2}
   .ph-banner{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:14px 16px;font-size:13px;margin-bottom:22px}
+  .ovctrls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px}
+  .kpi .val.live{color:#0a0a0a}
+  #ovTableWrap td{font-size:13.5px}#ovTableWrap th{white-space:nowrap}
   /* view tab */
   .subbar{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line);background:#fff}
   .subbar .field{margin:0;min-width:160px}
@@ -127,20 +130,14 @@
     <!-- OVERVIEW (landing) -->
     <section id="overviewTab" class="pad">
       <h1>Salgsoverblik</h1>
-      <p class="sub">Vores eget overordnede overblik — på tværs af hele Med24, med avancer.</p>
-      <div class="ph-banner"><b>Forsiden bygges her.</b> Det interne salgsoverblik (med margin/avancer) flytter ind på denne side når vi forlader Lovable — samme dashboard-motor som leverandør-visningen, bare Med24-bredt og med margin. Indtil da bruger vi det nuværende overblik i Lovable.</div>
-      <div class="kpis">
-        <div class="kpi"><div class="lbl">Omsætning</div><div class="val">—</div></div>
-        <div class="kpi"><div class="lbl">Bruttoavance</div><div class="val">—</div></div>
-        <div class="kpi"><div class="lbl">Margin %</div><div class="val">—</div></div>
-        <div class="kpi"><div class="lbl">Solgte enheder</div><div class="val">—</div></div>
-        <div class="kpi"><div class="lbl">Sales index</div><div class="val">—</div></div>
+      <p class="sub">Vores eget overblik på tværs af hele Med24 — med avancer. Live fra PowerBI/SSAS. <span class="hint">(intern · kun staff)</span></p>
+      <div class="ovctrls">
+        <div class="seg" id="ovMarket"><button data-v="all" class="on">Alle</button><button data-v="dk">DK</button><button data-v="se">SE</button><button data-v="no">NO</button></div>
+        <div class="seg" id="ovPeriod"><button data-v="ytd" class="on">År til dato</button><button data-v="30">30 dage</button><button data-v="90">90 dage</button><button data-v="12m">12 mdr.</button></div>
+        <div class="seg" id="ovGroup"><button data-v="vendor" class="on">Leverandører</button><button data-v="brand">Brands</button></div>
       </div>
-      <div class="card">
-        <h2>Indtil videre</h2>
-        <p class="note" style="margin-top:0">Det nuværende salgsoverblik ligger stadig i Lovable. Brug det indtil den native version er bygget her.</p>
-        <a class="btn sec sm" href="https://med24-insight.lovable.app/" target="_blank" rel="noopener">Åbn nuværende overblik (Lovable) ↗</a>
-      </div>
+      <div class="kpis" id="ovKpis"></div>
+      <div class="card"><div id="ovTableWrap"><div class="spin"><span class="ld big"></span><div style="margin-top:10px">Henter fra PowerBI…</div></div></div></div>
     </section>
 
     <!-- ADMIN -->
@@ -439,13 +436,66 @@ document.getElementById('vBrand').onchange=loadFrame;
 document.getElementById('vMarket').onchange=loadFrame;
 document.getElementById('vOpen').onclick=function(){var l=currentViewLink(); if(l)window.open(l,'_blank'); else toast('Vælg en leverandør',true);};
 
+// ---- internt salgsoverblik (forside) — live PowerBI/SSAS via /webhook/internal-overview ----
+var OVERVIEW_API='https://n8n2.med24intra.dk/webhook/internal-overview';
+var ovState={market:'all',period:'ytd',group:'vendor'};
+function ovRange(k){var now=new Date();function ymd(d){return d.toISOString().slice(0,10);}var to=ymd(now),from;
+  if(k==='ytd')from=ymd(new Date(now.getFullYear(),0,1));
+  else if(k==='30'){var d=new Date(now);d.setDate(d.getDate()-30);from=ymd(d);}
+  else if(k==='90'){var d=new Date(now);d.setDate(d.getDate()-90);from=ymd(d);}
+  else {var d=new Date(now);d.setFullYear(d.getFullYear()-1);from=ymd(d);}
+  return {from:from,to:to};}
+function ovKr(n){return n==null?'–':Math.round(n).toLocaleString('da-DK')+' kr';}
+function ovPct(n){return n==null?'–':Number(n).toLocaleString('da-DK',{minimumFractionDigits:1,maximumFractionDigits:1})+' %';}
+function ovIdx(n){return n==null?'–':Number(n).toLocaleString('da-DK',{minimumFractionDigits:1,maximumFractionDigits:1});}
+function loadOverview(){
+  var wrap=document.getElementById('ovTableWrap');
+  wrap.innerHTML='<div class="spin"><span class="ld big"></span><div style="margin-top:10px">Henter fra PowerBI… (~15s)</div></div>';
+  document.getElementById('ovKpis').innerHTML='';
+  var pr=ovRange(ovState.period);
+  fetch(OVERVIEW_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({adminToken:TOKEN,groupBy:ovState.group,market:ovState.market,from:pr.from,to:pr.to})})
+   .then(function(r){if(r.status===401){showGate('Linket er ugyldigt eller udløbet.');throw new Error('401');}return r.json();})
+   .then(function(d){if(!d||!d.ok)throw new Error('uventet svar');renderOverview(d);})
+   .catch(function(e){if((e&&e.message)==='401')return;wrap.innerHTML='<div class="empty">Kunne ikke hente data. '+((e&&e.message)||'')+'</div>';});
+}
+function renderOverview(d){
+  var t=d.totals||{};
+  var kpis=[['Salg',ovKr(t.salg)],['Salg index',ovIdx(t.salgIndex)],['Avance',ovKr(t.avance)],['Avance index',ovIdx(t.avanceIndex)],['Margin %',ovPct(t.marginPct)]];
+  document.getElementById('ovKpis').innerHTML=kpis.map(function(k){return '<div class="kpi"><div class="lbl">'+k[0]+'</div><div class="val live">'+k[1]+'</div></div>';}).join('');
+  var head=ovState.group==='vendor'?'Leverandør':'Brand';
+  var rows=d.rows||[];
+  var note=rows.length+' rækker'+(d.excludedUnattributed?(' · ekskl. '+ovKr(d.excludedUnattributed)+' ikke-attribueret (gavekort/fragt)'):'');
+  var html='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;flex-wrap:wrap;gap:8px"><h2 style="margin:0">'+(ovState.group==='vendor'?'Salg pr. leverandør':'Salg pr. brand')+'</h2><span class="hint">'+note+'</span></div>';
+  html+='<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>'+head+'</th><th style="text-align:right">Salg</th><th style="text-align:right">Index</th><th style="text-align:right">Avance</th><th style="text-align:right">Avance diff LY</th><th style="text-align:right">Margin</th></tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    var ic=r.salgIndex==null?'#9aa0a6':r.salgIndex>=100?'#16a34a':'#b45309';
+    var dc=r.avanceDiffLy>=0?'#16a34a':'#b91c1c';
+    html+='<tr><td style="color:#9aa0a6">'+(i+1)+'</td><td><b>'+r.label+'</b></td>'
+      +'<td style="text-align:right;font-variant-numeric:tabular-nums">'+ovKr(r.salg)+'</td>'
+      +'<td style="text-align:right;color:'+ic+';font-weight:600">'+ovIdx(r.salgIndex)+'</td>'
+      +'<td style="text-align:right;font-variant-numeric:tabular-nums">'+ovKr(r.avance)+'</td>'
+      +'<td style="text-align:right;color:'+dc+'">'+(r.avanceDiffLy>=0?'+':'')+ovKr(r.avanceDiffLy)+'</td>'
+      +'<td style="text-align:right">'+ovPct(r.marginPct)+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  document.getElementById('ovTableWrap').innerHTML=html;
+}
+['ovMarket','ovPeriod','ovGroup'].forEach(function(id){
+  var box=document.getElementById(id);
+  [].slice.call(box.querySelectorAll('button')).forEach(function(b){b.onclick=function(){
+    [].slice.call(box.querySelectorAll('button')).forEach(function(x){x.classList.remove('on');});b.classList.add('on');
+    if(id==='ovMarket')ovState.market=b.dataset.v; else if(id==='ovPeriod')ovState.period=b.dataset.v; else ovState.group=b.dataset.v;
+    loadOverview();
+  };});
+});
+
 // ---- boot ----
 (function(){
   var pl=decodePayload();
   if(!TOKEN||!pl||pl.mode!=='admin'){showGate();return;}
   document.getElementById('app').style.display='flex';
   document.getElementById('whoLabel').textContent=pl.label||'Administrator';
-  renderChips(); load();
+  renderChips(); load(); loadOverview();
 })();
 </script>
 </body></html>
