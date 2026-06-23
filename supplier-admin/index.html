@@ -222,6 +222,7 @@
       </div>
       <div class="kpis" id="spKpis"></div>
       <div class="card"><div id="spTableWrap"><div class="empty">Vælg en leverandør for at se fuld detalje med avance.</div></div></div>
+      <div class="card" id="spOps"></div>
       <div class="card" id="spNotes"></div>
     </section>
   </main>
@@ -619,9 +620,11 @@ function spLoad(){
   var v=document.getElementById('spSel').value; spState.vendor=v;
   var wrap=document.getElementById('spTableWrap'); var kp=document.getElementById('spKpis');
   var ne=document.getElementById('spNotes');
-  if(!v){kp.innerHTML='';wrap.innerHTML='<div class="empty">Vælg en leverandør for at se fuld detalje med avance.</div>';if(ne)ne.innerHTML='';spState.sup=null;return;}
+  var op=document.getElementById('spOps');
+  if(!v){kp.innerHTML='';wrap.innerHTML='<div class="empty">Vælg en leverandør for at se fuld detalje med avance.</div>';if(ne)ne.innerHTML='';if(op)op.innerHTML='';spState.sup=null;return;}
   spState.sup=null; for(var i=0;i<SUPPLIERS.length;i++){if(spNum(SUPPLIERS[i].vendorRaw)===v){spState.sup=SUPPLIERS[i];break;}}
   spNotesLoad();
+  spOpsLoad();
   kp.innerHTML=''; wrap.innerHTML='<div class="spin"><span class="ld big"></span><div style="margin-top:10px">Henter fra PowerBI…</div></div>';
   var pr=ovRange(spState.period);
   fetch('https://n8n2.med24intra.dk/webhook/internal-products',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({adminToken:TOKEN,scope:'vendor',value:v,market:spState.market,from:pr.from,to:pr.to})})
@@ -654,6 +657,43 @@ function spOpenExt(){
 document.getElementById('spSel').onchange=spLoad;
 ['spMarket','spPeriod'].forEach(function(id){var box=document.getElementById(id);[].slice.call(box.querySelectorAll('button')).forEach(function(b){b.onclick=function(){[].slice.call(box.querySelectorAll('button')).forEach(function(x){x.classList.remove('on');});b.classList.add('on');if(id==='spMarket')spState.market=b.dataset.v;else spState.period=b.dataset.v;if(spState.vendor)spLoad();};});});
 document.getElementById('spExt').onclick=spOpenExt;
+
+// ---- Leveringsperformance (NAV indkøbsordrer vs. modtagelser) ----
+var OPS_API='https://n8n2.med24intra.dk/webhook/supplier-ops';
+function spOpsMonths(){var p=spState.period;return p==='30'?1:p==='90'?3:12;}
+function spOpsLoad(){
+  var el=document.getElementById('spOps'); if(!el)return;
+  if(!spState.vendor){el.innerHTML='';return;}
+  el.innerHTML='<div class="spin" style="padding:12px"><span class="ld"></span> Henter leveringsperformance fra NAV…</div>';
+  fetch(OPS_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({adminToken:TOKEN,vendor:spState.vendor,months:spOpsMonths()})})
+   .then(function(r){if(r.status===401){throw new Error('401');}return r.json();})
+   .then(function(d){if(!d||!d.ok)throw new Error('x');spOpsRender(d);})
+   .catch(function(){el.innerHTML='<div class="empty">Kunne ikke hente leveringsperformance. <button class="btn sec sm" onclick="spOpsLoad()">Prøv igen</button></div>';});
+}
+function spOpsRender(d){
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function dt(s){try{return new Date(s).toLocaleDateString('da-DK',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return '';}}
+  var k=d.kpi||{}; var el=document.getElementById('spOps');
+  if(!k.lines){el.innerHTML='<h2 style="margin:0 0 4px">Leveringsperformance</h2><div class="hint" style="margin-bottom:8px">DK-indkøb (Blue Medico) · seneste '+d.months+' mdr.</div><div class="empty">Ingen modtagelser med forventet dato i perioden.</div>';return;}
+  var rc=k.rating==='Fremragende'||k.rating==='God'?'#16a34a':k.rating==='OK'?'#b45309':'#b91c1c';
+  var kpis=[['Til tiden',ovPct(k.onTimePct)],['Vurdering','<span style="color:'+rc+'">'+esc(k.rating)+'</span>'],['Modtagelser',ovNum(k.lines)],['Ordrer',ovNum(k.orders)],['Forsinket >7 dg',ovNum(k.lateOver7)],['Snit forsinkelse',k.avgLateWhenLateDays==null?'–':(Number(k.avgLateWhenLateDays).toLocaleString('da-DK')+' dg')]];
+  var h='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;flex-wrap:wrap;gap:8px"><h2 style="margin:0">Leveringsperformance</h2><span class="hint">DK-indkøb (Blue Medico) · seneste '+d.months+' mdr. · '+dt(k.firstReceipt)+'–'+dt(k.lastReceipt)+'</span></div>';
+  h+='<div class="hint" style="margin-bottom:14px">'+esc(d.note)+'</div>';
+  h+='<div class="kpis" style="margin-bottom:16px">'+kpis.map(function(x){return '<div class="kpi"><div class="lbl">'+x[0]+'</div><div class="val live">'+x[1]+'</div></div>';}).join('')+'</div>';
+  var mon=(d.monthly||[]).filter(function(m){return m.onTimePct!=null;});
+  if(mon.length){
+    h+='<div style="font-weight:600;font-size:13px;margin:6px 0 8px">Til tiden pr. måned</div><div style="display:flex;align-items:flex-end;gap:4px;height:80px;margin-bottom:18px">';
+    mon.forEach(function(m){var pc=m.onTimePct;var col=pc>=95?'#16a34a':pc>=85?'#65a30d':pc>=70?'#d97706':'#b91c1c';h+='<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center" title="'+m.ym+': '+pc+'% ('+m.onTime+'/'+m.lines+')"><div style="width:100%;background:'+col+';border-radius:3px 3px 0 0;height:'+Math.max(3,Math.round(pc*0.7))+'px"></div><div class="hint" style="font-size:9px;margin-top:3px">'+m.ym.slice(2)+'</div></div>';});
+    h+='</div>';
+  }
+  var late=(d.recent||[]).filter(function(r){return r.daysDev!=null&&r.daysDev>0;}).slice(0,8);
+  if(late.length){
+    h+='<div style="font-weight:600;font-size:13px;margin-bottom:8px">Seneste forsinkede modtagelser</div><div style="overflow-x:auto"><table><thead><tr><th>Ordre</th><th>Vare</th><th>Modtaget</th><th>Forventet</th><th style="text-align:right">Dage forsinket</th></tr></thead><tbody>';
+    late.forEach(function(r){h+='<tr><td style="color:#6b7280">'+esc(r.orderNo)+'</td><td>'+esc(r.descr||r.itemNo)+'</td><td>'+dt(r.postingDate)+'</td><td>'+dt(r.expectedDate)+'</td><td style="text-align:right;color:#b91c1c">'+r.daysDev+'</td></tr>';});
+    h+='</tbody></table></div>';
+  } else { h+='<div class="hint">Ingen forsinkede modtagelser blandt de seneste leveringer.</div>'; }
+  el.innerHTML=h;
+}
 
 // ---- Noter, referater & aftaler pr. leverandør (handover-sikker hukommelse; også via Claude) ----
 var NOTES_API='https://n8n2.med24intra.dk/webhook/supplier-notes';
