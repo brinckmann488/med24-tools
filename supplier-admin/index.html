@@ -413,7 +413,8 @@ function onSupplierChange(){
   bSel.innerHTML=brands.map(function(b){return '<option>'+b+'</option>';}).join('');
   mSel.innerHTML=markets.map(function(m){return '<option value="'+m+'">'+m.toUpperCase()+'</option>';}).join('');
   var ov=document.getElementById('vOverlay'); ov.classList.remove('hidden'); ov.innerHTML='<div>Forbereder staff-visning…</div>';
-  api('mintview',{brands:brands,markets:markets,modules:modules}).then(function(j){
+  var cats=parseBrands(s.categories||'[]');
+  api('mintview',{brands:brands,markets:markets,modules:modules,categories:cats}).then(function(j){
     currentEphToken=(j&&j.token)||null; loadFrame();
   }).catch(function(){ loadFrame(); });
 }
