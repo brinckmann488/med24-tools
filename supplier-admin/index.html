@@ -125,6 +125,7 @@
     <div class="navhead">Med24</div>
     <nav class="nav">
       <a id="navOverview" class="active"><span class="ic">▤</span>Salgsoverblik</a>
+      <a id="navSupplier"><span class="ic">◭</span>Leverandør (intern)</a>
       <a class="soon"><span class="ic">◷</span>Inventory<span class="soonbadge">SENERE</span></a>
       <a class="soon"><span class="ic">◴</span>Category Share<span class="soonbadge">SENERE</span></a>
     </nav>
@@ -226,6 +227,20 @@
         <div class="frameOverlay" id="vOverlay"><div>Vælg en leverandør for at se deres dashboard.</div></div>
       </div>
     </section>
+
+    <!-- LEVERANDØR (INTERN) — BM deep-dive med avance -->
+    <section id="supplierTab" class="pad hidden">
+      <h1>Leverandør (intern)</h1>
+      <p class="sub">Fuld detalje med avance — til brand managers og møder. <span class="hint">(intern · kun staff · margin vises)</span></p>
+      <div class="ovctrls">
+        <select id="spSel" style="min-width:300px;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;background:#fff"></select>
+        <div class="seg" id="spMarket"><button data-v="all" class="on">Alle</button><button data-v="dk">DK</button><button data-v="se">SE</button><button data-v="no">NO</button></div>
+        <div class="seg" id="spPeriod"><button data-v="ytd" class="on">År til dato</button><button data-v="30">30 dage</button><button data-v="90">90 dage</button><button data-v="12m">12 mdr.</button></div>
+        <button class="btn sm sec" id="spExt">Åbn leverandørens eksterne view ↗</button>
+      </div>
+      <div class="kpis" id="spKpis"></div>
+      <div class="card"><div id="spTableWrap"><div class="empty">Vælg en leverandør for at se fuld detalje med avance.</div></div></div>
+    </section>
   </main>
 </div>
 <button id="expandBtn" class="expandbtn" title="Vis menu">☰</button>
@@ -264,14 +279,18 @@ document.getElementById('expandBtn').onclick=function(){document.getElementById(
 // ---- nav (left sidebar) ----
 function showTab(which){
   document.getElementById('overviewTab').classList.toggle('hidden',which!=='overview');
+  document.getElementById('supplierTab').classList.toggle('hidden',which!=='supplier');
   document.getElementById('adminTab').classList.toggle('hidden',which!=='admin');
   document.getElementById('viewTab').classList.toggle('hidden',which!=='view');
   document.getElementById('navOverview').classList.toggle('active',which==='overview');
+  document.getElementById('navSupplier').classList.toggle('active',which==='supplier');
   document.getElementById('navAdmin').classList.toggle('active',which==='admin');
   if(which==='admin') loadSuppliers();
+  if(which==='supplier') loadSuppliers(spPopulate);
   if(which==='view') initView();
 }
 document.getElementById('navOverview').onclick=function(){showTab('overview');};
+document.getElementById('navSupplier').onclick=function(){showTab('supplier');};
 document.getElementById('navAdmin').onclick=function(){showTab('admin');};
 
 // ---- brand chips (create) ----
@@ -288,8 +307,8 @@ nameEl.oninput=validate;
 
 // ---- supplier picker (auto-fill brands) ----
 var supIn=document.getElementById('supIn');
-function loadSuppliers(){
-  if(suppliersLoaded)return;
+function loadSuppliers(cb){
+  if(suppliersLoaded){ if(cb)cb(); return; }
   lookup('suppliers').then(function(j){
     SUPPLIERS=(j&&j.suppliers)||[]; suppliersLoaded=true;
     var dl=document.getElementById('supList');
@@ -297,6 +316,7 @@ function loadSuppliers(){
       var v=String(s.vendorRaw).replace(/"/g,'&quot;');
       return '<option value="'+v+'">'+s.brandNames.length+' brands · '+s.totalSkus+' SKU</option>';
     }).join('');
+    if(cb)cb();
   });
 }
 function pickSupplier(val){
@@ -603,6 +623,53 @@ function saveLogo(sid,logo){
    .then(function(d){if(d&&d.ok){toast(logo?'Logo gemt':'Sat til auto-gæt');closeLogo();}else{if(msg)msg.textContent='Kunne ikke gemme.';}})
    .catch(function(e){if(msg)msg.textContent=(e&&e.message==='401')?'Ikke autoriseret.':'Fejl ved gem.';});
 }
+
+// ---- Leverandør (intern) — BM deep-dive med avance ----
+var spState={market:'all',period:'ytd',vendor:'',sup:null};
+function spNum(raw){var m=String(raw||'').match(/^(\d+)/);return m?m[1]:'';}
+function spPopulate(){
+  var sel=document.getElementById('spSel'); if(!sel)return; var cur=sel.value;
+  var list=SUPPLIERS.slice().sort(function(a,b){return (b.totalSkus||0)-(a.totalSkus||0);});
+  sel.innerHTML='<option value="">— vælg leverandør —</option>'+list.map(function(s){var n=spNum(s.vendorRaw);return n?('<option value="'+n+'">'+String(s.vendorRaw).replace(/</g,'&lt;')+'</option>'):'';}).join('');
+  if(cur)sel.value=cur;
+}
+function spLoad(){
+  var v=document.getElementById('spSel').value; spState.vendor=v;
+  var wrap=document.getElementById('spTableWrap'); var kp=document.getElementById('spKpis');
+  if(!v){kp.innerHTML='';wrap.innerHTML='<div class="empty">Vælg en leverandør for at se fuld detalje med avance.</div>';spState.sup=null;return;}
+  spState.sup=null; for(var i=0;i<SUPPLIERS.length;i++){if(spNum(SUPPLIERS[i].vendorRaw)===v){spState.sup=SUPPLIERS[i];break;}}
+  kp.innerHTML=''; wrap.innerHTML='<div class="spin"><span class="ld big"></span><div style="margin-top:10px">Henter fra PowerBI…</div></div>';
+  var pr=ovRange(spState.period);
+  fetch('https://n8n2.med24intra.dk/webhook/internal-products',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({adminToken:TOKEN,scope:'vendor',value:v,market:spState.market,from:pr.from,to:pr.to})})
+   .then(function(r){if(r.status===401){showGate('Linket er ugyldigt eller udløbet.');throw new Error('401');}return r.json();})
+   .then(function(d){if(!d||!d.ok)throw new Error('uventet svar');spRender(d);})
+   .catch(function(e){if((e&&e.message)==='401')return;wrap.innerHTML='<div class="empty">Kunne ikke hente data. <button class="btn sec sm" onclick="spLoad()">Prøv igen</button></div>';});
+}
+function spRender(d){
+  var rows=d.rows||[];
+  var tS=0,tSL=0,tA=0,tAD=0,tQ=0; rows.forEach(function(r){tS+=r.salg||0;tSL+=r.salgLy||0;tA+=r.avance||0;tAD+=r.avanceDiffLy||0;tQ+=r.qty||0;});
+  var idx=tSL>0?Math.round(tS/tSL*1000)/10:null; var mg=tS>0?Math.round(tA/tS*1000)/10:null;
+  var kpis=[['Salg',ovKr(tS)],['Salg antal',ovNum(tQ)],['Avance',ovKr(tA)],['Margin %',ovPct(mg)],['Salg index',ovIdx(idx)]];
+  document.getElementById('spKpis').innerHTML=kpis.map(function(k){return '<div class="kpi"><div class="lbl">'+k[0]+'</div><div class="val live">'+k[1]+'</div></div>';}).join('');
+  var lbl=spState.sup?spState.sup.vendorRaw:('Leverandør '+spState.vendor);
+  var html='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;flex-wrap:wrap;gap:8px"><h2 style="margin:0">'+lbl+' · varer</h2><span class="hint">'+rows.length+' varer · avance diff LY i alt '+(tAD>=0?'+':'')+ovKr(tAD)+'</span></div>';
+  html+='<div style="overflow-x:auto"><table><thead><tr><th>Varenr</th><th>Vare</th><th>Brand</th><th>EAN</th><th style="text-align:right">Salg</th><th style="text-align:right">Antal</th><th style="text-align:right">Index</th><th style="text-align:right">Avance</th><th style="text-align:right">Avance diff LY</th><th style="text-align:right">Margin</th><th style="text-align:right">Kostpris</th><th>Klasse</th></tr></thead><tbody>';
+  rows.forEach(function(r){var ic=r.salgIndex==null?'#9aa0a6':r.salgIndex>=100?'#16a34a':'#b45309';var dc=r.avanceDiffLy>=0?'#16a34a':'#b91c1c';
+    html+='<tr><td style="color:#6b7280">'+r.itemNo+'</td><td>'+(r.name||'')+'</td><td class="hint">'+(r.brand||'')+'</td><td class="hint">'+(r.ean||'')+'</td><td style="text-align:right;font-variant-numeric:tabular-nums">'+ovKr(r.salg)+'</td><td style="text-align:right">'+ovNum(r.qty)+'</td><td style="text-align:right;color:'+ic+'">'+ovIdx(r.salgIndex)+'</td><td style="text-align:right">'+ovKr(r.avance)+'</td><td style="text-align:right;color:'+dc+'">'+(r.avanceDiffLy>=0?'+':'')+ovKr(r.avanceDiffLy)+'</td><td style="text-align:right">'+ovPct(r.marginPct)+'</td><td style="text-align:right">'+ovKr(r.kostpris)+'</td><td>'+(r.klasse||'–')+'</td></tr>';});
+  html+='</tbody></table></div>';
+  document.getElementById('spTableWrap').innerHTML=html;
+}
+function spOpenExt(){
+  if(!spState.sup){toast('Vælg en leverandør først',true);return;}
+  var brands=spState.sup.brandNames||[]; if(!brands.length){toast('Ingen brands fundet',true);return;}
+  toast('Forbereder eksternt view…');
+  api('mintview',{brands:brands,markets:['dk','se','no'],modules:['kpi','persona','basket','categoryShare','sales','inventory','marketing']}).then(function(j){
+    if(j&&j.token){window.open(portalLink(j.token,brands[0],spState.market==='all'?'dk':spState.market),'_blank');}else{toast('Kunne ikke åbne',true);}
+  }).catch(function(){toast('Kunne ikke åbne',true);});
+}
+document.getElementById('spSel').onchange=spLoad;
+['spMarket','spPeriod'].forEach(function(id){var box=document.getElementById(id);[].slice.call(box.querySelectorAll('button')).forEach(function(b){b.onclick=function(){[].slice.call(box.querySelectorAll('button')).forEach(function(x){x.classList.remove('on');});b.classList.add('on');if(id==='spMarket')spState.market=b.dataset.v;else spState.period=b.dataset.v;if(spState.vendor)spLoad();};});});
+document.getElementById('spExt').onclick=spOpenExt;
 
 // ---- boot ----
 (function(){
