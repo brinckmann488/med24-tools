@@ -222,6 +222,7 @@
       </div>
       <div class="kpis" id="spKpis"></div>
       <div class="card"><div id="spTableWrap"><div class="empty">Vælg en leverandør for at se fuld detalje med avance.</div></div></div>
+      <div class="card" id="spNotes"></div>
     </section>
   </main>
 </div>
@@ -617,8 +618,10 @@ function spPopulate(){
 function spLoad(){
   var v=document.getElementById('spSel').value; spState.vendor=v;
   var wrap=document.getElementById('spTableWrap'); var kp=document.getElementById('spKpis');
-  if(!v){kp.innerHTML='';wrap.innerHTML='<div class="empty">Vælg en leverandør for at se fuld detalje med avance.</div>';spState.sup=null;return;}
+  var ne=document.getElementById('spNotes');
+  if(!v){kp.innerHTML='';wrap.innerHTML='<div class="empty">Vælg en leverandør for at se fuld detalje med avance.</div>';if(ne)ne.innerHTML='';spState.sup=null;return;}
   spState.sup=null; for(var i=0;i<SUPPLIERS.length;i++){if(spNum(SUPPLIERS[i].vendorRaw)===v){spState.sup=SUPPLIERS[i];break;}}
+  spNotesLoad();
   kp.innerHTML=''; wrap.innerHTML='<div class="spin"><span class="ld big"></span><div style="margin-top:10px">Henter fra PowerBI…</div></div>';
   var pr=ovRange(spState.period);
   fetch('https://n8n2.med24intra.dk/webhook/internal-products',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({adminToken:TOKEN,scope:'vendor',value:v,market:spState.market,from:pr.from,to:pr.to})})
@@ -651,6 +654,43 @@ function spOpenExt(){
 document.getElementById('spSel').onchange=spLoad;
 ['spMarket','spPeriod'].forEach(function(id){var box=document.getElementById(id);[].slice.call(box.querySelectorAll('button')).forEach(function(b){b.onclick=function(){[].slice.call(box.querySelectorAll('button')).forEach(function(x){x.classList.remove('on');});b.classList.add('on');if(id==='spMarket')spState.market=b.dataset.v;else spState.period=b.dataset.v;if(spState.vendor)spLoad();};});});
 document.getElementById('spExt').onclick=spOpenExt;
+
+// ---- Noter, referater & aftaler pr. leverandør (handover-sikker hukommelse; også via Claude) ----
+var NOTES_API='https://n8n2.med24intra.dk/webhook/supplier-notes';
+function spNotesLoad(){
+  var el=document.getElementById('spNotes'); if(!el)return;
+  if(!spState.vendor){el.innerHTML='';return;}
+  el.innerHTML='<div class="spin" style="padding:12px"><span class="ld"></span> Henter noter…</div>';
+  fetch(NOTES_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'list',adminToken:TOKEN,vendor:spState.vendor})})
+   .then(function(r){if(r.status===401){throw new Error('401');}return r.json();})
+   .then(function(d){spNotesRender((d&&d.notes)||[]);})
+   .catch(function(){el.innerHTML='<div class="empty">Kunne ikke hente noter.</div>';});
+}
+function spNotesRender(notes){
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function dt(s){try{return new Date(s).toLocaleDateString('da-DK',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return '';}}
+  var ag=notes.filter(function(n){return n.kind==='agreement';});
+  var nt=notes.filter(function(n){return n.kind!=='agreement';});
+  var h='<h2 style="margin:0 0 4px">Noter, referater & aftaler</h2><div class="hint" style="margin-bottom:16px">Handover-sikker hukommelse — bor på leverandøren, ikke i en indbakke. Også tilgængelig via Claude.</div>';
+  h+='<div style="font-weight:600;font-size:13px;margin-bottom:8px">Aftaler & dokumenter</div>';
+  h+=ag.length?('<div style="margin-bottom:10px">'+ag.map(function(n){return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0f1f3"><a href="'+esc(n.url)+'" target="_blank" rel="noopener" style="flex:1;color:#0a0a0a;text-decoration:none">📎 '+esc(n.title||n.url)+'</a><span class="hint">'+dt(n.created_at)+'</span><b style="cursor:pointer;color:#b91c1c" data-del="'+n.id+'" title="Slet">✕</b></div>';}).join('')+'</div>'):'<div class="hint" style="margin-bottom:10px">Ingen aftaler endnu.</div>';
+  h+='<div style="display:flex;gap:6px;margin-bottom:22px;flex-wrap:wrap"><input type="text" id="agTitle" placeholder="Titel (fx Samarbejdsaftale 2026)" style="flex:1;min-width:160px;border:1px solid var(--line);border-radius:8px;padding:8px 10px"><input type="text" id="agUrl" placeholder="Link (URL til SharePoint/dokument)" style="flex:1;min-width:160px;border:1px solid var(--line);border-radius:8px;padding:8px 10px"><button class="btn sm" id="agAdd">Tilføj aftale</button></div>';
+  h+='<div style="font-weight:600;font-size:13px;margin-bottom:8px">Referater & noter</div>';
+  h+=nt.length?nt.map(function(n){return '<div style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+esc(n.title||'(uden titel)')+'</b><span class="hint" style="white-space:nowrap">'+dt(n.created_at)+' · '+esc(n.author)+' <b style="cursor:pointer;color:#b91c1c" data-del="'+n.id+'" title="Slet">✕</b></span></div>'+(n.body?'<div style="white-space:pre-wrap;margin-top:6px;font-size:13.5px">'+esc(n.body)+'</div>':'')+'</div>';}).join(''):'<div class="hint">Ingen referater endnu.</div>';
+  h+='<div style="margin-top:10px"><input type="text" id="ntTitle" placeholder="Titel (fx Årsmøde 2026)" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px"><textarea id="ntBody" placeholder="Referat / note…" rows="3" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13.5px;box-sizing:border-box"></textarea><button class="btn sm" id="ntAdd" style="margin-top:6px">Tilføj referat</button></div>';
+  var el=document.getElementById('spNotes'); el.innerHTML=h;
+  document.getElementById('agAdd').onclick=function(){var t=document.getElementById('agTitle').value.trim();var u=document.getElementById('agUrl').value.trim();if(!u){toast('Indsæt et link',true);return;}spNotesAdd('agreement',t||u,'',u);};
+  document.getElementById('ntAdd').onclick=function(){var t=document.getElementById('ntTitle').value.trim();var b=document.getElementById('ntBody').value.trim();if(!b&&!t){toast('Skriv et referat',true);return;}spNotesAdd('note',t,b,'');};
+  [].slice.call(el.querySelectorAll('[data-del]')).forEach(function(x){x.onclick=function(){if(confirm('Slet denne?'))spNotesDel(x.getAttribute('data-del'));};});
+}
+function spNotesAdd(kind,title,body,url){
+  fetch(NOTES_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'add',adminToken:TOKEN,vendor:spState.vendor,kind:kind,title:title,body:body,url:url})})
+   .then(function(r){return r.json();}).then(function(d){if(d&&d.ok){toast('Gemt');spNotesLoad();}else toast('Kunne ikke gemme',true);}).catch(function(){toast('Fejl ved gem',true);});
+}
+function spNotesDel(id){
+  fetch(NOTES_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'delete',adminToken:TOKEN,id:id})})
+   .then(function(r){return r.json();}).then(function(d){if(d&&d.ok){toast('Slettet');spNotesLoad();}else toast('Kunne ikke slette',true);}).catch(function(){toast('Fejl',true);});
+}
 
 // ---- boot ----
 (function(){
