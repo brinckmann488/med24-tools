@@ -1,22 +1,33 @@
 <!doctype html>
 <html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Med24 Supplier Hub — Admin</title>
+<title>Med24 Supplier Hub — Staff</title>
 <style>
   :root{--bg:#f4f5f7;--panel:#fff;--ink:#0a0a0a;--muted:#6b7280;--line:#e5e7eb;--black:#0a0a0a;--ok:#16a34a;--warn:#b45309}
   *{box-sizing:border-box}
   body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
-  /* top nav */
-  .topnav{display:flex;align-items:center;gap:24px;background:var(--black);color:#fff;padding:0 22px;height:54px;position:sticky;top:0;z-index:20}
-  .topnav .brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
-  .topnav .brand .tag{background:#fff;color:#000;font-size:10px;font-weight:700;border-radius:5px;padding:2px 6px;letter-spacing:.04em}
-  .tabs{display:flex;gap:2px;height:100%}
-  .tabbtn{background:none;border:none;color:#b9bdc4;font-family:inherit;font-size:14px;font-weight:600;padding:0 18px;height:100%;cursor:pointer;border-bottom:3px solid transparent}
-  .tabbtn.active{color:#fff;border-bottom-color:#fff}
-  .tabbtn:hover:not(.active){color:#fff}
-  .topnav .who{margin-left:auto;font-size:12px;color:#9aa0a6;text-align:right}.topnav .who b{color:#fff;display:block;font-size:13px}
-  /* content */
-  .main{padding:0}
-  #adminTab{padding:26px 34px;max-width:1180px}
+  .app{display:flex;min-height:100vh}
+  /* sidebar */
+  .side{width:236px;background:var(--black);color:#fff;flex-shrink:0;display:flex;flex-direction:column;padding:16px 0;transition:width .15s}
+  .side .top{display:flex;align-items:center;justify-content:space-between;padding:0 18px 16px}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
+  .brand .tag{background:#fff;color:#000;font-size:10px;font-weight:700;border-radius:5px;padding:2px 6px;letter-spacing:.04em}
+  .collapse{background:none;border:none;color:#9aa0a6;cursor:pointer;font-size:18px;line-height:1;padding:4px}
+  .collapse:hover{color:#fff}
+  .navhead{color:#7f8893;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:14px 18px 6px}
+  .nav a{display:flex;align-items:center;gap:11px;color:#d6d8dc;text-decoration:none;padding:10px 18px;font-size:14px;border-left:3px solid transparent;cursor:pointer}
+  .nav a .ic{width:18px;text-align:center;opacity:.9}
+  .nav a.active{background:#1b1c1f;color:#fff;border-left-color:#fff;font-weight:600}
+  .nav a:hover:not(.active){background:#141518}
+  .nav a.soon{color:#6b7178;cursor:default}.nav a.soon:hover{background:none}
+  .nav a .soonbadge{margin-left:auto;font-size:9px;letter-spacing:.06em;color:#6b7178;border:1px solid #2a2c30;border-radius:4px;padding:1px 5px}
+  .side .who{margin-top:auto;padding:14px 18px;border-top:1px solid #1f2024;color:#9aa0a6;font-size:12px}
+  .side .who b{color:#fff;display:block;font-size:13px}
+  .app.collapsed .side{display:none}
+  .expandbtn{position:fixed;top:12px;left:12px;z-index:40;background:#0a0a0a;color:#fff;border:none;border-radius:8px;width:38px;height:38px;font-size:18px;cursor:pointer;display:none;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+  .app.collapsed ~ .expandbtn{display:block}
+  /* main */
+  .main{flex:1;min-width:0}
+  .pad{padding:26px 34px;max-width:1180px}
   h1{font-size:21px;margin:0 0 2px}
   .sub{color:var(--muted);margin:0 0 22px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin-bottom:22px}
@@ -65,11 +76,17 @@
   .gate h2{margin:0;font-size:20px}.gate p{color:#9aa0a6;max-width:380px;margin:0}
   .empty{padding:40px;text-align:center;color:var(--muted)}
   .spin{padding:30px;text-align:center;color:var(--muted)}
+  /* overview placeholder KPI grid */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:22px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .kpi .lbl{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+  .kpi .val{font-size:24px;font-weight:700;margin-top:6px;color:#c8ccd2}
+  .ph-banner{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:14px 16px;font-size:13px;margin-bottom:22px}
   /* view tab */
   .subbar{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line);background:#fff}
   .subbar .field{margin:0;min-width:160px}
   .subbar .topnote{margin-left:auto;color:var(--muted);font-size:11.5px;align-self:center}
-  .frameWrap{position:relative;background:#fff;height:calc(100vh - 54px - 67px)}
+  .frameWrap{position:relative;background:#fff;height:calc(100vh - 67px)}
   .frameWrap iframe{width:100%;height:100%;border:0;display:block}
   .frameOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:#fafafa;color:var(--muted);text-align:center;padding:20px}
   .hidden{display:none!important}
@@ -81,19 +98,48 @@
   <p id="gateMsg">Åbn staff-konsollen via dit personlige admin-link (bookmark). Linket mangler eller er udløbet.</p>
 </div>
 
-<div id="appWrap" style="display:none">
-  <header class="topnav">
-    <div class="brand">Med24 <span class="tag">Supplier Hub</span></div>
-    <nav class="tabs">
-      <button id="navAdmin" class="tabbtn active">Administrér</button>
-      <button id="navView" class="tabbtn">Vis dashboard</button>
+<div class="app" id="app" style="display:none">
+  <aside class="side">
+    <div class="top">
+      <div class="brand">Med24 <span class="tag">Supplier Hub</span></div>
+      <button class="collapse" id="collapseBtn" title="Skjul menu">⟨</button>
+    </div>
+    <div class="navhead">Med24</div>
+    <nav class="nav">
+      <a id="navOverview" class="active"><span class="ic">▤</span>Salgsoverblik</a>
+      <a class="soon"><span class="ic">◷</span>Inventory<span class="soonbadge">SENERE</span></a>
+      <a class="soon"><span class="ic">◴</span>Category Share<span class="soonbadge">SENERE</span></a>
+    </nav>
+    <div class="navhead">Leverandører</div>
+    <nav class="nav">
+      <a id="navAdmin"><span class="ic">⚙</span>Administrér</a>
+      <a id="navView"><span class="ic">◐</span>Vis leverandør</a>
     </nav>
     <div class="who"><b id="whoLabel">Administrator</b>Staff-konsol</div>
-  </header>
+  </aside>
 
   <main class="main">
-    <!-- ADMIN TAB -->
-    <section id="adminTab">
+    <!-- OVERVIEW (landing) -->
+    <section id="overviewTab" class="pad">
+      <h1>Salgsoverblik</h1>
+      <p class="sub">Vores eget overordnede overblik — på tværs af hele Med24, med avancer.</p>
+      <div class="ph-banner"><b>Forsiden bygges her.</b> Det interne salgsoverblik (med margin/avancer) flytter ind på denne side når vi forlader Lovable — samme dashboard-motor som leverandør-visningen, bare Med24-bredt og med margin. Indtil da bruger vi det nuværende overblik i Lovable.</div>
+      <div class="kpis">
+        <div class="kpi"><div class="lbl">Omsætning</div><div class="val">—</div></div>
+        <div class="kpi"><div class="lbl">Bruttoavance</div><div class="val">—</div></div>
+        <div class="kpi"><div class="lbl">Margin %</div><div class="val">—</div></div>
+        <div class="kpi"><div class="lbl">Solgte enheder</div><div class="val">—</div></div>
+        <div class="kpi"><div class="lbl">Sales index</div><div class="val">—</div></div>
+      </div>
+      <div class="card">
+        <h2>Indtil videre</h2>
+        <p class="note" style="margin-top:0">Det nuværende salgsoverblik ligger stadig i Lovable. Brug det indtil den native version er bygget her.</p>
+        <a class="btn sec sm" href="https://med24-insight.lovable.app/" target="_blank" rel="noopener">Åbn nuværende overblik (Lovable) ↗</a>
+      </div>
+    </section>
+
+    <!-- ADMIN -->
+    <section id="adminTab" class="pad hidden">
       <h1>Administrér dashboards</h1>
       <p class="sub">Opret og styr leverandørernes adgang. Hvert dashboard giver ét link til margin-fri data for valgte brands/markeder.</p>
       <section class="card">
@@ -140,14 +186,14 @@
       </section>
     </section>
 
-    <!-- VIEW TAB -->
+    <!-- VIEW SUPPLIER -->
     <section id="viewTab" class="hidden">
       <div class="subbar">
         <div class="field"><label>Leverandør</label><select id="vSupplier"></select></div>
         <div class="field"><label>Brand</label><select id="vBrand"></select></div>
         <div class="field"><label>Marked</label><select id="vMarket"></select></div>
         <button class="btn sm" id="vOpen">Åbn i ny fane ↗</button>
-        <span class="topnote">Staff-visning · margin-fri · virker uanset leverandørens token-status</span>
+        <span class="topnote">Staff-visning · margin-fri · virker uanset leverandørens token-status · skjul menu (⟨) for fuld bredde</span>
       </div>
       <div class="frameWrap">
         <iframe id="vFrame" title="Leverandør-dashboard"></iframe>
@@ -156,6 +202,7 @@
     </section>
   </main>
 </div>
+<button id="expandBtn" class="expandbtn" title="Vis menu">☰</button>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -171,20 +218,27 @@ function api(action,extra){
   return fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})
     .then(function(r){if(r.status===401){showGate('Linket er ugyldigt eller udløbet.');throw new Error('401');}return r.text().then(function(t){try{return JSON.parse(t);}catch(e){return {ok:true,rows:[]};}});});
 }
-function showGate(m){document.getElementById('appWrap').style.display='none';var g=document.getElementById('gate');g.style.display='flex';if(m)document.getElementById('gateMsg').textContent=m;}
+function showGate(m){document.getElementById('app').style.display='none';var g=document.getElementById('gate');g.style.display='flex';if(m)document.getElementById('gateMsg').textContent=m;}
 function toast(m,err){var t=document.getElementById('toast');t.textContent=m;t.className='toast show'+(err?' err':'');clearTimeout(t._t);t._t=setTimeout(function(){t.className='toast';},2400);}
 function copy(t){navigator.clipboard.writeText(t).then(function(){toast('Link kopieret');},function(){toast('Link kopieret');});}
 function parseBrands(s){try{return JSON.parse(s);}catch(e){return [];}}
 function portalLink(token,brand,market){return PORTAL+'?token='+encodeURIComponent(token)+'&brand='+encodeURIComponent(brand||'')+'&market='+(market||'dk');}
 
-// ---- tabs (persistent top nav) ----
+// ---- collapse sidebar ----
+document.getElementById('collapseBtn').onclick=function(){document.getElementById('app').classList.add('collapsed');};
+document.getElementById('expandBtn').onclick=function(){document.getElementById('app').classList.remove('collapsed');};
+
+// ---- nav (left sidebar) ----
 function showTab(which){
+  document.getElementById('overviewTab').classList.toggle('hidden',which!=='overview');
   document.getElementById('adminTab').classList.toggle('hidden',which!=='admin');
   document.getElementById('viewTab').classList.toggle('hidden',which!=='view');
+  document.getElementById('navOverview').classList.toggle('active',which==='overview');
   document.getElementById('navAdmin').classList.toggle('active',which==='admin');
   document.getElementById('navView').classList.toggle('active',which==='view');
   if(which==='view') initView();
 }
+document.getElementById('navOverview').onclick=function(){showTab('overview');};
 document.getElementById('navAdmin').onclick=function(){showTab('admin');};
 document.getElementById('navView').onclick=function(){showTab('view');};
 
@@ -219,7 +273,7 @@ createBtn.onclick=function(){
   }).catch(function(){createBtn.textContent='Opret & generér link';validate();});
 };
 
-// ---- list (admin tab) ----
+// ---- list (admin) ----
 function load(){
   api('list').then(function(j){
     ROWS=(j&&j.rows)||[];
@@ -262,9 +316,8 @@ function load(){
   });
 }
 
-// ---- view tab ----
-var viewInited=false;
-function initView(){ populateSuppliers(); viewInited=true; }
+// ---- view supplier ----
+function initView(){ populateSuppliers(); }
 function populateSuppliers(){
   var sel=document.getElementById('vSupplier'); var cur=sel.value;
   sel.innerHTML='<option value="">— vælg leverandør —</option>'+ROWS.map(function(s){return '<option value="'+s.sid+'">'+(s.label||s.sid)+'</option>';}).join('');
@@ -307,7 +360,7 @@ document.getElementById('vOpen').onclick=function(){var l=currentViewLink(); if(
 (function(){
   var pl=decodePayload();
   if(!TOKEN||!pl||pl.mode!=='admin'){showGate();return;}
-  document.getElementById('appWrap').style.display='block';
+  document.getElementById('app').style.display='flex';
   document.getElementById('whoLabel').textContent=pl.label||'Administrator';
   renderChips(); load();
 })();
