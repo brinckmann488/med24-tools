@@ -385,6 +385,7 @@ function load(){
         +'<td><span class="status'+(active?' on':'')+'"><span class="sw"></span><span class="lbl">'+(active?'Aktiv':'Inaktiv')+'</span></span></td>'
         +'<td><div class="acts">'
           +'<button class="btn sec sm a-open">Åbn dashboard ↗</button>'
+          +'<button class="btn sec sm a-logo">Logo</button>'
           +'<button class="btn sec sm a-copy">Kopiér link</button>'
         +'</div></td></tr>';
     });
@@ -396,6 +397,7 @@ function load(){
       tr.querySelector('.a-open').onclick=openLink;
       var nm=tr.querySelector('.name'); nm.style.cursor='pointer'; nm.title='Åbn leverandørens dashboard'; nm.onclick=openLink;
       tr.querySelector('.a-copy').onclick=function(){copy(portalLink(s.token,brands[0],markets[0]));};
+      tr.querySelector('.a-logo').onclick=function(){openLogo(s.sid,s.label||s.sid);};
       var st=tr.querySelector('.status');
       st.onclick=function(){
         var nowActive=!st.classList.contains('on');
@@ -567,6 +569,40 @@ function renderDrill(d){
     loadOverview();
   };});
 });
+
+// ---- logo (upload/URL/auto-gæt) pr. dashboard ----
+var LOGOSET='https://n8n2.med24intra.dk/webhook/supplier-logo-set';
+function closeLogo(){var m=document.getElementById('logoModal');if(m)m.remove();}
+function lgPreview(src){var p=document.getElementById('lgPreview');if(!p)return;if(src){p.innerHTML='<img src="'+src+'" style="max-width:100%;max-height:100%;object-fit:contain" onerror="this.parentNode.textContent=\'(billede kunne ikke vises)\'">';}else{p.textContent='(auto-gæt)';}}
+function lgResize(file,cb){var rd=new FileReader();rd.onload=function(){var img=new Image();img.onload=function(){var c=document.createElement('canvas');var max=160;var s=Math.min(max/img.width,max/img.height,1);c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);try{cb(c.toDataURL('image/png'));}catch(e){cb(null);}};img.onerror=function(){cb(null);};img.src=rd.result;};rd.readAsDataURL(file);}
+function openLogo(sid,label){
+  var m=document.createElement('div');m.className='ovmodal';m.id='logoModal';
+  m.innerHTML='<div class="ovmodal-inner" style="max-width:440px"><button class="ovmodal-close" id="lgClose">Luk ✕</button>'
+    +'<h2 style="margin:0 0 4px">Logo · '+label+'</h2>'
+    +'<div class="note" style="margin-bottom:14px">Gættes automatisk fra navnet. Upload en fil eller indsæt en URL for at overrule — eller vælg auto.</div>'
+    +'<div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><div id="lgPreview" style="width:84px;height:84px;border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;color:var(--muted);font-size:11px;text-align:center;flex-shrink:0"></div><div class="hint">Forhåndsvisning</div></div>'
+    +'<div class="field"><label>Upload billede <span class="hint">(skaleres til 160px)</span></label><input type="file" id="lgFile" accept="image/*"></div>'
+    +'<div class="field"><label>…eller indsæt logo-URL</label><input type="text" id="lgUrl" placeholder="https://..." autocomplete="off"></div>'
+    +'<div style="display:flex;gap:8px;margin-top:6px"><button class="btn sm" id="lgSave">Gem logo</button><button class="btn sm sec" id="lgAuto">Brug auto-gæt</button></div>'
+    +'<div class="note" id="lgMsg" style="margin-top:10px"></div></div>';
+  document.body.appendChild(m);
+  m.onclick=function(e){if(e.target===m)closeLogo();};
+  document.getElementById('lgClose').onclick=closeLogo;
+  var chosenLogo=null;
+  var slug=(label||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  lgPreview('https://logo.clearbit.com/'+slug+'.dk');
+  document.getElementById('lgFile').onchange=function(e){var f=e.target.files[0];if(!f)return;document.getElementById('lgMsg').textContent='Indlæser billede…';lgResize(f,function(d){if(d){chosenLogo=d;lgPreview(d);document.getElementById('lgMsg').textContent='Klar til at gemme.';}else{document.getElementById('lgMsg').textContent='Kunne ikke læse billedet.';}});};
+  document.getElementById('lgUrl').oninput=function(e){var v=e.target.value.trim();chosenLogo=v||null;if(v)lgPreview(v);};
+  document.getElementById('lgSave').onclick=function(){if(!chosenLogo){document.getElementById('lgMsg').textContent='Vælg en fil eller indsæt en URL først (eller brug auto-gæt).';return;}saveLogo(sid,chosenLogo);};
+  document.getElementById('lgAuto').onclick=function(){saveLogo(sid,'');};
+}
+function saveLogo(sid,logo){
+  var msg=document.getElementById('lgMsg');if(msg)msg.textContent='Gemmer…';
+  fetch(LOGOSET,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({adminToken:TOKEN,sid:sid,logo:logo||''})})
+   .then(function(r){if(r.status===401){throw new Error('401');}return r.json();})
+   .then(function(d){if(d&&d.ok){toast(logo?'Logo gemt':'Sat til auto-gæt');closeLogo();}else{if(msg)msg.textContent='Kunne ikke gemme.';}})
+   .catch(function(e){if(msg)msg.textContent=(e&&e.message==='401')?'Ikke autoriseret.':'Fejl ved gem.';});
+}
 
 // ---- boot ----
 (function(){
