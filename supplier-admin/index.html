@@ -5,17 +5,18 @@
   :root{--bg:#f4f5f7;--panel:#fff;--ink:#0a0a0a;--muted:#6b7280;--line:#e5e7eb;--black:#0a0a0a;--ok:#16a34a;--warn:#b45309}
   *{box-sizing:border-box}
   body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
-  .app{display:flex;min-height:100vh}
-  .side{width:230px;background:var(--black);color:#fff;flex-shrink:0;display:flex;flex-direction:column;padding:18px 0}
-  .brand{display:flex;align-items:center;gap:8px;padding:0 20px 18px;font-weight:800;font-size:17px}
-  .brand .tag{background:#fff;color:#000;font-size:10px;font-weight:700;border-radius:5px;padding:2px 6px;letter-spacing:.04em}
-  .navhead{color:#8b8f98;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:14px 20px 6px}
-  .nav a{display:flex;align-items:center;gap:10px;color:#d6d8dc;text-decoration:none;padding:9px 20px;font-size:14px;border-left:3px solid transparent;cursor:pointer}
-  .nav a.active{background:#1b1c1f;color:#fff;border-left-color:#fff;font-weight:600}
-  .nav a:hover:not(.active){background:#141518}
-  .side .who{margin-top:auto;padding:14px 20px;border-top:1px solid #1f2024;color:#9aa0a6;font-size:12px}
-  .side .who b{color:#fff;display:block;font-size:13px}
-  .main{flex:1;min-width:0;padding:26px 34px;max-width:1180px}
+  /* top nav */
+  .topnav{display:flex;align-items:center;gap:24px;background:var(--black);color:#fff;padding:0 22px;height:54px;position:sticky;top:0;z-index:20}
+  .topnav .brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
+  .topnav .brand .tag{background:#fff;color:#000;font-size:10px;font-weight:700;border-radius:5px;padding:2px 6px;letter-spacing:.04em}
+  .tabs{display:flex;gap:2px;height:100%}
+  .tabbtn{background:none;border:none;color:#b9bdc4;font-family:inherit;font-size:14px;font-weight:600;padding:0 18px;height:100%;cursor:pointer;border-bottom:3px solid transparent}
+  .tabbtn.active{color:#fff;border-bottom-color:#fff}
+  .tabbtn:hover:not(.active){color:#fff}
+  .topnav .who{margin-left:auto;font-size:12px;color:#9aa0a6;text-align:right}.topnav .who b{color:#fff;display:block;font-size:13px}
+  /* content */
+  .main{padding:0}
+  #adminTab{padding:26px 34px;max-width:1180px}
   h1{font-size:21px;margin:0 0 2px}
   .sub{color:var(--muted);margin:0 0 22px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin-bottom:22px}
@@ -40,7 +41,7 @@
   .btn{background:#0a0a0a;color:#fff;border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
   .btn:disabled{opacity:.4;cursor:not-allowed}
   .btn.sec{background:#fff;color:#0a0a0a;border:1px solid var(--line)}
-  .btn.sm{padding:6px 11px;font-size:12.5px;font-weight:500}
+  .btn.sm{padding:7px 12px;font-size:12.5px;font-weight:500}
   table{width:100%;border-collapse:collapse}
   th{text-align:left;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 12px 10px;border-bottom:1px solid var(--line)}
   td{padding:14px 12px;border-bottom:1px solid #f0f1f3;vertical-align:middle}
@@ -64,18 +65,14 @@
   .gate h2{margin:0;font-size:20px}.gate p{color:#9aa0a6;max-width:380px;margin:0}
   .empty{padding:40px;text-align:center;color:var(--muted)}
   .spin{padding:30px;text-align:center;color:var(--muted)}
-  .viewbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
-  .viewbar .field{margin:0;min-width:170px}
-  .frameWrap{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;height:calc(100vh - 220px);min-height:480px}
+  /* view tab */
+  .subbar{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line);background:#fff}
+  .subbar .field{margin:0;min-width:160px}
+  .subbar .topnote{margin-left:auto;color:var(--muted);font-size:11.5px;align-self:center}
+  .frameWrap{position:relative;background:#fff;height:calc(100vh - 54px - 67px)}
   .frameWrap iframe{width:100%;height:100%;border:0;display:block}
   .frameOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:#fafafa;color:var(--muted);text-align:center;padding:20px}
   .hidden{display:none!important}
-  .app.viewmode .side{display:none}
-  .app.viewmode .main{max-width:none;padding:0}
-  .topbar{display:flex;gap:14px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:10;flex-wrap:wrap}
-  .topbar .field{margin:0;min-width:150px}
-  .topbar .topnote{margin-left:auto;color:var(--muted);font-size:11.5px}
-  .frameWrap.full{height:calc(100vh - 64px);border:0;border-radius:0}
 </style></head>
 <body>
 <div id="gate" class="gate" style="display:none">
@@ -84,23 +81,21 @@
   <p id="gateMsg">Åbn staff-konsollen via dit personlige admin-link (bookmark). Linket mangler eller er udløbet.</p>
 </div>
 
-<div class="app" id="app" style="display:none">
-  <aside class="side">
+<div id="appWrap" style="display:none">
+  <header class="topnav">
     <div class="brand">Med24 <span class="tag">Supplier Hub</span></div>
-    <div class="navhead">Staff-konsol</div>
-    <nav class="nav">
-      <a id="navAdmin" class="active">▦ &nbsp;Administrér</a>
-      <a id="navView">◐ &nbsp;Vis dashboard</a>
+    <nav class="tabs">
+      <button id="navAdmin" class="tabbtn active">Administrér</button>
+      <button id="navView" class="tabbtn">Vis dashboard</button>
     </nav>
-    <div class="who"><b id="whoLabel">Administrator</b>Adgangsstyring</div>
-  </aside>
+    <div class="who"><b id="whoLabel">Administrator</b>Staff-konsol</div>
+  </header>
 
   <main class="main">
-    <!-- ========== ADMIN TAB ========== -->
+    <!-- ADMIN TAB -->
     <section id="adminTab">
       <h1>Administrér dashboards</h1>
       <p class="sub">Opret og styr leverandørernes adgang. Hvert dashboard giver ét link til margin-fri data for valgte brands/markeder.</p>
-
       <section class="card">
         <h2>Opret nyt dashboard</h2>
         <div class="row">
@@ -135,28 +130,26 @@
           <div class="note" id="successName"></div>
           <div class="linkbox"><code id="successLink"></code>
             <button class="btn sm" id="successCopy">Kopiér link</button>
-            <button class="btn sm sec" id="successView">Vis i konsol</button></div>
+            <button class="btn sm sec" id="successView">Åbn i ny fane</button></div>
           <div class="note">Send dette link til leverandøren. Gyldigt i den valgte periode, kun margin-fri data for valgte brands/markeder.</div>
         </div>
       </section>
-
       <section class="card">
         <h2>Aktive dashboards</h2>
         <div id="listWrap"><div class="spin">Henter…</div></div>
       </section>
     </section>
 
-    <!-- ========== VIEW TAB ========== -->
+    <!-- VIEW TAB -->
     <section id="viewTab" class="hidden">
-      <div class="topbar">
-        <button class="btn sec sm" id="vBack">← Tilbage til Administrér</button>
+      <div class="subbar">
         <div class="field"><label>Leverandør</label><select id="vSupplier"></select></div>
         <div class="field"><label>Brand</label><select id="vBrand"></select></div>
         <div class="field"><label>Marked</label><select id="vMarket"></select></div>
         <button class="btn sm" id="vOpen">Åbn i ny fane ↗</button>
         <span class="topnote">Staff-visning · margin-fri · virker uanset leverandørens token-status</span>
       </div>
-      <div class="frameWrap full">
+      <div class="frameWrap">
         <iframe id="vFrame" title="Leverandør-dashboard"></iframe>
         <div class="frameOverlay" id="vOverlay"><div>Vælg en leverandør for at se deres dashboard.</div></div>
       </div>
@@ -170,7 +163,7 @@ var API='https://n8n2.med24intra.dk/webhook/supplier-admin';
 var PORTAL='https://n8n2.med24intra.dk/webhook/supplier-portal';
 function qp(n){var m=new RegExp('[?&]'+n+'=([^&]+)').exec(location.search);return m?decodeURIComponent(m[1]):'';}
 var TOKEN=qp('t')||location.hash.replace(/^#t=/,'');
-var chosen=[]; var ROWS=[];
+var chosen=[]; var ROWS=[]; var currentEphToken=null;
 
 function decodePayload(){try{var p=TOKEN.split('.')[0];return JSON.parse(decodeURIComponent(escape(atob(p.replace(/-/g,'+').replace(/_/g,'/')))));}catch(e){return null;}}
 function api(action,extra){
@@ -178,24 +171,22 @@ function api(action,extra){
   return fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})
     .then(function(r){if(r.status===401){showGate('Linket er ugyldigt eller udløbet.');throw new Error('401');}return r.text().then(function(t){try{return JSON.parse(t);}catch(e){return {ok:true,rows:[]};}});});
 }
-function showGate(m){document.getElementById('app').style.display='none';var g=document.getElementById('gate');g.style.display='flex';if(m)document.getElementById('gateMsg').textContent=m;}
+function showGate(m){document.getElementById('appWrap').style.display='none';var g=document.getElementById('gate');g.style.display='flex';if(m)document.getElementById('gateMsg').textContent=m;}
 function toast(m,err){var t=document.getElementById('toast');t.textContent=m;t.className='toast show'+(err?' err':'');clearTimeout(t._t);t._t=setTimeout(function(){t.className='toast';},2400);}
 function copy(t){navigator.clipboard.writeText(t).then(function(){toast('Link kopieret');},function(){toast('Link kopieret');});}
 function parseBrands(s){try{return JSON.parse(s);}catch(e){return [];}}
 function portalLink(token,brand,market){return PORTAL+'?token='+encodeURIComponent(token)+'&brand='+encodeURIComponent(brand||'')+'&market='+(market||'dk');}
 
-// ---- tabs ----
+// ---- tabs (persistent top nav) ----
 function showTab(which){
   document.getElementById('adminTab').classList.toggle('hidden',which!=='admin');
   document.getElementById('viewTab').classList.toggle('hidden',which!=='view');
   document.getElementById('navAdmin').classList.toggle('active',which==='admin');
   document.getElementById('navView').classList.toggle('active',which==='view');
-  document.getElementById('app').classList.toggle('viewmode',which==='view');
   if(which==='view') initView();
 }
 document.getElementById('navAdmin').onclick=function(){showTab('admin');};
 document.getElementById('navView').onclick=function(){showTab('view');};
-document.getElementById('vBack').onclick=function(){showTab('admin');};
 
 // ---- brand chips (create) ----
 var bin=document.getElementById('brandIn'),bms=document.getElementById('brandMs');
@@ -267,24 +258,20 @@ function load(){
         });
       };
     });
-    // refresh view-tab supplier list if present
     if(!document.getElementById('viewTab').classList.contains('hidden')) populateSuppliers();
   });
 }
 
 // ---- view tab ----
 var viewInited=false;
-function initView(){ populateSuppliers(); if(!viewInited){viewInited=true;} }
+function initView(){ populateSuppliers(); viewInited=true; }
 function populateSuppliers(){
   var sel=document.getElementById('vSupplier'); var cur=sel.value;
   sel.innerHTML='<option value="">— vælg leverandør —</option>'+ROWS.map(function(s){return '<option value="'+s.sid+'">'+(s.label||s.sid)+'</option>';}).join('');
   if(cur) sel.value=cur;
 }
-var currentEphToken=null;
 function rowBySid(sid){return ROWS.filter(function(s){return s.sid===sid;})[0];}
-function selectSupplier(sid){
-  var sel=document.getElementById('vSupplier'); sel.value=sid; onSupplierChange();
-}
+function selectSupplier(sid){ var sel=document.getElementById('vSupplier'); sel.value=sid; onSupplierChange(); }
 function onSupplierChange(){
   var s=rowBySid(document.getElementById('vSupplier').value);
   var bSel=document.getElementById('vBrand'), mSel=document.getElementById('vMarket');
@@ -294,7 +281,6 @@ function onSupplierChange(){
   bSel.innerHTML=brands.map(function(b){return '<option>'+b+'</option>';}).join('');
   mSel.innerHTML=markets.map(function(m){return '<option value="'+m+'">'+m.toUpperCase()+'</option>';}).join('');
   var ov=document.getElementById('vOverlay'); ov.classList.remove('hidden'); ov.innerHTML='<div>Forbereder staff-visning…</div>';
-  // mint an ephemeral staff token (works selv om dashboardet er deaktiveret/udløbet)
   api('mintview',{brands:brands,markets:markets,modules:modules}).then(function(j){
     currentEphToken=(j&&j.token)||null; loadFrame();
   }).catch(function(){ loadFrame(); });
@@ -310,7 +296,6 @@ function loadFrame(){
   ov.classList.remove('hidden');ov.innerHTML='<div>Indlæser leverandørens dashboard… (~20s)</div>';
   fr.src=link;
   fr.onload=function(){ov.classList.add('hidden');};
-  // fallback if framing blocked
   setTimeout(function(){ if(!ov.classList.contains('hidden')){ ov.innerHTML='<div>Kan ikke vise indlejret (eller indlæser stadig).</div><button class="btn" id="ovOpen">Åbn i ny fane ↗</button>'; var b=document.getElementById('ovOpen'); if(b)b.onclick=function(){window.open(link,'_blank');}; } }, 30000);
 }
 document.getElementById('vSupplier').onchange=onSupplierChange;
@@ -322,7 +307,7 @@ document.getElementById('vOpen').onclick=function(){var l=currentViewLink(); if(
 (function(){
   var pl=decodePayload();
   if(!TOKEN||!pl||pl.mode!=='admin'){showGate();return;}
-  document.getElementById('app').style.display='flex';
+  document.getElementById('appWrap').style.display='block';
   document.getElementById('whoLabel').textContent=pl.label||'Administrator';
   renderChips(); load();
 })();
