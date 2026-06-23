@@ -70,6 +70,12 @@
   .frameWrap iframe{width:100%;height:100%;border:0;display:block}
   .frameOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:#fafafa;color:var(--muted);text-align:center;padding:20px}
   .hidden{display:none!important}
+  .app.viewmode .side{display:none}
+  .app.viewmode .main{max-width:none;padding:0}
+  .topbar{display:flex;gap:14px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:10;flex-wrap:wrap}
+  .topbar .field{margin:0;min-width:150px}
+  .topbar .topnote{margin-left:auto;color:var(--muted);font-size:11.5px}
+  .frameWrap.full{height:calc(100vh - 64px);border:0;border-radius:0}
 </style></head>
 <body>
 <div id="gate" class="gate" style="display:none">
@@ -142,23 +148,18 @@
 
     <!-- ========== VIEW TAB ========== -->
     <section id="viewTab" class="hidden">
-      <h1>Vis dashboard</h1>
-      <p class="sub">Se en leverandørs dashboard præcis som de ser det (margin-frit). Vælg leverandør herunder — du kan også skifte brand og marked.</p>
-      <section class="card">
-        <div class="viewbar">
-          <div class="field"><label>Leverandør</label><select id="vSupplier"></select></div>
-          <div class="field"><label>Brand</label><select id="vBrand"></select></div>
-          <div class="field"><label>Marked</label><select id="vMarket"></select></div>
-          <button class="btn sec" id="vOpen">Åbn i ny fane ↗</button>
-        </div>
-        <div class="frameWrap">
-          <iframe id="vFrame" title="Leverandør-dashboard"></iframe>
-          <div class="frameOverlay" id="vOverlay">
-            <div>Vælg en leverandør for at se deres dashboard.</div>
-          </div>
-        </div>
-        <div class="note">Indlæsning kan tage ~20s (henter live data). Staff-visningen virker <b>uanset</b> om leverandørens eget link er deaktiveret eller udløbet — den bruger et midlertidigt staff-token (margin-frit, vores adgang).</div>
-      </section>
+      <div class="topbar">
+        <button class="btn sec sm" id="vBack">← Tilbage til Administrér</button>
+        <div class="field"><label>Leverandør</label><select id="vSupplier"></select></div>
+        <div class="field"><label>Brand</label><select id="vBrand"></select></div>
+        <div class="field"><label>Marked</label><select id="vMarket"></select></div>
+        <button class="btn sm" id="vOpen">Åbn i ny fane ↗</button>
+        <span class="topnote">Staff-visning · margin-fri · virker uanset leverandørens token-status</span>
+      </div>
+      <div class="frameWrap full">
+        <iframe id="vFrame" title="Leverandør-dashboard"></iframe>
+        <div class="frameOverlay" id="vOverlay"><div>Vælg en leverandør for at se deres dashboard.</div></div>
+      </div>
     </section>
   </main>
 </div>
@@ -189,10 +190,12 @@ function showTab(which){
   document.getElementById('viewTab').classList.toggle('hidden',which!=='view');
   document.getElementById('navAdmin').classList.toggle('active',which==='admin');
   document.getElementById('navView').classList.toggle('active',which==='view');
+  document.getElementById('app').classList.toggle('viewmode',which==='view');
   if(which==='view') initView();
 }
 document.getElementById('navAdmin').onclick=function(){showTab('admin');};
 document.getElementById('navView').onclick=function(){showTab('view');};
+document.getElementById('vBack').onclick=function(){showTab('admin');};
 
 // ---- brand chips (create) ----
 var bin=document.getElementById('brandIn'),bms=document.getElementById('brandMs');
