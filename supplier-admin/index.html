@@ -474,7 +474,7 @@ function ovGauge(val){
   var has=val!=null&&!isNaN(val); var v=has?Math.max(0,Math.min(200,val)):0; var pct=v/200;
   var cx=110,cy=110,r=86,sw=18;
   function pol(deg,rr){rr=rr||r;var rad=deg*Math.PI/180;return [cx+rr*Math.cos(rad),cy-rr*Math.sin(rad)];}
-  function arc(a0,a1){var s=pol(a0),e=pol(a1);var lg=Math.abs(a1-a0)>180?1:0;return 'M '+s[0]+' '+s[1]+' A '+r+' '+r+' 0 '+lg+' 0 '+e[0]+' '+e[1];}
+  function arc(a0,a1){var s=pol(a0),e=pol(a1);var lg=Math.abs(a1-a0)>180?1:0;return 'M '+s[0]+' '+s[1]+' A '+r+' '+r+' 0 '+lg+' 1 '+e[0]+' '+e[1];}
   var va=180-pct*180; var col=!has?'#9ca3af':v>=100?'#16a34a':v>=90?'#d97706':'#dc2626';
   var t0=pol(90,r-sw/2-2),t1=pol(90,r+sw/2+2);
   return '<svg viewBox="0 0 220 132" style="width:100%;max-width:230px"><path d="'+arc(180,0)+'" fill="none" stroke="#eceef1" stroke-width="'+sw+'" stroke-linecap="round"/>'
